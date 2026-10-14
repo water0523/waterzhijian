@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>纸间 · 离线公众号排版器</title><style>/*APP_CSS*/</style><style id="article-style"></style></head>
+<body data-mobile-pane="edit">
+<div id="app">
+  <header class="app-header">
+    <button id="library-toggle" class="brand" title="打开文章库" aria-label="打开文章库"><span class="brand-symbol">纸</span><span class="brand-name">纸间<small>PAPER STUDIO · v1.0</small></span></button>
+    <div class="document-heading"><input id="document-title" aria-label="文章名称" value="未命名文章"><span id="save-state" role="status"><i></i> 正在打开文章库</span></div>
+    <div class="header-actions"><span class="offline-badge"><i></i> 本地 · 离线</span><button id="night-button" class="button outline" aria-pressed="false" title="切换日间 / 夜间模式">☾ 夜间</button><button id="export-toggle" class="button outline">导出 <span>↗</span></button><select id="publisher" aria-label="发布目标"><option value="wechat">公众号排版</option><option value="zhihu">知乎 · 无主题</option></select><button id="copy-button" class="button primary">复制到公众号 <span>↗</span></button></div>
+  </header>
+  <div class="workbench">
+    <aside id="library" class="library-panel" aria-label="文章库" hidden>
+      <div class="panel-title"><div><span class="eyebrow">YOUR COLLECTION</span><h2>文章库</h2></div><button id="library-close" class="icon-button" aria-label="关闭文章库">×</button></div>
+      <div class="library-create"><button id="new-article" class="button primary">＋ 新建文章</button><button id="new-folder" class="button outline" title="新建一级文件夹">＋ 文件夹</button></div>
+      <input id="library-search" class="field" placeholder="搜索标题或正文" aria-label="搜索文章">
+      <div class="library-tabs"><button id="active-tab" class="active">草稿</button><button id="trash-tab">回收站</button></div>
+      <div id="folder-list" class="folder-list" aria-label="一级文件夹"></div>
+      <div id="article-list" class="article-list"></div>
+      <div class="library-footer"><button id="import-button" class="button outline full">导入 Markdown / 备份</button><button id="backup-library" class="text-button">备份整个文章库</button><p>草稿保存在当前浏览器。导出备份后，可在其他电脑恢复。</p></div>
+    </aside>
+    <main class="workspace" id="workspace">
+      <div class="workspace-heading"><div><span class="eyebrow">A QUIET SPACE FOR YOUR WORDS</span><h1>让知识清晰，让文字动人<span>。</span></h1></div><button id="samples-button" class="text-button">试试示例 <span>↗</span></button></div>
+      <div class="workspace-toolbar"><div class="toolbar-left"><button id="library-button" class="tool-button" title="文章库">▤ <span>文章库</span></button><span class="tool-divider"></span><button id="theme-button" class="theme-button"><span class="theme-dot" id="theme-dot"></span><span id="theme-name">理性蓝</span><span class="small-muted">文章主题 ▾</span></button></div><div class="toolbar-right"><button id="sync-button" class="tool-button active" aria-pressed="true">⇄ <span>同步滚动</span></button><button id="assets-button" class="tool-button">▧ <span>素材</span><span id="asset-count" class="count-badge">0</span></button><button id="table-style-button" class="tool-button" title="表格样式：三线表、斑马纹、网格">▦ <span>表格样式</span></button><button id="style-button" class="tool-button">☷ <span>排版设置</span></button></div></div>
+      <div class="mobile-pane-tabs" role="tablist" aria-label="工作区切换"><button id="mobile-edit" role="tab" aria-selected="true" aria-controls="markdown-pane">编辑</button><button id="mobile-preview" role="tab" aria-selected="false" aria-controls="article-pane">预览</button></div>
+      <div class="split-workspace" id="split-workspace">
+        <section class="editor-pane" id="markdown-pane" aria-label="Markdown 编辑区"><div class="pane-title editor-title"><span><i></i> MARKDOWN <small>编辑</small></span><select id="editor-theme" aria-label="编辑器配色"></select></div>
+          <div class="format-toolbar" aria-label="Markdown 格式工具"><button data-format="heading" title="插入二级标题">H₂</button><button data-format="bold" title="加粗"><b>B</b></button><button data-format="italic" title="斜体"><i>I</i></button><button data-format="quote" title="引用">❞</button><span></span><button data-format="link" title="插入链接">链接</button><button data-format="table" title="插入表格">表格</button><button id="inline-style-button" title="设置选中文字的字体、颜色和样式">字体 / 样式</button><button id="image-button" title="插入图片，也可直接粘贴">图片</button><button id="math-button" title="插入公式">∑ 公式</button><button data-format="poem" title="将选区转为居中诗歌">诗歌</button><button data-format="code" title="代码格式">代码</button><button data-format="footnote" title="插入脚注">脚注</button><span></span><button id="undo-button" title="撤销">↶</button><button id="redo-button" title="重做">↷</button><button id="search-button" title="查找替换 Ctrl+F">⌕</button></div>
+          <div id="editor"></div><div class="editor-bottom"><span id="word-count">0 字</span><span>Markdown · UTF-8 <span class="status-dot"></span></span></div>
+        </section>
+        <div id="splitter" role="separator" tabindex="0" aria-label="调整左右栏宽度" aria-orientation="vertical"><span></span></div>
+        <section class="preview-pane" id="article-pane" aria-label="文章预览"><div class="pane-title preview-title"><span>LIVE PREVIEW <small id="preview-target">公众号预览</small></span><div class="preview-controls"><button id="preview-edit-button" aria-pressed="false">编辑文字</button><select id="preview-width" aria-label="预览宽度"><option value="375">375 · 手机</option><option value="430">430 · 大屏</option><option value="wide">宽屏</option></select><button id="toc-button" class="icon-button" title="文章目录">☷</button></div></div>
+          <div id="preview-scroll"><div class="preview-caption"><span id="preview-caption-name">理性蓝</span><span>每一个想法，都值得好好呈现</span></div><article id="preview" class="article"></article><div class="preview-end"><span></span> 写到这里，刚刚好 <span></span></div></div>
+          <div class="preview-bottom"><span id="reading-time">约 1 分钟阅读</span><label id="preview-dimming" hidden>亮度 <input id="preview-brightness" type="range" min="35" max="100" value="78" step="1" aria-label="夜间预览亮度"><output id="brightness-value">78%</output></label><span id="render-state">实时预览</span></div>
+        </section>
+      </div>
+      <footer class="workspace-footer"><span><span class="footer-mark">✦</span> 只在本地，安心写作。</span><span id="last-export">Ctrl + S 导出文章备份</span></footer>
+    </main>
+    <aside id="style-panel" class="style-panel" hidden></aside>
+  </div>
+</div>
+<input type="file" id="image-input" accept="image/png,image/jpeg,image/gif,image/webp" multiple hidden>
+<input type="file" id="import-input" accept=".md,.markdown,.txt,.zip" multiple hidden>
+<dialog id="modal"><div class="modal-header"><div><span class="eyebrow" id="modal-eyebrow">PAPER STUDIO</span><h2 id="modal-title"></h2></div><button id="modal-close" class="icon-button" aria-label="关闭窗口">×</button></div><div id="modal-body"></div></dialog>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="selection-tools" role="toolbar" aria-label="选中文字快捷操作" hidden><button data-format="bold" title="加粗"><b>B</b></button><button data-format="italic" title="斜体"><i>I</i></button><button data-format="underline" title="下划线"><u>U</u></button><button data-format="wave" title="波浪线">﹏</button><button data-format="strike" title="删除线"><s>S</s></button><button data-format="link">链接</button><button id="selection-block-button">段落 ▾</button><button data-format="quote" title="转为引用">❞</button><button data-format="poem" title="转为居中诗歌">诗歌</button><button data-format="code" title="单行代码 / 多行代码块">代码</button><button data-format="footnote" title="插入脚注">脚注</button><button id="selection-style-button">字体 / 颜色 ▾</button></div>
+<noscript>请在浏览器中启用 JavaScript 后打开本工具。</noscript>
+<script>/*APP_JS*/</script>
+</body></html>

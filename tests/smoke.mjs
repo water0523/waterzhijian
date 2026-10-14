@@ -1,0 +1,15 @@
+import {chromium} from 'playwright';
+import {mkdir} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+import path from 'node:path';
+await mkdir('test-results',{recursive:true});
+const browser=await chromium.launch({channel:'chrome',headless:true});
+const context=await browser.newContext({viewport:{width:1440,height:1000},offline:true});
+const page=await context.newPage();
+const errors=[];page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+await page.goto(pathToFileURL(path.resolve('dist/纸间-离线公众号排版器.html')).href);
+await page.waitForSelector('.cm-content');await page.waitForTimeout(1500);
+console.log(JSON.stringify({errors,math:await page.locator('#preview svg').count(),mathErrors:await page.locator('#preview .math-error').allTextContents(),save:await page.locator('#save-state').textContent(),body:await page.locator('#preview').innerText()},null,2));
+await page.screenshot({path:'test-results/initial-chrome.png',fullPage:true});
+await page.click('#theme-button');await page.screenshot({path:'test-results/themes-chrome.png',fullPage:true});
+await browser.close();
