@@ -176,6 +176,13 @@ export function renderMarkdown(source:string,assets:Map<string,Asset>,editable=f
   const html=DOMPurify.sanitize(raw,{ADD_TAGS:['mjx-container'],ADD_ATTR:['xmlns','display','focusable'],FORBID_TAGS:['script','iframe','object','embed','foreignObject'],ALLOW_DATA_ATTR:true});
   return {html,errors:env.errors,missing:[...new Set(env.missing)],external:[...new Set(env.external)]};
 }
+export function firstArticleHeading(source:string):string|null{
+  const tokens=md.parse(source,{});
+  const heading=tokens.findIndex(t=>t.type==='heading_open'&&t.tag==='h1'&&t.level===0);
+  if(heading<0)return null;
+  const text=(tokens[heading+1]?.children||[]).filter(t=>['text','code_inline','math_inline','image'].includes(t.type)).map(t=>t.content).join('').trim();
+  return text||null;
+}
 
 const copiedProperties=['color','background-color','font-family','font-size','font-weight','font-style','line-height','letter-spacing','text-align','text-indent','text-decoration','white-space','word-break','overflow-wrap','vertical-align','display','float','clear','text-wrap','margin-top','margin-bottom','margin-left','margin-right','padding-top','padding-bottom','padding-left','padding-right','border-top','border-bottom','border-left','border-right','border-radius','box-shadow','outline','background-image','background-size','background-position','background-repeat','opacity','border-collapse','table-layout','max-width','list-style-type','box-sizing'];
 export function exportFragment(article:HTMLElement):string{

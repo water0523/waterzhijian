@@ -5,6 +5,8 @@ import {createHash} from 'node:crypto';
 // Credentials remain in memory and are sent only to GitHub's official APIs.
 const owner='water0523',repo='waterzhijian',base=`https://api.github.com/repos/${owner}/${repo}`;
 const command=process.argv[2]||'inspect';
+const version=process.argv[3]||'v1.0.1';
+if(!/^v\d+\.\d+(?:\.\d+)?$/.test(version))throw new Error('Invalid release version');
 const credentials=execFileSync('git',['credential','fill'],{input:`protocol=https\nhost=github.com\nusername=${owner}\n\n`,encoding:'utf8',env:{...process.env,GCM_INTERACTIVE:'never',GIT_TERMINAL_PROMPT:'0'}});
 const token=credentials.split(/\r?\n/).find(line=>line.startsWith('password='))?.slice(9);
 if(!token)throw new Error('GitHub credential unavailable');
@@ -33,12 +35,12 @@ if(command==='inspect'){
  const page=await api(base+'/pages'),build=await api(base+'/pages/builds/latest');
  console.log(JSON.stringify({site:page.data?.html_url,status:page.data?.status,build:build.data?.status,error:build.data?.error,commit:build.data?.commit}));
 }else if(command==='release'){
- const notes=await readFile('RELEASE-v1.0.md','utf8');
- let release=await api(base+'/releases/tags/v1.0');
- if(release.status===404)release=await api(base+'/releases','POST',{tag_name:'v1.0',target_commitish:'main',name:'纸间 v1.0 · 首个正式版本',body:notes,draft:false,prerelease:false});
+ const notes=await readFile(`RELEASE-${version}.md`,'utf8');
+ let release=await api(base+'/releases/tags/'+version);
+ if(release.status===404)release=await api(base+'/releases','POST',{tag_name:version,target_commitish:'main',name:'纸间 '+version,body:notes,draft:false,prerelease:false});
  const upload=release.data.upload_url.split('{')[0];
  if(new URL(upload).hostname!=='uploads.github.com')throw new Error('Unexpected release upload host');
- for(const [file,name,type] of [['dist/纸间-离线公众号排版器.html','waterzhijian-v1.0.html','text/html'],['dist/纸间-源码与使用说明.zip','waterzhijian-v1.0-source.zip','application/zip'],['dist/SHA256.txt','SHA256.txt','text/plain']]){
+ for(const [file,name,type] of [['dist/纸间-离线公众号排版器.html',`waterzhijian-${version}.html`,'text/html'],['dist/纸间-源码与使用说明.zip',`waterzhijian-${version}-source.zip`,'application/zip'],['dist/SHA256.txt','SHA256.txt','text/plain']]){
   if(release.data.assets.some(asset=>asset.name===name))continue;
   let bytes=await readFile(file);
   if(name==='SHA256.txt')bytes=Buffer.from((await Promise.all([['dist/纸间-离线公众号排版器.html','waterzhijian-v1.0.html'],['dist/纸间-源码与使用说明.zip','waterzhijian-v1.0-source.zip']].map(async([path,name])=>createHash('sha256').update(await readFile(path)).digest('hex')+'  '+name))).join('\n')+'\n');

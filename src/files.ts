@@ -68,10 +68,10 @@ export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[]
     const markdown=rewrite(a.markdown);
     if(a.folder!==undefined&&a.folder!==''&&!validFolder(a.folder))throw new Error('文章文件夹无效');
     if(a.folder&&!folders.includes(a.folder))folders.push(a.folder);
-    return {version:1,id:uid(),title:a.title,markdown,folder:a.folder||undefined,theme:themeById(a.theme).id,typography:validTypography(a.typography),assets:assetRefs(markdown),stickers:stickerImport(a.stickers),created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
+    return {version:1,id:uid(),title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:themeById(a.theme).id,typography:validTypography(a.typography),assets:assetRefs(markdown),stickers:stickerImport(a.stickers),created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
       revisions:(Array.isArray(a.revisions)?a.revisions:[]).slice(-20).map((r:any)=>{
         if(typeof r.markdown!=='string')throw new Error('恢复版本损坏');
-        const text=rewrite(r.markdown);return {at:Number(r.at)||Date.now(),title:String(r.title||a.title),markdown:text,theme:themeById(r.theme).id,typography:validTypography(r.typography),assets:assetRefs(text),stickers:stickerImport(r.stickers)};
+        const text=rewrite(r.markdown);return {at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:themeById(r.theme).id,typography:validTypography(r.typography),assets:assetRefs(text),stickers:stickerImport(r.stickers)};
       })};
   });
   return {articles:articleOutput,assets:assetOutput,folders};

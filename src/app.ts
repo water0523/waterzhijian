@@ -1,7 +1,7 @@
 import {MarkdownEditor,ScrollSync,editorThemes} from './editor';
 import {themes,themeById,themeCSS} from './themes';
 import {decorateTheme,designs} from './theme-design';
-import {renderMarkdown,renderMath,exportFragment,type RenderResult} from './render';
+import {renderMarkdown,renderMath,exportFragment,firstArticleHeading,type RenderResult} from './render';
 import {freshArticle,escapeHTML as esc,uid,fontNames,type Article,type Asset,type Typography} from './model';
 import {openStore,loadStore,persist,preference,readPreference} from './storage';
 import {download,safeName,createBackup,readBackup,fileToAsset,assetRefs,svgToPNG,bytesFromData,extension} from './files';
@@ -20,6 +20,7 @@ import {dividerOptions,dividerSVG} from './dividers';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const assets=new Map<string,Asset>();const articles=new Map<string,Article>();
+const headingCache=new WeakMap<Article,{markdown:string;heading:string|null}>();
 let current:Article=freshArticle('光的来信 · 科普示例',science);
 let editor:MarkdownEditor,sync:ScrollSync;
 let stickerController:StickerController;
@@ -48,6 +49,7 @@ function bind(id:string,handler:(e:Event)=>unknown,type='click'){$(id).addEventL
 function openModal(title:string,html:string,eyebrow='PAPER STUDIO'){closePopover();$('modal-title').textContent=title;$('modal-eyebrow').textContent=eyebrow;$('modal-body').innerHTML=html;enhanceColors($('modal-body'));if(!modal.open)modal.showModal();}
 function closeModal(){themeGalleryResize.disconnect();modal.close();$('modal-body').replaceChildren();}
 function markDirty(article=current){
+  syncArticleTitle(article);
   article.updated=Date.now();article.assets=[...new Set([...assetRefs(article.markdown),...(article.stickers||[]).map(s=>s.assetId)])];dirtyArticles.add(article.id);dirtyGeneration++;
   // A small synchronous text checkpoint covers the gap before IndexedDB's
   // debounced save. Original image data continues to live in IndexedDB.
@@ -55,11 +57,21 @@ function markDirty(article=current){
   $('save-state').className='';$('save-state').textContent='正在保存到浏览器…';
   clearTimeout(saveTimer);saveTimer=window.setTimeout(()=>void save(),1000);
 }
+function syncArticleTitle(article:Article){
+  if(article.titleMode!=='manual'){
+    let cached=headingCache.get(article);if(!cached||cached.markdown!==article.markdown){cached={markdown:article.markdown,heading:firstArticleHeading(article.markdown)};headingCache.set(article,cached);}if(cached.heading)article.title=cached.heading;
+  }
+  if(article.id===current.id){
+    const input=$<HTMLInputElement>('document-title');if(document.activeElement!==input)input.value=article.title;
+    const toggle=document.getElementById('title-mode');if(toggle){const auto=article.titleMode!=='manual';toggle.textContent=auto?'跟随 H1':'自定义';toggle.setAttribute('aria-pressed',String(auto));toggle.title=auto?'文章名跟随第一个一级标题；点击改为自定义':'当前为自定义名称；点击跟随第一个一级标题';}
+  }
+  const name=$('article-list')?.querySelector<HTMLElement>(`[data-id="${article.id}"] strong`);if(name)name.textContent=article.title||'未命名文章';
+}
 function snapshot(a:Article,force=false){
   const last=a.revisions.at(-1);
-  if(last&&last.markdown===a.markdown&&last.title===a.title&&last.theme===a.theme&&JSON.stringify(last.typography)===JSON.stringify(a.typography)&&JSON.stringify(last.stickers||[])===JSON.stringify(a.stickers||[]))return;
+  if(last&&last.markdown===a.markdown&&last.title===a.title&&last.titleMode===a.titleMode&&last.theme===a.theme&&JSON.stringify(last.typography)===JSON.stringify(a.typography)&&JSON.stringify(last.stickers||[])===JSON.stringify(a.stickers||[]))return;
   if(!force&&last&&Date.now()-last.at<30000)return;
-  a.revisions.push({at:Date.now(),title:a.title,markdown:a.markdown,theme:a.theme,typography:{...a.typography},assets:assetRefs(a.markdown),stickers:structuredClone(a.stickers||[])});
+  a.revisions.push({at:Date.now(),title:a.title,titleMode:a.titleMode,markdown:a.markdown,theme:a.theme,typography:{...a.typography},assets:assetRefs(a.markdown),stickers:structuredClone(a.stickers||[])});
   a.revisions=a.revisions.slice(-20);
 }
 async function save(){
@@ -93,6 +105,7 @@ function applyAppearance(){
 }
 function editorChrome(id:string){const t=editorThemes[id]||editorThemes.dark;const pane=document.querySelector<HTMLElement>('.editor-pane')!;for(const [name,value] of Object.entries({bg:t.bg,fg:t.fg,surface:t.line,muted:t.muted,accent:t.accent,border:t.muted+'40'}))pane.style.setProperty('--editor-'+name,value);}
 function render(){
+  syncArticleTitle(current);
   clearTimeout(renderTimer);const start=performance.now();const reading=sync?.capture()||0;
   try{
     renderResult=renderMarkdown(current.markdown,assets,previewEditor?.enabled);
@@ -418,7 +431,7 @@ async function importFiles(files:File[]){
 function showHistory(article:Article){
   const revisions=[...article.revisions].reverse();
   openModal('找回之前的文字',`<p class="modal-subtitle">${esc(article.title)} · 保留最近 20 个恢复点。连续输入按约 30 秒合并，切换文章和导出时另存恢复点。</p>${revisions.length?revisions.map((r,i)=>`<div class="history-row"><div>${new Date(r.at).toLocaleString('zh-CN')}<small>${r.markdown.length} 字符 · ${themeById(r.theme).name}</small></div><button data-revision="${i}">恢复这个版本</button></div>`).join(''):'<div class="empty-state">继续写作后，这里将出现恢复版本。</div>'}`);
-  $('modal-body').querySelectorAll<HTMLElement>('[data-revision]').forEach(el=>el.onclick=()=>{const revision=structuredClone(revisions[Number(el.dataset.revision)]);snapshot(article,true);Object.assign(article,{title:revision.title,markdown:revision.markdown,theme:revision.theme,typography:revision.typography,assets:revision.assets,stickers:revision.stickers||[]});markDirty(article);switchArticle(article.id);closeModal();toast('已恢复版本，恢复前的内容也已保留');});
+  $('modal-body').querySelectorAll<HTMLElement>('[data-revision]').forEach(el=>el.onclick=()=>{const revision=structuredClone(revisions[Number(el.dataset.revision)]);snapshot(article,true);Object.assign(article,{title:revision.title,titleMode:revision.titleMode||'manual',markdown:revision.markdown,theme:revision.theme,typography:revision.typography,assets:revision.assets,stickers:revision.stickers||[]});markDirty(article);switchArticle(article.id);closeModal();toast('已恢复版本，恢复前的内容也已保留');});
 }
 function showTOC(){const headings=[...$('preview').querySelectorAll<HTMLElement>('h1,h2,h3,h4')];openModal('文章目录',`<ul class="toc-list">${headings.map((h,i)=>`<li><button data-heading="${i}" style="padding-left:${10+(Number(h.tagName.slice(1))-1)*15}px">${esc(h.textContent||'')}</button></li>`).join('')}</ul>${headings.length?'':'<p class="empty-state">添加 Markdown 标题后，目录会自动生成。</p>'}`);$('modal-body').querySelectorAll<HTMLElement>('[data-heading]').forEach(el=>el.onclick=()=>{const h=headings[Number(el.dataset.heading)];closeModal();editor.goto(Number(h.dataset.line||0)+1);h.scrollIntoView({block:'start'});});}
 
@@ -480,10 +493,10 @@ async function showStickerRegions(){
 
 async function init(){
   let storageError='';
-  try{await openStore();const stored=await loadStore();for(const a of stored.articles)articles.set(a.id,a);for(const a of stored.assets)assets.set(a.id,a);}catch(e){storageError=errorMessage(e);}
+  try{await openStore();const stored=await loadStore();for(const a of stored.articles){if(!a.titleMode)a.titleMode='manual';articles.set(a.id,a);}for(const a of stored.assets)assets.set(a.id,a);}catch(e){storageError=errorMessage(e);}
   let recovered=false;
   try{const draft=JSON.parse(readPreference('recovery','null')) as Article|null;if(draft?.version===1&&typeof draft.markdown==='string'&&typeof draft.id==='string'&&typeof draft.title==='string'&&Number.isFinite(draft.updated)){
-    const saved=articles.get(draft.id);if(!saved?.deleted&&(!saved||draft.updated>saved.updated)){articles.set(draft.id,{...freshArticle(),...saved,...draft,revisions:saved?.revisions||[]});preference('current',draft.id);recovered=true;}
+    const saved=articles.get(draft.id);if(!saved?.deleted&&(!saved||draft.updated>saved.updated)){articles.set(draft.id,{...freshArticle(),...saved,...draft,titleMode:draft.titleMode||saved?.titleMode||'manual',revisions:saved?.revisions||[]});preference('current',draft.id);recovered=true;}
   }}catch{/* A corrupt recovery checkpoint cannot block the saved library. */}
   const active=[...articles.values()].filter(a=>!a.deleted).sort((a,b)=>b.updated-a.updated);
   current=active.find(a=>a.id===readPreference('current',''))||active[0]||current;
@@ -500,7 +513,8 @@ async function init(){
   bind('new-folder',e=>folderEditor(e.currentTarget as HTMLElement));
   $('folder-list').addEventListener('click',e=>{const target=e.target as HTMLElement,edit=target.closest<HTMLElement>('[data-folder-edit]'),folder=target.closest<HTMLElement>('[data-folder]');if(edit)folderEditor(edit,edit.dataset.folderEdit!);else if(folder){libraryFolder=folder.dataset.folder!;saveFolders();renderLibrary();}});
   bind('new-article',()=>addArticle());bind('active-tab',()=>{trash=false;renderLibrary();});bind('trash-tab',()=>{trash=true;renderLibrary();});bind('library-search',renderLibrary,'input');
-  bind('document-title',()=>{current.title=$<HTMLInputElement>('document-title').value;markDirty();},'input');
+  const titleMode=document.createElement('button');titleMode.id='title-mode';titleMode.className='title-mode-button';titleMode.setAttribute('aria-label','切换文章名来源');$('document-title').after(titleMode);titleMode.onclick=()=>{current.titleMode=current.titleMode==='manual'?'auto':'manual';markDirty();renderLibrary();};
+  bind('document-title',()=>{current.titleMode='manual';current.title=$<HTMLInputElement>('document-title').value;markDirty();renderLibrary();},'input');
   bind('theme-button',()=>showThemes());bind('samples-button',showSamples);bind('style-button',()=>{const p=$('style-panel');p.hidden=!p.hidden;if(!p.hidden)renderStylePanel();});
   bind('inline-style-button',showInlineStyle);bind('selection-style-button',showInlineStyle);
   bind('editor-theme',()=>{const value=$<HTMLSelectElement>('editor-theme').value;editor.theme(value);editorChrome(value);preference(night?'editor-theme-night':'editor-theme',value);},'change');
@@ -546,7 +560,7 @@ async function init(){
     else if(action==='move')moveArticle(target,article);
     else if(action==='history')showHistory(article);
     else if(action==='duplicate'){
-      const copy=freshArticle(article.title+' · 副本',article.markdown);copy.folder=article.folder;copy.theme=article.theme;copy.typography={...article.typography};copy.stickers=structuredClone(article.stickers||[]).map(s=>({...s,id:uid()}));
+      const copy=freshArticle(article.title+' · 副本',article.markdown);copy.titleMode='manual';copy.folder=article.folder;copy.theme=article.theme;copy.typography={...article.typography};copy.stickers=structuredClone(article.stickers||[]).map(s=>({...s,id:uid()}));
       for(const id of new Set([...assetRefs(copy.markdown),...copy.stickers.map(s=>s.assetId)])){const a=assets.get(id);if(a){const cloned={...a,id:uid()};assets.set(cloned.id,cloned);dirtyAssets.add(cloned.id);copy.markdown=copy.markdown.replaceAll('asset:'+id,'asset:'+cloned.id);for(const s of copy.stickers)if(s.assetId===id)s.assetId=cloned.id;}}
       articles.set(copy.id,copy);markDirty(copy);switchArticle(copy.id);
     }else if(!trash)switchArticle(article.id);

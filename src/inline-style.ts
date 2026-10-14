@@ -43,6 +43,24 @@ export function parseInlineStyle(source:string):InlineStyle|null {
 // A deliberately small Markdown extension. Only whitelisted style properties
 // are accepted; no raw HTML, arbitrary CSS, URLs or events can be injected.
 export function installInlineStyles(md:MarkdownIt){
+  // Retain native delimiter pairing, nesting, escapes and code isolation while
+  // allowing bold edges to touch CJK text after punctuation: **科普：**正文.
+  const parser=md.inline as any,Base=parser.State;
+  parser.State=class extends Base {
+    scanDelims(start:number,canSplitWord:boolean){
+      const scanned=super.scanDelims(start,canSplitWord);
+      if(this.src[start]!=='*'||scanned.length<2)return scanned;
+      const tail=this.src.slice(Math.max(0,start-2),start);
+      const before=/^[\uD800-\uDBFF][\uDC00-\uDFFF]$/.test(tail)?tail:tail.slice(-1);
+      const after=String.fromCodePoint(this.src.codePointAt(start+scanned.length)||32);
+      const cjk=/[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}\p{Script=Hangul}]/u;
+      const punctuation=/[\p{P}\p{S}]/u;
+      const cjkPunctuation=/[\u3000-\u303f\uff00-\uffef\u2018-\u201f]/u;
+      if(!scanned.can_close&&punctuation.test(before)&&(cjk.test(after)||(cjkPunctuation.test(before)&&/[\p{L}\p{N}]/u.test(after))))scanned.can_close=true;
+      if(!scanned.can_open&&cjk.test(before)&&punctuation.test(after))scanned.can_open=true;
+      return scanned;
+    }
+  };
   // A styled span ends in punctuation (`}`), so CommonMark can reject a
   // following ** before Chinese text. Recognize this precise old-source form.
   md.inline.ruler.before('emphasis','styled_strong',(state,silent)=>{

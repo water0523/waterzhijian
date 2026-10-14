@@ -9,15 +9,16 @@ export interface Asset {
   figureLabel?:string; source?:string;
 }
 export interface Sticker { id:string; assetId:string; line:number; x:number; offsetY:number; width:number; rotation:number; layout?:'free'|'wrap-left'|'wrap-right' }
-export interface Revision { at: number; title: string; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[] }
+export interface Revision { at: number; title: string; titleMode?:'auto'|'manual'; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[] }
 export interface Article {
   version: 1; id: string; title: string; markdown: string; theme: string;
   typography: Typography; assets: string[]; created: number; updated: number;
   deleted: boolean; revisions: Revision[]; stickers?:Sticker[]; folder?:string;
+  titleMode?:'auto'|'manual';
 }
 export const uid = () => crypto.randomUUID();
 export const freshArticle = (title = '未命名文章', markdown = ''): Article => ({
-  version: 1, id: uid(), title, markdown, theme: 'rational', typography: {},
+  version: 1, id: uid(), title, titleMode:'auto', markdown, theme: 'rational', typography: {},
   assets: [], created: Date.now(), updated: Date.now(), deleted: false, revisions: []
 });
 export function escapeHTML(s: string): string { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!)); }
