@@ -95,7 +95,7 @@ export class ScrollSync {
     const base=this.preview.getBoundingClientRect().top;
     const map=new Map<number,number>();
     for(const el of this.article.querySelectorAll<HTMLElement>('[data-line]')){
-      if(el.classList.contains('math-inline')||el.closest('.footnotes'))continue;
+      if(el.classList.contains('math-inline')||el.closest('.footnotes')||!el.getClientRects().length)continue;
       const line=Number(el.dataset.line);const y=el.getBoundingClientRect().top-base+this.preview.scrollTop;
       if(!map.has(line))map.set(line,y);
     }

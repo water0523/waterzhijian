@@ -9,6 +9,8 @@ import {openStore,loadStore,persist,preference,readPreference} from './storage';
 import {download,safeName,createBackup,readBackup,fileToAsset,assetRefs,svgToPNG,bytesFromData,extension} from './files';
 import {standardCSS,standardBody,standardFragment,createWord,preparePrintWindow} from './documents';
 import {science,equations,poetry} from './samples';
+import {journalSample,journalFigure,journalPreviewSample} from './journal-sample';
+import {inspectFonts} from './font-inspection';
 import {StickerController,updateStickerLines,flattenStickers,publicationHTML} from './stickers';
 import {PreviewEditor} from './preview-editor';
 import {inlineFonts,inlineCSS,styleAttributes,parseInlineStyle,type InlineStyle} from './inline-style';
@@ -34,6 +36,7 @@ let editor:MarkdownEditor,sync:ScrollSync;
 let stickerController:StickerController;
 let previewEditor:PreviewEditor;
 let night=readPreference('appearance','day')==='night';
+let fontInspection=readPreference('font-inspection','false')==='true';
 const savedBrightness=Number(readPreference('preview-brightness','78'));
 let brightness=Number.isFinite(savedBrightness)?Math.max(35,Math.min(100,savedBrightness)):78;
 let renderResult:RenderResult={html:'',errors:[],missing:[],external:[]};
@@ -141,19 +144,27 @@ function applyAppearance(){
   $('preview-dimming').hidden=!night;$<HTMLInputElement>('preview-brightness').value=String(brightness);$('brightness-value').textContent=brightness+'%';
 }
 function editorChrome(id:string){const t=editorThemes[id]||editorThemes.dark;const pane=document.querySelector<HTMLElement>('.editor-pane')!;for(const [name,value] of Object.entries({bg:t.bg,fg:t.fg,surface:t.line,muted:t.muted,accent:t.accent,border:t.muted+'40'}))pane.style.setProperty('--editor-'+name,value);}
+let renderedArticleId='';
 function render(){
   syncArticleTitle(current);
   clearTimeout(renderTimer);const start=performance.now();const reading=sync?.capture()||0;
   try{
+    const disclosureKey=(node:HTMLElement)=>node.className+'|'+node.dataset.line+'|'+node.querySelector(':scope > summary')?.textContent;
+    const disclosures=new Map(renderedArticleId===current.id?[...$('preview').querySelectorAll<HTMLDetailsElement>('details')].map(n=>[disclosureKey(n),{open:n.open,scroll:n.querySelector<HTMLElement>(':scope > .journal-content')?.scrollTop||0}] as const):[]);
     renderResult=renderMarkdown(current.markdown,assets,previewEditor?.enabled);
     const theme=themeById(current.theme);$('article-style').textContent=publisher==='zhihu'?standardCSS():themeCSS(theme,current.typography);
     const indentButton=document.getElementById('indent-toggle') as HTMLButtonElement|null;
     if(indentButton){const active=current.typography.indent??themeDefaults(theme).indent;indentButton.classList.toggle('active',active);indentButton.setAttribute('aria-pressed',String(active));indentButton.disabled=publisher==='zhihu';}
     $('preview').innerHTML=(publisher==='zhihu'?standardBody(current,assets,renderResult.html):renderResult.html)||'<p style="color:#a1aa9c;text-align:center;padding-top:70px;text-indent:0">从左侧写下第一句话。</p>';
     if(publisher==='wechat')decorateTheme($('preview'),theme);
+    for(const node of $('preview').querySelectorAll<HTMLDetailsElement>('details')){
+      const previous=disclosures.get(disclosureKey(node));if(previous){node.open=previous.open;const content=node.querySelector<HTMLElement>(':scope > .journal-content');if(content)content.scrollTop=previous.scroll;}
+      node.addEventListener('toggle',()=>{if(node.isConnected)requestAnimationFrame(()=>sync?.rebuild());});
+    }
+    renderedArticleId=current.id;
     if(publisher==='wechat'&&referencesEnabled())appendReferences($('preview'));
     stickerController?.setEnabled(publisher==='wechat'&&!previewEditor?.enabled);if(publisher==='wechat')stickerController?.render();
-    previewEditor?.attach();
+    previewEditor?.attach();inspectFonts($('preview'),fontInspection);
     $('theme-name').textContent=theme.name;$('theme-dot').style.background=theme.accent;$('preview-caption-name').textContent=publisher==='zhihu'?'知乎 · 标准 Markdown':theme.name;
     $<HTMLSelectElement>('publisher').value=publisher;$('preview-target').textContent=publisher==='zhihu'?'知乎预览':'公众号预览';paintCopyButton();
     $<HTMLButtonElement>('theme-button').disabled=publisher==='zhihu';$<HTMLButtonElement>('style-button').disabled=publisher==='zhihu';if(publisher==='zhihu')$('style-panel').hidden=true;
@@ -210,6 +221,7 @@ function themeThumbnail(id:string){
   const t=themeById(id),node=document.createElement('div');node.className='theme-sample theme-sample-'+id;
   node.innerHTML=`<h2>${t.group==='文学'?'在平凡里，收集微光':'从一个好问题开始'}</h2><h3>${t.group==='文学'?'把日子，写成一页诗':'观察 · 探索 · 发现'}</h3><blockquote><p>${t.group==='文学'?'让文字留下温柔的回声。':'真正的发现，始于认真观察。'}</p></blockquote><p>让<strong>值得记住的句子</strong>拥有自己的光。</p>`;
   if(id==='classical')node.innerHTML='<h1>陋室铭</h1><h2>原文选读</h2><p>山不在高，有仙则名。水不在深，有龙则灵。<strong>斯是陋室，惟吾德馨。</strong>苔痕上阶绿，草色入帘青。</p><blockquote><p>铭，古代刻在器物上用来警戒自己或者称述功德的文字。</p></blockquote><h2>读一读，想一想</h2><p>谈笑有鸿儒，往来无白丁。</p>';
+  if(t.variant==='journal')node.innerHTML=renderMarkdown('## 从一个好问题开始\n:::subtitle SCIENCE & IDEAS\n\n:::theorem 核心定律 · 理解世界\n用清晰的概念，建立**可检验的联系**。\n:::\n\n> 从一次认真观察出发。',new Map()).html;
   decorateTheme(node,t);
   const html=`<style>${themeCSS(t).replaceAll('.article','.theme-sample-'+id)}</style><div class="theme-live-window">${node.outerHTML}</div>`;
   themePreviews.set(id,html);return html;
@@ -223,7 +235,7 @@ function showThemes(filter='全部'){
   const showDetail=(id:string,keyboard=false)=>{
     const t=themeById(id),sample=document.createElement('article');sample.className='theme-detail-article';
     const sampleText=t.group==='文学'?'# 在平凡里，收集微光\n\n## 写在日常的页边\n\n风从窗边经过，留下一页值得珍藏的文字。\n\n### 片刻的停留\n\n> 让文字留下温柔的回声。\n\n:::poem center\n光落在纸上\n也落在**未说完的故事**里\n\n愿你记得\n每一次出发\n:::\n\n## 留住那些瞬间\n\n- 一段散步的时光\n- 一封写给自己的信': '# 一束光，读懂宇宙\n\n## 从一个好问题开始\n\n科学始于好奇，也来自一次次**认真观察**。好的排版让推理更清晰。\n\n### 观察与证据\n\n> 我们用可重复的观察，检验关于世界的猜想。\n\n## 把现象写成规律\n\n$$E=mc^2$$\n\n| 观测对象 | 特征 |\n| --- | --- |\n| 光 | 传播与能量 |\n| 物质 | 质量与运动 |\n\n- 提出可检验的问题\n- 记录证据，比较结果\n\n---\n\n继续探索，让知识成为自己的理解。';
-    sample.innerHTML=renderMarkdown(sampleText,new Map()).html;decorateTheme(sample,t);
+    sample.innerHTML=renderMarkdown(t.variant==='journal'?journalPreviewSample:sampleText,new Map()).html;decorateTheme(sample,t);
     const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div id="theme-detail-scroll" class="theme-detail-scroll" tabindex="0" aria-label="主题完整排版示例"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>375px 手机阅读效果</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
     document.querySelector('.theme-browser')!.classList.add('has-detail');
     $('theme-results').querySelectorAll<HTMLElement>('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themePreview===id)));
@@ -394,7 +406,29 @@ const formulas=[
   ['彩色公式','\\textcolor{RoyalBlue}{E}=\\textcolor{BrickRed}{mc^2}',true]
 ] as const;
 function showFormulas(event?:Event){const panel=openPopover((event?.currentTarget as HTMLElement)||$('math-button'),'把思考，写成公式',`<p class="modal-subtitle">点击插入后可直接修改。行内使用 $…$，独立公式使用 $$…$$。</p><div class="formula-grid">${formulas.map(([name,tex,display],i)=>`<button class="formula-card" data-formula="${i}"><strong>${name}</strong><div class="formula-example">${renderMath(tex,display).html}</div></button>`).join('')}</div>`);panel.querySelectorAll<HTMLElement>('[data-formula]').forEach(el=>el.onclick=()=>{const [,tex,display]=formulas[Number(el.dataset.formula)];closePopover();editor.insert(display?`\n\n$$\n${tex}\n$$\n\n`:`$${tex}$`);});}
-function showSamples(){openModal('从一个小小的示例开始','<p class="modal-subtitle">示例将作为新文章打开，保留你正在编辑的草稿。</p><div class="option-list"><button class="option-card" data-sample="science"><strong>01 / 一束光，如何告诉我们宇宙的故事？</strong><small>科普文章 · 公式 · 表格 · 脚注</small></button><button class="option-card" data-sample="math"><strong>02 / 在符号之间，理解变化</strong><small>数学公式 · 矩阵 · 多行推导 · 编号</small></button><button class="option-card" data-sample="poetry"><strong>03 / 风经过的地方</strong><small>诗歌 · 散文 · 保留诗行与空行</small></button></div>');$('modal-body').querySelectorAll<HTMLElement>('[data-sample]').forEach(el=>el.onclick=()=>{closeModal();if(el.dataset.sample==='math')addArticle('在符号之间，理解变化',equations,'math');else if(el.dataset.sample==='poetry')addArticle('风经过的地方',poetry,'moon');else addArticle('一束光，如何告诉我们宇宙的故事？',science);});}
+function showSamples(){
+  openModal('从一个小小的示例开始','<p class="modal-subtitle">示例将作为新文章打开，保留你正在编辑的草稿。</p><div class="option-list"><button class="option-card" data-sample="science"><strong>01 / 一束光，如何告诉我们宇宙的故事？</strong><small>科普文章 · 公式 · 表格 · 脚注</small></button><button class="option-card" data-sample="math"><strong>02 / 在符号之间，理解变化</strong><small>数学公式 · 矩阵 · 多行推导 · 编号</small></button><button class="option-card" data-sample="poetry"><strong>03 / 风经过的地方</strong><small>诗歌 · 散文 · 保留诗行与空行</small></button><button class="option-card" data-sample="journal-indigo"><strong>04 / 深空靛蓝 · 信息与热的期刊长读</strong><small>导读首字下沉 · 双语章节 · 定律 / 公式释义 / 推导 · 科学插图</small></button><button class="option-card" data-sample="journal-jade"><strong>05 / 松石青翠 · 同一篇文章，另一种气质</strong><small>松石绿配色 · 多字体层次 · 三线表 · 要点与参考文献</small></button></div>');
+  $('modal-body').querySelectorAll<HTMLButtonElement>('[data-sample]').forEach(el=>el.onclick=async()=>{
+    try{
+      if(el.dataset.sample?.startsWith('journal-')){el.disabled=true;const asset=journalFigure();assetStore.set(asset.id,asset);trackAsset(asset.id);await stageAssets([asset]);if(!el.isConnected)return;closeModal();addArticle('信息为什么也有物理的重量',journalSample.replace('JOURNAL_FIGURE','asset:'+asset.id),el.dataset.sample);return;}
+      closeModal();if(el.dataset.sample==='math')addArticle('在符号之间，理解变化',equations,'math');else if(el.dataset.sample==='poetry')addArticle('风经过的地方',poetry,'moon');else addArticle('一束光，如何告诉我们宇宙的故事？',science);
+    }catch(e){el.disabled=false;toast(errorMessage(e),true);}
+  });
+}
+function showJournalBlocks(anchor:HTMLElement){
+  const examples=[
+    ['abstract','科学导读','导读首字下沉与核心追问',':::abstract\n从一个读者熟悉的问题开始，写下文章导读。\n\n- **▸ 核心追问：**这里写下要回答的问题。\n:::'],
+    ['theorem','核心定律','衬线标题与点阵坐标纸',':::theorem 核心定律 · 定律名称\n这里写下核心结论与适用条件，可包含 $E=mc^2$。\n:::'],
+    ['equation','公式释义卡','按章节编号与符号释义栏',':::equation\n$$\nE=mc^2\n$$\n\n**符号释义：**$E$ 表示能量，$m$ 表示质量，$c$ 表示光速。\n:::'],
+    ['derivation','推导专栏','预览可收起，发布时完整展开',':::derivation 数学物理推导专栏\n**第一步：**说明过程与假设。\n\n$$\n\\begin{aligned}E&=mc^2\\\\m&=E/c^2\\end{aligned}\n$$\n\n**第二步：**解释推导结果。\n:::'],
+    ['takeaways','核心要点','配套标题与编号列表',':::takeaways\n1. **第一点：**这里写下值得带走的结论。\n2. **第二点：**说明适用条件或边界。\n:::'],
+    ['references','参考文献','清晰的文末资料列表',':::references\n[1] 作者，*资料名称*，年份。\n\n[2] 作者，*资料名称*，年份。\n:::'],
+    ['subtitle','英文副标题','插在已有章节标题的下一行',':::subtitle THE ENGLISH SECTION TITLE']
+  ];
+  const panel=openPopover(anchor,'期刊排版元素',`<p class="help">深空靛蓝 / 松石青翠配套样式；其他主题也可使用。点击插入后在 Markdown 中改字。公式继续使用离线 SVG 渲染。</p><div class="journal-insert-choices">${examples.map(([id,name,description])=>`<button data-journal-block="${id}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div>`);
+  panel.querySelectorAll<HTMLElement>('[data-journal-block]').forEach(button=>button.onclick=()=>{const sample=examples.find(e=>e[0]===button.dataset.journalBlock)!;closePopover();editor.insert('\n\n'+sample[3]+'\n\n');});
+}
+
 
 function exportBackup(all=false){if(snapshot(current,true))markDirty();const selected=all?[...articles.values()]:[current];const data=createBackup(selected,assetStore,all?folders:[],all);download(data as BlobPart,all?'纸间-文章库备份.zip':safeName(current.title)+'.纸间.zip','application/zip');$('last-export').textContent='已导出文件 · '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});toast(all?'文章库备份已下载（包含回收站）':'文章备份已下载，包含图片和排版设置');}
 function checkIssues():string[]{
@@ -630,6 +664,8 @@ async function init(){
   bind('new-article',()=>addArticle());bind('active-tab',()=>{trash=false;renderLibrary();});bind('trash-tab',()=>{trash=true;renderLibrary();});bind('library-search',renderLibrary,'input');
   const titleMode=document.createElement('button');titleMode.id='title-mode';titleMode.className='title-mode-button';titleMode.setAttribute('aria-label','切换文章名来源');$('document-title').after(titleMode);titleMode.onclick=()=>{current.titleMode=current.titleMode==='manual'?'auto':'manual';markDirty();renderLibrary();};
   bind('document-title',()=>{current.titleMode='manual';current.title=$<HTMLInputElement>('document-title').value;markDirty();renderLibrary();},'input');
+  const fontButton=document.createElement('button');fontButton.id='font-inspect-button';fontButton.innerHTML='Aa <span>字体与标签透视</span>';fontButton.title='显示声明的字体族及本机回退链；不影响复制与导出';fontButton.setAttribute('aria-label','字体与标签透视');fontButton.setAttribute('aria-pressed',String(fontInspection));$('preview-edit-button').after(fontButton);fontButton.onclick=()=>{fontInspection=!fontInspection;preference('font-inspection',String(fontInspection));fontButton.setAttribute('aria-pressed',String(fontInspection));inspectFonts($('preview'),fontInspection);};
+  const journalButton=document.createElement('button');journalButton.id='journal-block-button';journalButton.textContent='期刊元素 ▾';journalButton.title='导读、定律、公式释义、推导、要点和参考文献';$('math-button').after(journalButton);journalButton.onclick=()=>showJournalBlocks(journalButton);
   bind('theme-button',()=>showThemes());bind('samples-button',showSamples);bind('style-button',e=>{const p=$('style-panel');p.hidden=!p.hidden;if(!p.hidden){renderStylePanel();if((e as MouseEvent).detail===0)$('style-close').focus();}});
   document.addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented||modal.open)return;const target=e.target as Node;if(!$('style-panel').hidden&&($('style-panel').contains(target)||target===$('style-button'))){e.preventDefault();$('style-panel').hidden=true;$('style-button').focus();}else if(!$('library').hidden&&($('library').contains(target)||target===$('library-button'))){e.preventDefault();toggleLibrary();$('library-button').focus();}});
   bind('inline-style-button',showInlineStyle);bind('selection-style-button',showInlineStyle);

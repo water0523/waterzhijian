@@ -1,5 +1,6 @@
 import {richThemeCSS} from './theme-design';
 import {readabilityCSS} from './theme-readability';
+import {journalCSS} from './journal-design';
 import {fontStacks, type Typography} from './model';
 import type {Theme,ThemeDefinition,ElementStyle} from './theme-types';
 import {parseThemeFile,libraryDocument,validateTheme} from './theme-schema';
@@ -40,6 +41,8 @@ export const builtInThemes: Theme[] = [
   {id:'arcade',name:'像素电玩',group:'通用',description:'游戏手柄、关卡编号与像素对话框',accent:'#3c7180',paper:'#fcfefd',ink:'#34475a',font:'sans',variant:'arcade'},
   {id:'kuromi',name:'库洛米灵感',group:'通用',description:'黑紫粉配色、小恶魔与甜酷心情卡片',accent:'#87569c',paper:'#fffaff',ink:'#4c3c54',font:'sans',variant:'kuromi'},
   {id:'pop',name:'波普漫画',group:'通用',description:'网点爆炸框、粗黑描边与高对比色块',accent:'#d33460',paper:'#fffefd',ink:'#343034',font:'sans',variant:'pop'},
+  {id:'journal-indigo',name:'深空靛蓝',group:'科普',description:'人文衬线章节、科学导读与公式释义卡，沉静的科普期刊',accent:'#243b80',paper:'#faf9f6',ink:'#273141',font:'noto-sans',headingFont:'noto-serif',quoteFont:'kai',codeFont:'jetbrains',variant:'journal',defaults:{size:15.5,lineHeight:1.88,paragraphGap:24,padding:24}},
+  {id:'journal-jade',name:'松石青翠',group:'科普',description:'松石绿题签、点阵定律与科学图注，清晰温润的科普期刊',accent:'#146b61',paper:'#f8faf7',ink:'#293c39',font:'noto-sans',headingFont:'noto-serif',quoteFont:'kai',codeFont:'jetbrains',variant:'journal',defaults:{size:15.5,lineHeight:1.88,paragraphGap:24,padding:24}},
   {id:'classical',name:'文言课本',group:'文学',description:'宋楷书页、朱红课题与旁批式引用',accent:'#9a5141',paper:'#fffdf6',ink:'#473f33',font:'serif',headingFont:'serif',variant:'classical'}
 ];
 // Typography is part of the art direction: small labels use a different voice
@@ -51,11 +54,11 @@ const pairings:Record<string,[string,string,string?,string?]>={
   editorial:['serif','hei','georgia','sans'],weekend:['serif','serif','kai','serif'],mint:['sans','serif','sans','sans'],minimal:['sans','sans','serif','sans'],
   orange:['sans','hei','kai','sans'],blueprint:['sans','mono','sans','mono'],matcha:['serif','kai','kai','serif'],berry:['sans','sans','serif','sans'],gold:['serif','serif','kai','serif'],ocean:['sans','serif','kai','serif'],pixel:['sans','mono','mono','mono'],sunset:['serif','kai','kai','serif'],lavender:['serif','kai','kai','serif'],newspaper:['serif','serif','kai','mono'],cream:['sans','kai','kai','sans'],terracotta:['serif','hei','serif','sans'],cartoon:['sans','sans','kai','sans'],arcade:['sans','mono','mono','mono'],kuromi:['sans','hei','kai','sans'],pop:['sans','hei','hei','sans'],classical:['serif','serif','kai','fang']
 };
-for(const t of builtInThemes){const [body,heading,quote,caption]=pairings[t.id];Object.assign(t,{font:body,headingFont:heading,quoteFont:quote,captionFont:caption,poemFont:['moon','ink','classical'].includes(t.id)?'kai':body,codeFont:'mono'});}
+for(const t of builtInThemes){const [body,heading,quote,caption]=pairings[t.id]||['noto-sans','noto-serif','kai','noto-sans'];Object.assign(t,{font:body,headingFont:heading,quoteFont:quote,captionFont:caption,poemFont:['moon','ink','classical'].includes(t.id)?'kai':body,codeFont:t.variant==='journal'?'jetbrains':'mono'});}
 export const builtInIds=builtInThemes.map(t=>t.id);
 export function materializeTheme(d:ThemeDefinition):Theme{
   const base=builtInThemes.find(t=>t.id===d.base)!;
-  return {...base,id:d.id,name:d.name,description:d.description,group:d.group,baseId:d.base,definition:d,...d.palette,font:d.fonts?.body||base.font,headingFont:d.fonts?.heading||base.headingFont,quoteFont:d.fonts?.quote||base.quoteFont,captionFont:d.fonts?.caption||base.captionFont,poemFont:d.fonts?.poem||base.poemFont,codeFont:d.fonts?.code||base.codeFont,defaults:d.typography};
+  return {...base,id:d.id,name:d.name,description:d.description,group:d.group,baseId:d.base,definition:d,...d.palette,font:d.fonts?.body||base.font,headingFont:d.fonts?.heading||base.headingFont,quoteFont:d.fonts?.quote||base.quoteFont,captionFont:d.fonts?.caption||base.captionFont,poemFont:d.fonts?.poem||base.poemFont,codeFont:d.fonts?.code||base.codeFont,defaults:{...base.defaults,...d.typography}};
 }
 export const themes:Theme[]=[...builtInThemes];
 let definitions:ThemeDefinition[]=[],hidden:string[]=[],loadError='',savedRecord:string|null=null;
@@ -182,6 +185,7 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   .article .poem{white-space:pre-wrap;line-height:2.3;margin:26px 0;padding:12px 0;text-indent:0}.article .poem[data-align=center]{text-align:center}.article .poem[data-align=left]{text-align:left}.article .footnotes{font-size:12px;color:#707880;margin-top:32px;border-top:1px solid #ddd;padding-top:12px}.article .footnotes p{margin:4px 0}.article .footnote-ref{font-size:11px}
   ${special.replaceAll('ACCENT',a)}
   ${richThemeCSS(theme,a)}
+  ${journalCSS(theme,a)}
   .article h1,.article h2,.article h3,.article h4,.article h5,.article h6{font-family:${hf}}
   .article blockquote{font-family:${fontStacks[theme.quoteFont||theme.font]||f}}
   .article .image-caption{font-family:${fontStacks[theme.captionFont||theme.font]||f}}

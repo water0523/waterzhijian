@@ -16,6 +16,7 @@ import {escapeHTML, type Asset} from './model';
 import {installTextMapping} from './text-mapping';
 import {installInlineStyles} from './inline-style';
 import {dividerOptions,dividerSVG} from './dividers';
+import {installJournalBlocks} from './journal-blocks';
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
@@ -43,6 +44,7 @@ const md = new MarkdownIt({html:false,linkify:true,typographer:true,breaks:false
   highlight:(s,lang)=>lang&&hljs.getLanguage(lang)?hljs.highlight(s,{language:lang,ignoreIllegals:true}).value:escapeHTML(s)
 }).use(footnote as unknown as (instance:MarkdownIt)=>void);
 const baseValidate=md.validateLink;
+installJournalBlocks(md);
 md.validateLink=(url:string)=>/^asset:[a-zA-Z0-9-]+$/.test(url)||baseValidate(url);
 
 md.inline.ruler.before('escape','math_inline',(state,silent)=>{
@@ -201,13 +203,28 @@ export function exportFragment(article:HTMLElement):string{
       if(el.tagName==='TABLE')target.style.width='100%';
       if(el.tagName==='MJX-CONTAINER') {target.style.height='auto';target.style.maxWidth='100%';}
     }
+    // MathJax SVG roots live in the SVG namespace, so the HTML style loop
+    // above deliberately skips them. Retain responsive sizing in every export.
+    if(el.tagName.toLowerCase()==='svg'){target.style.maxWidth='100%';target.style.height='auto';}
     for(const attr of [...target.attributes])if(attr.name.startsWith('data-')||['contenteditable','loading'].includes(attr.name))target.removeAttribute(attr.name);
   });
   clone.style.width='100%';clone.style.maxWidth='100%';clone.style.margin='0';
   clone.querySelectorAll('.footnote-backref').forEach(el=>el.remove());
   clone.querySelectorAll('.sticker-handle').forEach(el=>el.remove());
   clone.querySelectorAll('.sticker-item').forEach(el=>{el.classList.remove('selected');el.removeAttribute('tabindex');el.removeAttribute('role');});
-  clone.querySelectorAll('.preview-text-run').forEach(el=>el.replaceWith(...el.childNodes));
+  clone.querySelectorAll('.preview-text-run').forEach(el=>{
+    if(el.matches('.journal-initial,.magazine-initial,.text-initial'))el.classList.remove('preview-text-run');
+    else el.replaceWith(...el.childNodes);
+  });
+  // Publication has no fixed-height reading windows: export every derivation,
+  // even when its on-screen disclosure was closed.
+  clone.querySelectorAll<HTMLElement>('.journal-derivation').forEach(el=>{
+    const section=document.createElement('section');for(const attr of [...el.attributes])if(attr.name!=='open')section.setAttribute(attr.name,attr.value);
+    const summary=el.querySelector(':scope > summary');if(summary){const header=document.createElement('header');for(const attr of [...summary.attributes])header.setAttribute(attr.name,attr.value);header.style.display='block';header.style.listStyleType='none';header.append(...summary.childNodes);summary.replaceWith(header);}
+    section.append(...el.childNodes);section.style.overflow='visible';section.style.maxHeight='none';
+    const content=section.querySelector<HTMLElement>(':scope > .journal-content');if(content){content.style.maxHeight='none';content.style.height='auto';content.style.overflow='visible';content.style.display='block';}
+    el.replaceWith(section);
+  });
   // Inline styles are authoritative, so no dependency on editor CSS remains.
   return clone.outerHTML;
 }

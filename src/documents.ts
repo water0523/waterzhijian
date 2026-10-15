@@ -4,12 +4,13 @@ import {bytesFromData,svgToPNG} from './files';
 import {escapeHTML as esc,type Article,type Asset} from './model';
 import {publicationHTML} from './stickers';
 import {inlineFonts} from './inline-style';
+import {flattenJournalBlocks} from './journal-blocks';
 
 export function standardCSS(selector='.article'){
   return `${selector}{box-sizing:border-box;background:#fff;color:#222;font:16px/1.75 "Microsoft YaHei","PingFang SC",sans-serif;padding:24px;overflow-wrap:anywhere;text-align:left;display:flow-root}
   ${selector} h1,${selector} h2,${selector} h3,${selector} h4,${selector} h5,${selector} h6{color:#111;font-weight:700;line-height:1.45;margin:1.4em 0 .7em;padding:0;border:0;background:none;clear:both}
   ${selector} h1{font-size:28px;margin-top:0}${selector} h2{font-size:22px}${selector} h3{font-size:19px}${selector} h4,${selector} h5,${selector} h6{font-size:17px}
-  ${selector} p{margin:0 0 1em;text-indent:0}${selector} strong{color:inherit;font-weight:700}${selector} em{font-style:italic}${selector} a{color:#245b91;text-decoration:underline}
+  ${selector} p{margin:0 0 1em;text-indent:0}${selector} strong{color:inherit;font-weight:700}${selector} em{font-style:italic}${selector} a{color:#245b91;text-decoration:underline}${selector} .journal-subtitle{display:block;color:#666;font-size:12px;line-height:1.6;margin:0 0 1em}
   ${selector} blockquote{margin:1em 0;padding:0 1em;border:0;border-left:3px solid #ccc;color:#555;background:none}${selector} blockquote p:last-child{margin-bottom:0}
   ${selector} ul,${selector} ol{padding-left:1.8em;margin:1em 0}${selector} li{margin:.4em 0}${selector} li p{margin:.3em 0}
   ${selector} table{width:100%;border-collapse:collapse;table-layout:fixed;margin:1em 0;clear:both}${selector} td,${selector} th{border:1px solid #d9d9d9;padding:9px;word-break:break-word}${selector} th{background:#f2f2f2;text-align:left}
@@ -21,6 +22,7 @@ export function standardCSS(selector='.article'){
 }
 export function standardBody(article:Article,assets:Map<string,Asset>,rendered?:string){
   const node=document.createElement('div');node.innerHTML=rendered??renderMarkdown(article.markdown,assets).html;
+  flattenJournalBlocks(node);
   node.querySelectorAll('.decorative-divider').forEach(el=>el.replaceWith(document.createElement('hr')));
   node.querySelectorAll('.image-gallery').forEach(group=>{
     const fragment=document.createDocumentFragment();group.querySelectorAll('.image-wrap,.missing-image').forEach(image=>{const p=document.createElement('p');p.append(image);fragment.append(p);});group.replaceWith(fragment);

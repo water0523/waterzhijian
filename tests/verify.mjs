@@ -40,13 +40,13 @@ async function run(channel){
     const text='# 离线验收文章\n\n## 第一节\n\n这是一段**加粗**与普通正文。行内公式 $E=mc^2$。\n\n> 引用与留白\n\n$$\n\\frac{1}{2}+\\sqrt{x}\n$$\n\n| 内容 | 数值 |\n| --- | --- |\n| 表格 | 42 |\n\n```js\nconst answer = 42;\n```\n\n:::poem left\n第一行\n第二行\n\n第二节\n:::\n\n脚注示例[^a]。\n\n[^a]: 注释内容。';
     await setText(text);
     await page.locator('#document-title').fill('离线验收文章');await saved();
-    await page.click('#theme-button');assert.equal(await page.locator('[data-theme]').count(),36);
+    await page.click('#theme-button');assert.equal(await page.locator('[data-theme]').count(),38);
     await page.screenshot({path:`test-results/${channel}-theme-gallery.png`,fullPage:true});
     const ids=await page.locator('[data-theme]').evaluateAll(els=>els.map(el=>el.dataset.theme));
     await close();
     const styles=[];
     for(const id of ids){await page.click('#theme-button');await page.click(`[data-theme="${id}"]`);await page.waitForTimeout(40);const info=await page.locator('#preview').evaluate(el=>({width:el.clientWidth,scrollWidth:el.scrollWidth,heading:getComputedStyle(el.querySelector('h2')).cssText,color:getComputedStyle(el).color,background:getComputedStyle(el).backgroundColor}));assert.ok(info.scrollWidth<=info.width+2,`${id} overflows`);assert.equal(await page.locator('#preview .math-error').count(),0);styles.push({id,...info});}
-    assert.ok(new Set(styles.map(s=>s.background+s.color)).size>=15);pass('36 套主题在 375px 下无整体横向溢出');
+    assert.ok(new Set(styles.map(s=>s.background+s.color)).size>=15);pass('38 套主题在 375px 下无整体横向溢出');
     for(const value of ['dark','light','github','dracula','monokai','solarized']){await page.selectOption('#editor-theme',value);const bg=await page.locator('.cm-editor').evaluate(el=>getComputedStyle(el).backgroundColor);assert.notEqual(bg,'rgba(0, 0, 0, 0)');}
     await page.selectOption('#editor-theme','dark');pass('六套编辑器配色独立切换');
     await page.click('#style-button');await page.locator('#setting-size').fill('18');await page.locator('#setting-size').dispatchEvent('input');assert.equal(await page.locator('#preview').evaluate(el=>getComputedStyle(el).fontSize),'18px');await page.click('#style-close');pass('排版设置即时生效');

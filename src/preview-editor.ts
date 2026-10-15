@@ -38,11 +38,28 @@ export class PreviewEditor {
       range.deleteContents();const node=document.createTextNode(value);range.insertNode(node);range.setStartAfter(node);range.collapse(true);selection.removeAllRanges();selection.addRange(range);this.commit(el);
     });
     root.addEventListener('drop',e=>{if(this.enabled)e.preventDefault();});
-    root.addEventListener('click',e=>{if(this.enabled&&(e.target as HTMLElement).closest('a'))e.preventDefault();},true);
+    root.addEventListener('click',e=>{if(this.enabled&&((e.target as HTMLElement).closest('a')||(target(e)&&(e.target as HTMLElement).closest('summary'))))e.preventDefault();},true);
   }
   attach(){
     this.active=null;
     this.root.classList.toggle('text-editing',this.enabled);
+    // Chromium can discard replacement text when a plaintext-only editing
+    // host contains a floated drop cap. Give the initial and following text
+    // independent exact ranges, keeping the float outside the latter host.
+    if(this.enabled)for(const initial of this.root.querySelectorAll<HTMLElement>('.journal-initial,.magazine-initial,.text-initial')){
+      const run=initial.parentElement;if(!run?.hasAttribute('data-edit-from'))continue;
+      const from=Number(run.dataset.editFrom),to=Number(run.dataset.editTo),all=run.textContent||'',char=initial.textContent||'';
+      const before=document.createRange();before.selectNodeContents(run);before.setEndBefore(initial);const prefix=before.toString();
+      if(!char||!this.editor.view.state.sliceDoc(from,to).startsWith(prefix+char)){
+        initial.style.cssText+=';float:none;font:inherit;margin:0;';continue;
+      }
+      const mapped=(text:string,a:number,b:number)=>{const span=document.createElement('span');span.textContent=text;span.dataset.editFrom=String(a);span.dataset.editTo=String(b);return span;};
+      initial.dataset.editFrom=String(from+prefix.length);initial.dataset.editTo=String(from+prefix.length+char.length);
+      const tail=all.slice(prefix.length+char.length),nodes:Node[]=[];
+      if(prefix)nodes.push(mapped(prefix,from,from+prefix.length));nodes.push(initial);
+      if(tail)nodes.push(mapped(tail,from+prefix.length+char.length,to));
+      run.replaceWith(...nodes);
+    }
     for(const el of this.root.querySelectorAll<HTMLElement>('[data-edit-from]')){
       el.classList.add('preview-text-run');
       if(this.enabled){el.contentEditable='plaintext-only';el.spellcheck=false;el.setAttribute('aria-label','修改文字');}

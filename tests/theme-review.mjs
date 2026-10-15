@@ -31,7 +31,7 @@ try{
   await specimen.screenshot({path:`${directory}/${id}.png`,fullPage:true,animations:'disabled'});
   console.log(id+': h1 '+info.h1.ratio.toFixed(2)+' / code '+Math.min(...['keyword','string','number','comment'].map(k=>info[k]?.ratio??99)).toFixed(2)+' / source '+info.source.ratio.toFixed(2));
  }
- for(let group=0;group<6;group++){
+ for(let group=0;group<Math.ceil(snapshots.length/6);group++){
   const batch=snapshots.slice(group*6,group*6+6),board=`<!doctype html><meta charset="utf-8"><style>body{margin:0;padding:16px;background:#e9e7df;font:13px "Microsoft YaHei",sans-serif}.grid{display:grid;grid-template-columns:repeat(3,375px);gap:18px}.card{background:white;border:1px solid #bcc7b3;overflow:hidden}.name{padding:10px 12px;border-bottom:1px solid #ddd}.window{height:1140px;overflow:hidden}.article{margin:0;width:375px;box-shadow:none!important}</style><div class="grid">${batch.map(s=>`<div class="card"><div class="name">${escape(s.name)} / ${s.id}</div><style>${s.css.replaceAll('.article','.sample-'+s.id)}</style><div class="window">${s.html.replace('class="article"',`class="article sample-${s.id}"`)}</div></div>`).join('')}</div>`;
   await specimen.setViewportSize({width:1199,height:1200});await specimen.setContent(board);await specimen.screenshot({path:`${directory}/overview-${group+1}.png`,fullPage:true,animations:'disabled'});
  }

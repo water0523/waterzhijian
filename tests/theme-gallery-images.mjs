@@ -19,13 +19,13 @@ const clipboard=()=>page.evaluate(async()=>{const [item]=await navigator.clipboa
 const download=async(id,name)=>{await page.click('#export-toggle');const pending=page.waitForEvent('download');await page.click(id);const file=await pending;await file.saveAs(path.resolve('test-results/'+name));return readFile('test-results/'+name);};
 try{
  await page.goto(pathToFileURL(path.resolve('dist/纸间-离线公众号排版器.html')).href);await page.waitForSelector('.cm-content');
- await page.click('#theme-button');assert.equal(await page.locator('[data-theme]').count(),36);
+ await page.click('#theme-button');assert.equal(await page.locator('[data-theme]').count(),38);
  const cards=await page.locator('.theme-card').evaluateAll(nodes=>nodes.map(n=>{const r=n.getBoundingClientRect();return {w:r.width,h:r.height,top:r.top};}));
- assert.ok(cards[0].w<220&&cards[0].h<310);assert.ok(cards.filter(c=>c.top<850).length>=12);check('36 compact real specimens show at least twelve cards in the first desktop view');
+ assert.ok(cards[0].w<220&&cards[0].h<310);assert.ok(cards.filter(c=>c.top<850).length>=12);check('38 compact real specimens show at least twelve cards in the first desktop view');
  const before=await page.locator('#theme-name').innerText();await page.click('[data-theme-preview="cosmos"]');await page.waitForSelector('#theme-detail-apply');
  assert.equal(await page.locator('#theme-name').innerText(),before);assert.ok(await page.locator('#theme-detail .science-motif svg').count());assert.ok(await page.locator('#theme-detail table').count());
  await page.screenshot({path:`test-results/gallery-detail-${channel}.png`,fullPage:true});await page.click('#theme-detail-close');
- await page.click('[data-group="科普"]');assert.equal(await page.locator('[data-theme]').count(),12);await page.screenshot({path:`test-results/science-gallery-${channel}.png`,fullPage:true});
+ await page.click('[data-group="科普"]');assert.equal(await page.locator('[data-theme]').count(),14);await page.screenshot({path:`test-results/science-gallery-${channel}.png`,fullPage:true});
  await page.fill('#theme-search','宇宙');assert.equal(await page.locator('[data-theme]').count(),1);await page.click('[data-theme-preview="cosmos"]');await page.click('#theme-detail-apply');assert.equal(await page.locator('#theme-name').innerText(),'宇宙来信');check('detail browsing is non-destructive; category/search and explicit application work');
  await setText(':::poem center\n第一行\n第二行\n\n  第四行\n:::');assert.equal(await page.locator('#preview .poem').textContent(),'第一行\n第二行\n\n  第四行');check('poetry adds no synthetic newlines and preserves exactly one stanza gap');
  const poem='# 诗歌格式\n\n:::poem center\n风从窗边经过\n一枚**小小的**书签\n还留[在那里]{wave}\n\n春天[^1]，**[普通日子]{wave}**，$E=mc^2$\n[45%]{bold color=#ff0000}\n:::\n\n[^1]: 春天的脚注说明。';

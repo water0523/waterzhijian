@@ -37,6 +37,9 @@ export const fontStacks: Record<string, string> = {
   fang: 'FangSong, STFangsong, "Songti SC", SimSun, serif',
   times: '"Times New Roman", "Noto Serif CJK SC", SimSun, serif',
   georgia: 'Georgia, "Noto Serif CJK SC", "Songti SC", SimSun, serif',
-  arial: 'Arial, "Microsoft YaHei", "PingFang SC", sans-serif'
+  arial: 'Arial, "Microsoft YaHei", "PingFang SC", sans-serif',
+  'noto-serif':'"Noto Serif SC", "Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif',
+  'noto-sans':'"PingFang SC", "Noto Sans SC", "Noto Sans CJK SC", "Microsoft YaHei", sans-serif',
+  jetbrains:'"JetBrains Mono", "Cascadia Code", Consolas, "Microsoft YaHei", monospace'
 };
-export const fontNames: Record<string, string> = {sans:'微软雅黑 / 苹方',serif:'思源宋体 / 宋体',kai:'楷体',hei:'黑体',fang:'仿宋',times:'Times New Roman · 宋体回退',georgia:'Georgia · 宋体回退',arial:'Arial · 中文黑体回退',mono:'Consolas · 等宽'};
+export const fontNames: Record<string, string> = {sans:'微软雅黑 / 苹方',serif:'思源宋体 / 宋体',kai:'楷体',hei:'黑体',fang:'仿宋',times:'Times New Roman · 宋体回退',georgia:'Georgia · 宋体回退',arial:'Arial · 中文黑体回退',mono:'Consolas · 等宽','noto-serif':'Noto Serif SC / 思源宋体','noto-sans':'苹方 / Noto Sans SC',jetbrains:'JetBrains Mono / 等宽回退'};

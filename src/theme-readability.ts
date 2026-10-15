@@ -21,7 +21,7 @@ export function readabilityCSS(theme:Theme,o:Typography,accent:string){
   const palette=luminance(background)>.18?['#6d3c8b','#35653e','#8a4f23','#59636b','#1d617c']:['#dba9ef','#b6d997','#f2c38b','#8b9cab','#8ecdec'];
   const groups=[['keyword','selector-tag'],['string','attr'],['number','literal'],['comment'],['title']];
   const syntax=groups.map((names,i)=>`${names.map(n=>'.article pre .hljs-'+n).join(',')}{color:${readableColor(palette[i],background)}}`).join('');
-  const caption=(id==='classical'?'#8d735b':accent),footnote=id==='classical'?'#7e6e5e':'#707880';
+  const caption=(id==='classical'?'#8d735b':id.startsWith('journal-')?'#627083':accent),footnote=id==='classical'?'#7e6e5e':'#707880';
   const quote=id==='moon'?'.article blockquote{color:#5d6e85}':id==='minimal'?'.article blockquote{color:#626970}':id==='plain'?'.article blockquote{color:#7d7066}':'';
   return `.article pre{color:${color||readableColor(ink,background,7)}}${syntax}
     .article pre .theme-code-label{color:${readableColor('#8b9cab',background)}}
