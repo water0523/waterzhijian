@@ -220,15 +220,16 @@ function showThemes(filter='全部'){
   openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时恢复主题默认设置。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 置顶常用主题，最多 5 个 · 知乎模式使用无主题排版</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
   const applyTheme=applyArticleTheme;
   bind('theme-import-button',()=>chooseThemeFile(themeHost()));bind('theme-manage-button',()=>showThemeManager(themeHost()));
-  const showDetail=(id:string)=>{
+  const showDetail=(id:string,keyboard=false)=>{
     const t=themeById(id),sample=document.createElement('article');sample.className='theme-detail-article';
     const sampleText=t.group==='文学'?'# 在平凡里，收集微光\n\n## 写在日常的页边\n\n风从窗边经过，留下一页值得珍藏的文字。\n\n### 片刻的停留\n\n> 让文字留下温柔的回声。\n\n:::poem center\n光落在纸上\n也落在**未说完的故事**里\n\n愿你记得\n每一次出发\n:::\n\n## 留住那些瞬间\n\n- 一段散步的时光\n- 一封写给自己的信': '# 一束光，读懂宇宙\n\n## 从一个好问题开始\n\n科学始于好奇，也来自一次次**认真观察**。好的排版让推理更清晰。\n\n### 观察与证据\n\n> 我们用可重复的观察，检验关于世界的猜想。\n\n## 把现象写成规律\n\n$$E=mc^2$$\n\n| 观测对象 | 特征 |\n| --- | --- |\n| 光 | 传播与能量 |\n| 物质 | 质量与运动 |\n\n- 提出可检验的问题\n- 记录证据，比较结果\n\n---\n\n继续探索，让知识成为自己的理解。';
     sample.innerHTML=renderMarkdown(sampleText,new Map()).html;decorateTheme(sample,t);
-    const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div class="theme-detail-scroll"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>375px 手机阅读效果</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
+    const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div id="theme-detail-scroll" class="theme-detail-scroll" tabindex="0" aria-label="主题完整排版示例"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>375px 手机阅读效果</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
     document.querySelector('.theme-browser')!.classList.add('has-detail');
     $('theme-results').querySelectorAll<HTMLElement>('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themePreview===id)));
-    bind('theme-detail-close',()=>{detail.hidden=true;document.querySelector('.theme-browser')!.classList.remove('has-detail');$('theme-results').querySelectorAll('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed','false'));});
+    bind('theme-detail-close',()=>{detail.hidden=true;detail.replaceChildren();document.querySelector('.theme-browser')!.classList.remove('has-detail');$('theme-results').querySelectorAll('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed','false'));($('theme-results').querySelector<HTMLElement>(`[data-theme-preview="${id}"]`)||$('theme-search')).focus();});
     bind('theme-detail-apply',()=>applyTheme(id));
+    if(keyboard)$('theme-detail-close').focus({preventScroll:true});
   };
   const renderCards=()=>{
     themeGalleryResize.disconnect();
@@ -247,7 +248,7 @@ function showThemes(filter='全部'){
       const id=pin.dataset.pin!;if(pinnedThemes.includes(id))pinnedThemes=pinnedThemes.filter(v=>v!==id);else if(pinnedThemes.length<5)pinnedThemes.push(id);else{toast('最多置顶 5 个主题，请先取消一个置顶。',true);return;}
       preference('pinned-themes',JSON.stringify(pinnedThemes));renderCards();return;
     }
-    const preview=(event.target as HTMLElement).closest<HTMLElement>('[data-theme-preview]');if(preview){showDetail(preview.dataset.themePreview!);return;}
+    const preview=(event.target as HTMLElement).closest<HTMLElement>('[data-theme-preview]');if(preview){showDetail(preview.dataset.themePreview!,(event as MouseEvent).detail===0);return;}
     const el=(event.target as HTMLElement).closest<HTMLElement>('[data-theme]');if(el)applyTheme(el.dataset.theme!);
   });
 }
@@ -622,7 +623,7 @@ async function init(){
   sync=new ScrollSync(editor,$('preview-scroll'),$('preview'));
   previewEditor=new PreviewEditor($('preview'),editor,render,toast);
   stickerController=new StickerController($('preview'),()=>current,assets,()=>{markDirty();requestAnimationFrame(()=>sync.rebuild());},makeSticker,restoreSticker,()=>void showStickerRegions().catch(e=>toast(errorMessage(e),true)));
-  bind('modal-close',closeModal);modal.addEventListener('cancel',e=>{e.preventDefault();closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
+  bind('modal-close',closeModal);modal.addEventListener('cancel',e=>{e.preventDefault();const detail=document.getElementById('theme-detail');if(detail&&!detail.hidden)$('theme-detail-close').click();else closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
   bind('library-toggle',toggleLibrary);bind('library-button',toggleLibrary);bind('library-close',toggleLibrary);
   bind('new-folder',e=>folderEditor(e.currentTarget as HTMLElement));
   $('folder-list').addEventListener('click',e=>{const target=e.target as HTMLElement,edit=target.closest<HTMLElement>('[data-folder-edit]'),folder=target.closest<HTMLElement>('[data-folder]');if(edit)folderEditor(edit,edit.dataset.folderEdit!);else if(folder){libraryFolder=folder.dataset.folder!;saveFolders();renderLibrary();}});

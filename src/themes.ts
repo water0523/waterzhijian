@@ -1,4 +1,5 @@
 import {richThemeCSS} from './theme-design';
+import {readabilityCSS} from './theme-readability';
 import {fontStacks, type Typography} from './model';
 import type {Theme,ThemeDefinition,ElementStyle} from './theme-types';
 import {parseThemeFile,libraryDocument,validateTheme} from './theme-schema';
@@ -185,8 +186,9 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   .article blockquote{font-family:${fontStacks[theme.quoteFont||theme.font]||f}}
   .article .image-caption{font-family:${fontStacks[theme.captionFont||theme.font]||f}}
   .article .image-source{display:block;color:#80858b;font:11px/1.7 ${fontStacks[theme.captionFont||theme.font]||f};margin-top:4px;text-indent:0}
-  .article pre,.article code{font-family:${fontStacks[theme.codeFont||'mono']||fontStacks.mono}}
+  .article pre,.article code{font-family:${fontStacks[theme.codeFont||'mono']||fontStacks.mono}}.article pre code{font-family:inherit}
   .article .poem{font-family:${fontStacks[theme.poemFont||theme.font]||f}}
+  ${readabilityCSS(theme,o,a)}
   ${elementCSS(theme.definition?.elements)}
   ${(theme.baseId||theme.id)==='magazine'?`.article{display:flow-root}.article p:has(.magazine-initial){text-indent:0}.article .magazine-initial{margin-left:${o.indent?size*2:0}px}`:''}
   .article .decorative-divider{color:${a};margin:26px 0}

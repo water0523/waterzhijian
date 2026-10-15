@@ -63,7 +63,13 @@ export function decorateTheme(node:HTMLElement,theme:Theme){
  if(science)node.querySelectorAll('h1').forEach(h=>{const motif=span('science-motif','');motif.innerHTML=science;h.prepend(motif);});
  node.querySelectorAll<HTMLElement>('h2').forEach((h,i)=>{
   const content=document.createElement('span');content.className='theme-heading-text';content.append(...h.childNodes);h.append(content);
-  if(d.number||d.mark)h.prepend(span('theme-badge',d.number?(id==='classical'?(['一','二','三','四','五','六','七','八','九','十'][i]||String(i+1)):id==='arcade'?'LV.'+String(i+1).padStart(2,'0'):String(i+1).padStart(2,'0')):d.mark));
+  // Keep these widths relative in self-contained copies; computed pixel widths
+  // would freeze headings to the current preview size.
+  if(science)h.style.width=id==='nature'?'auto':'100%';
+  if(d.number||d.mark){
+   const badge=span('theme-badge',d.number?(id==='classical'?(['一','二','三','四','五','六','七','八','九','十'][i]||String(i+1)):id==='arcade'?'LV.'+String(i+1).padStart(2,'0'):String(i+1).padStart(2,'0')):d.mark);
+   if(science){const mark=span('theme-heading-mark','');mark.style.width='1%';mark.append(badge);h.prepend(mark);}else h.prepend(badge);
+  }
  });
  node.querySelectorAll<HTMLElement>('blockquote').forEach(q=>{if(d.quote)q.prepend(span('theme-quote-label',d.quote));});
  if(science){const marks:Record<string,string>={rational:'↗',academic:'“',nature:'❧',cosmos:'✧',math:'∴',lab:'＋',earth:'≋',tech:'⌘',qa:'A',blueprint:'⌖',ocean:'≈',pixel:'›_'};node.querySelectorAll('blockquote').forEach(q=>q.prepend(span('quote-symbol',marks[id]||'·')));}
