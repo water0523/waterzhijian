@@ -10,6 +10,11 @@ for(const name of ['山窗听雪使用说明.md','plans/literary-science-theme.m
 await add('新增模板与组件使用说明.md');
 await add('plans/inline-style-picker.md');
 await add('plans/hover-menus.md');
+await add('plans/catalog-workspace.md');
+await add('tests/catalog-workspace.mjs');
+for(const channel of ['chrome','msedge'])await add('test-results/catalog-workspace-'+channel+'.json');
+for(const name of ['工作区预览.png','收藏排序预览.png'])await add('dist/'+name);
+
 await add('tests/hover-menus.mjs');
 for(const channel of ['chrome','msedge'])await add('test-results/hover-menus-'+channel+'.json');
 for(const name of ['inline-dropdowns.mjs','picker-helpers.mjs'])await add('tests/'+name);

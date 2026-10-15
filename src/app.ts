@@ -34,6 +34,7 @@ import {ArticleAssetMap,appearance,captureAssets} from './asset-view';
 import {checkpoint,clearCheckpoint,recoverDrafts,publishRecoverySidecar} from './recovery';
 import {compareText,compactDiff} from './revision-diff';
 import {inspectWriting,tidyMarkdown,writingOutlines} from './writing-tools';
+import {mountThemeSidebar} from './theme-sidebar';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const assetStore=new Map<string,Asset>();const articles=new Map<string,Article>();
@@ -73,7 +74,7 @@ const themeGalleryResize=new ResizeObserver(entries=>{for(const entry of entries
 function toast(text:string,error=false){$('toast').textContent=text;$('toast').className='visible'+(error?' error':'');clearTimeout(toastTimer);toastTimer=window.setTimeout(()=>$('toast').className='',error?6500:3500);}
 function errorMessage(e:unknown){return e instanceof Error?e.message:String(e);}
 function bind(id:string,handler:(e:Event)=>unknown,type='click'){$(id).addEventListener(type,e=>{try{Promise.resolve(handler(e)).catch(err=>toast(errorMessage(err),true));}catch(err){toast(errorMessage(err),true);}});}
-function openModal(title:string,html:string,eyebrow='PAPER STUDIO'){cancelRewrite();closePopover();$('modal-title').textContent=title;$('modal-eyebrow').textContent=eyebrow;$('modal-body').innerHTML=html;enhanceColors($('modal-body'));if(!modal.open)modal.showModal();}
+function openModal(title:string,html:string,eyebrow='PAPER STUDIO'){clearThemePreview();cancelRewrite();closePopover();$('modal-title').textContent=title;$('modal-eyebrow').textContent=eyebrow;$('modal-body').innerHTML=html;enhanceColors($('modal-body'));if(!modal.open)modal.showModal();}
 function closeModal(){cancelRewrite();themeGalleryResize.disconnect();modal.close();$('modal-body').replaceChildren();}
 function markDirty(article=current){
   syncArticleTitle(article);
@@ -153,6 +154,18 @@ function applyAppearance(){
 }
 function editorChrome(id:string){const t=editorThemes[id]||editorThemes.dark;const pane=document.querySelector<HTMLElement>('.editor-pane')!;for(const [name,value] of Object.entries({bg:t.bg,fg:t.fg,surface:t.line,muted:t.muted,accent:t.accent,border:t.muted+'40'}))pane.style.setProperty('--editor-'+name,value);}
 let renderedArticleId='';
+// A hover preview never becomes part of the saved article or its history.
+let peekThemeId='';
+let themeSidebar:ReturnType<typeof mountThemeSidebar>|undefined;
+function clearThemePreview(repaint=true){if(!peekThemeId)return;peekThemeId='';delete document.body.dataset.themePeek;if(repaint)render();}
+function previewArticleTheme(id:string){if(publisher!=='wechat'||$('theme-sidebar').hidden||modal.open||peekThemeId===id)return;peekThemeId=id;document.body.dataset.themePeek=id;render();}
+function syncCatalogLayout(){
+  const libraryOpen=!$('library').hidden,themeOpen=!$('theme-sidebar').hidden;
+  document.body.classList.toggle('library-open',libraryOpen);document.body.classList.toggle('theme-sidebar-open',themeOpen);
+  $('rail-documents').setAttribute('aria-pressed',String(libraryOpen&&!trash));$('rail-trash').setAttribute('aria-pressed',String(libraryOpen&&trash));$('theme-sidebar-toggle').setAttribute('aria-pressed',String(themeOpen));
+  requestAnimationFrame(()=>{editor?.view.requestMeasure();sync?.rebuild();});
+}
+function toggleThemeSidebar(){const panel=$('theme-sidebar');clearThemePreview();panel.hidden=!panel.hidden;preference('theme-sidebar-open',String(!panel.hidden));syncCatalogLayout();}
 function render(){
   syncArticleTitle(current);
   clearTimeout(renderTimer);const start=performance.now();const reading=sync?.capture()||0;
@@ -160,9 +173,9 @@ function render(){
     const disclosureKey=(node:HTMLElement)=>node.className+'|'+node.dataset.line+'|'+node.querySelector(':scope > summary')?.textContent;
     const disclosures=new Map(renderedArticleId===current.id?[...$('preview').querySelectorAll<HTMLDetailsElement>('details')].map(n=>[disclosureKey(n),{open:n.open,scroll:n.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content,:scope > .edition-content')?.scrollTop||0}] as const):[]);
     renderResult=renderMarkdown(current.markdown,assets,previewEditor?.enabled);
-    const theme=themeById(current.theme);$('article-style').textContent=publisher==='zhihu'?standardCSS():themeCSS(theme,current.typography);
+    const committed=themeById(current.theme),theme=themeById(peekThemeId||current.theme);$('article-style').textContent=publisher==='zhihu'?standardCSS():themeCSS(theme,peekThemeId?{}:current.typography);
     const indentButton=document.getElementById('indent-toggle') as HTMLButtonElement|null;
-    if(indentButton){const active=current.typography.indent??themeDefaults(theme).indent;indentButton.classList.toggle('active',active);indentButton.setAttribute('aria-pressed',String(active));indentButton.disabled=publisher==='zhihu';}
+    if(indentButton){const active=current.typography.indent??themeDefaults(committed).indent;indentButton.classList.toggle('active',active);indentButton.setAttribute('aria-pressed',String(active));indentButton.disabled=publisher==='zhihu';}
     $('preview').innerHTML=(publisher==='zhihu'?standardBody(current,assets,renderResult.html):renderResult.html)||'<p style="color:#a1aa9c;text-align:center;padding-top:70px;text-indent:0">从左侧写下第一句话。</p>';
     if(publisher==='wechat')decorateTheme($('preview'),theme);
     for(const node of $('preview').querySelectorAll<HTMLDetailsElement>('details')){
@@ -173,9 +186,10 @@ function render(){
     if(publisher==='wechat'&&referencesEnabled())appendReferences($('preview'));
     stickerController?.setEnabled(publisher==='wechat'&&!previewEditor?.enabled);if(publisher==='wechat')stickerController?.render();
     previewEditor?.attach();inspectFonts($('preview'),fontInspection);
-    $('theme-name').textContent=theme.name;$('theme-dot').style.background=theme.accent;$('preview-caption-name').textContent=publisher==='zhihu'?'知乎 · 标准 Markdown':theme.name;
-    const mood=$('folio-font-button');if(mood){mood.hidden=!isFolio(theme)||publisher!=='wechat';mood.textContent=({'noto-serif':'书卷宋体',wenkai:'温润楷体','noto-sans':'现代人文黑'} as Record<string,string>)[current.typography.font||theme.font]||'自定字体';mood.textContent+=' ▾';}
-    $<HTMLSelectElement>('publisher').value=publisher;$('preview-target').textContent=publisher==='zhihu'?'知乎预览':'公众号预览';paintCopyButton();
+    $('theme-name').textContent=committed.name;$('theme-dot').style.background=committed.accent;$('preview-caption-name').textContent=publisher==='zhihu'?'知乎 · 标准 Markdown':(peekThemeId?'试看 · ':'')+theme.name;
+    const mood=$('folio-font-button');if(mood){mood.hidden=!isFolio(committed)||publisher!=='wechat';mood.textContent=({'noto-serif':'书卷宋体',wenkai:'温润楷体','noto-sans':'现代人文黑'} as Record<string,string>)[current.typography.font||committed.font]||'自定字体';mood.textContent+=' ▾';}
+    $<HTMLSelectElement>('publisher').value=publisher;$('preview-target').textContent=publisher==='zhihu'?'知乎预览':peekThemeId?'主题试看 · 点击卡片应用':'公众号预览';paintCopyButton();
+    themeSidebar?.updateCurrent();
     $<HTMLButtonElement>('theme-button').disabled=publisher==='zhihu';$<HTMLButtonElement>('style-button').disabled=publisher==='zhihu';if(publisher==='zhihu')$('style-panel').hidden=true;
     updateStats();
     const problems=renderResult.errors.length+renderResult.missing.length;
@@ -188,6 +202,7 @@ function render(){
   }catch(e){$('render-state').textContent='渲染失败，正文已保留';toast(errorMessage(e),true);}
 }
 function switchArticle(id:string){
+  clearThemePreview(false);
   closePopover();
   const next=articles.get(id);if(!next||next.deleted)return;
   if(current.id!==id&&snapshot(current,true))markDirty(current);
@@ -205,7 +220,8 @@ function renderLibrary(){
   if(libraryFolder!=='*'&&libraryFolder&&!folders.includes(libraryFolder))libraryFolder='*';
   const query=$<HTMLInputElement>('library-search').value.toLowerCase();
   const list=[...articles.values()].filter(a=>a.deleted===trash&&(trash||libraryFolder==='*'||(a.folder||'')===libraryFolder)&&(!query||(a.title+'\n'+a.markdown).toLowerCase().includes(query))).sort((a,b)=>b.updated-a.updated);
-  $('article-list').innerHTML=list.map(a=>`<div class="article-item ${a.id===current.id?'current':''}" data-id="${a.id}" tabindex="0" role="button"><strong>${esc(a.title||'未命名文章')}</strong><small>${new Date(a.updated).toLocaleDateString('zh-CN')} · ${themeById(a.theme).name}</small><div class="item-actions">${trash?'<button data-action="restore">恢复文章</button>':'<button data-action="duplicate">副本</button><button data-action="history">历史</button><button data-action="delete">删除</button>'}</div></div>`).join('')||'<div class="empty-state">这里还没有文章</div>';
+  $('article-list').innerHTML=list.map(a=>`<div class="article-item ${a.id===current.id?'current':''}" data-id="${a.id}" tabindex="0" role="button"><strong>${esc(a.title||'未命名文章')}</strong><small>${(a.markdown.match(/[\u3400-\u9fff]|[A-Za-z0-9]+/g)||[]).length.toLocaleString()} 字 · ${new Date(a.updated).toLocaleDateString('zh-CN',{month:'long',day:'numeric'})} · ${themeById(a.theme).name}</small><div class="item-actions">${trash?'<button data-action="restore">恢复文章</button>':'<button data-action="duplicate">副本</button><button data-action="history">历史</button><button data-action="delete">删除</button>'}</div></div>`).join('')||'<div class="empty-state">这里还没有文章</div>';
+  $('library-count').textContent=list.length+' 篇';$('rail-document-count').textContent=String([...articles.values()].filter(a=>!a.deleted).length);syncCatalogLayout();
   $('active-tab').classList.toggle('active',!trash);$('trash-tab').classList.toggle('active',trash);
   $('folder-list').hidden=trash;
   $('folder-list').innerHTML=[['*','全部文章'],['','未分类'],...folders.map(n=>[n,n])].map(([id,name])=>`<div class="folder-row"><button data-folder="${esc(id)}" class="${id===libraryFolder?'active':''}"><span>${id==='*'?'▤':'▱'} ${esc(name)}</span><small>${[...articles.values()].filter(a=>!a.deleted&&(id==='*'||(a.folder||'')===id)).length}</small></button>${id&&id!=='*'?`<button data-folder-edit="${esc(id)}" aria-label="管理${esc(name)}" title="重命名 / 删除文件夹">···</button>`:''}</div>`).join('');
@@ -222,8 +238,8 @@ function moveArticle(target:HTMLElement,article:Article){
   const panel=openPopover(target,'移动文章',`<p class="help">${esc(article.title)}</p><div class="quick-choices">${['',...folders].map(n=>`<button data-move-folder="${esc(n)}" class="${(article.folder||'')===n?'active':''}">▱ ${esc(n||'未分类')}</button>`).join('')}</div>`);
   panel.querySelectorAll<HTMLElement>('[data-move-folder]').forEach(el=>el.onclick=()=>{article.folder=el.dataset.moveFolder||undefined;markDirty(article);closePopover();renderLibrary();toast('已移动到「'+(article.folder||'未分类')+'」');});
 }
-function toggleLibrary(){const panel=$('library');panel.hidden=!panel.hidden;requestAnimationFrame(()=>{editor.view.requestMeasure();sync.rebuild();});}
-let pinnedThemes:string[]=[];try{const raw=JSON.parse(readPreference('pinned-themes','[]'));if(Array.isArray(raw))pinnedThemes=[...new Set(raw.filter((id:unknown)=>typeof id==='string'&&themes.some(t=>t.id===id)))].slice(0,5);}catch{}
+function toggleLibrary(){const panel=$('library');panel.hidden=!panel.hidden;syncCatalogLayout();}
+let pinnedThemes:string[]=[];try{const raw=JSON.parse(readPreference('pinned-themes','[]'));if(Array.isArray(raw))pinnedThemes=[...new Set(raw.filter((id:unknown)=>typeof id==='string'&&themes.some(t=>t.id===id)))];}catch{}
 const themePreviews=new Map<string,string>();
 function themeThumbnail(id:string){
   if(themePreviews.has(id))return themePreviews.get(id)!;
@@ -232,15 +248,17 @@ function themeThumbnail(id:string){
   if(id==='classical')node.innerHTML='<h1>陋室铭</h1><h2>原文选读</h2><p>山不在高，有仙则名。水不在深，有龙则灵。<strong>斯是陋室，惟吾德馨。</strong>苔痕上阶绿，草色入帘青。</p><blockquote><p>铭，古代刻在器物上用来警戒自己或者称述功德的文字。</p></blockquote><h2>读一读，想一想</h2><p>谈笑有鸿儒，往来无白丁。</p>';
   if(t.variant==='journal')node.innerHTML=renderMarkdown('## 从一个好问题开始\n:::subtitle SCIENCE & IDEAS\n\n:::theorem 核心定律 · 理解世界\n用清晰的概念，建立**可检验的联系**。\n:::\n\n> 从一次认真观察出发。',new Map()).html;
   if(isFolio(t))node.innerHTML=renderMarkdown('## 江南雨声里的旧宣纸\n:::subtitle PROSE · 散文随笔卷\n\n:::folio-preface 卷首题记\n古人把一扇窗，借给了一座山。\n:::',new Map()).html;
+  const edition=t.baseId||t.id;
+  if(editionSamples[edition])node.innerHTML=renderMarkdown(editionSamples[edition].split(':::'+edition+(edition==='digest'?'-note':edition==='press'?'-byline':'-preface'))[0],new Map()).html;
   decorateTheme(node,t);
   const html=`<style>${themeCSS(t).replaceAll('.article','.theme-sample-'+id)}</style><div class="theme-live-window">${node.outerHTML}</div>`;
   themePreviews.set(id,html);return html;
 }
-function applyArticleTheme(id:string){snapshot(current,true);current.theme=id;current.typography={};markDirty();render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast('已切换为「'+themeById(id).name+'」');}
-function themeHost(){return {open:openModal,close:closeModal,notify:toast,current:()=>current.theme,apply:applyArticleTheme,changed:()=>{themePreviews.clear();render();if(!$('style-panel').hidden)renderStylePanel();}};}
+function applyArticleTheme(id:string){clearThemePreview(false);snapshot(current,true);current.theme=id;current.typography={};markDirty();render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast('已切换为「'+themeById(id).name+'」');}
+function themeHost(){return {open:openModal,close:closeModal,notify:toast,current:()=>current.theme,apply:applyArticleTheme,changed:()=>{themePreviews.clear();themeSidebar?.refresh();render();if(!$('style-panel').hidden)renderStylePanel();}};}
 function showThemes(filter='全部'){
   let selectedDetail='';
-  openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时恢复主题默认设置。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 置顶常用主题，最多 5 个 · 知乎模式使用无主题排版</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
+  openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时恢复主题默认设置。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g==='已置顶'?'收藏':g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 收藏不限数量 · 在侧栏「收藏」中拖动排序</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
   const applyTheme=applyArticleTheme;
   bind('theme-import-button',()=>chooseThemeFile(themeHost()));bind('theme-manage-button',()=>showThemeManager(themeHost()));
   const showDetail=(id:string,keyboard=false)=>{
@@ -258,12 +276,12 @@ function showThemes(filter='全部'){
   const renderCards=()=>{
     themeGalleryResize.disconnect();
     const query=$<HTMLInputElement>('theme-search').value.trim().toLowerCase();
-    const pinRank=(id:string)=>pinnedThemes.includes(id)?pinnedThemes.indexOf(id):99;
-    $('theme-pin-count').textContent=`置顶 ${pinnedThemes.length} / 5 · 优先显示`;
+    const pinRank=(id:string)=>pinnedThemes.includes(id)?pinnedThemes.indexOf(id):Infinity;
+    $('theme-pin-count').textContent=`已收藏 ${pinnedThemes.length} 套 · 按自定顺序优先显示`;
     const visible=visibleThemes().filter(t=>(filter==='全部'||(filter==='已置顶'?pinnedThemes.includes(t.id):filter==='自定义'?!!t.definition:filter==='装饰精选'?!['plain','minimal','academic','wild'].includes(t.id):t.group===filter))&&themeMatches(t,query,themeDesign(t).tags)).sort((a,b)=>pinRank(a.id)-pinRank(b.id));
     if(selectedDetail&&!visible.some(t=>t.id===selectedDetail)){selectedDetail='';$('theme-detail').hidden=true;$('theme-detail').replaceChildren();document.querySelector('.theme-browser')!.classList.remove('has-detail');}
     $('theme-result-count').textContent=`${visible.length} 个主题`;
-    $('theme-results').innerHTML=visible.map(t=>`<div class="theme-card ${current.theme===t.id?'selected':''} ${pinnedThemes.includes(t.id)?'pinned':''}"><button class="theme-preview-button" data-theme-preview="${t.id}" aria-label="查看${esc(t.name)}完整预览" aria-pressed="${String(selectedDetail===t.id)}"><div class="theme-card-topline"><span>${t.group}</span><span>${current.theme===t.id?'使用中':'点击放大'}</span></div>${themeThumbnail(t.id)}</button><div class="theme-card-info"><strong title="${esc(t.description)}">${esc(t.name)}</strong><button class="theme-apply" data-theme="${t.id}" aria-label="使用${esc(t.name)}主题">使用</button><small>${esc(themeDesign(t).tags.join(' · '))}</small></div><button class="theme-pin ${pinnedThemes.includes(t.id)?'active':''}" data-pin="${t.id}" aria-label="${pinnedThemes.includes(t.id)?'取消置顶':'置顶'}${esc(t.name)}" aria-pressed="${pinnedThemes.includes(t.id)}" title="${pinnedThemes.includes(t.id)?'取消置顶':'置顶主题（最多5个）'}">${pinnedThemes.includes(t.id)?'★':'☆'}</button></div>`).join('')||'<div class="empty-state">没有匹配的主题。<p><button data-clear-theme-search>清空搜索</button> <button data-all-theme-groups>搜索全部分类</button></p></div>';
+    $('theme-results').innerHTML=visible.map(t=>`<div class="theme-card ${current.theme===t.id?'selected':''} ${pinnedThemes.includes(t.id)?'pinned':''}"><button class="theme-preview-button" data-theme-preview="${t.id}" aria-label="查看${esc(t.name)}完整预览" aria-pressed="${String(selectedDetail===t.id)}"><div class="theme-card-topline"><span>${t.group}</span><span>${current.theme===t.id?'使用中':'点击放大'}</span></div>${themeThumbnail(t.id)}</button><div class="theme-card-info"><strong title="${esc(t.description)}">${esc(t.name)}</strong><button class="theme-apply" data-theme="${t.id}" aria-label="使用${esc(t.name)}主题">使用</button><small>${esc(themeDesign(t).tags.join(' · '))}</small></div><button class="theme-pin ${pinnedThemes.includes(t.id)?'active':''}" data-pin="${t.id}" aria-label="${pinnedThemes.includes(t.id)?'取消收藏':'收藏'}${esc(t.name)}" aria-pressed="${pinnedThemes.includes(t.id)}" title="${pinnedThemes.includes(t.id)?'取消收藏':'收藏主题'}">${pinnedThemes.includes(t.id)?'★':'☆'}</button></div>`).join('')||'<div class="empty-state">没有匹配的主题。<p><button data-clear-theme-search>清空搜索</button> <button data-all-theme-groups>搜索全部分类</button></p></div>';
     $('theme-results').querySelectorAll<HTMLElement>('.theme-live-window').forEach(el=>themeGalleryResize.observe(el));
   };
   renderCards();bind('theme-search',renderCards,'input');
@@ -271,8 +289,8 @@ function showThemes(filter='全部'){
   $('modal-body').querySelectorAll<HTMLElement>('[data-group]').forEach(el=>el.onclick=()=>{filter=el.dataset.group!;$('modal-body').querySelectorAll<HTMLElement>('[data-group]').forEach(b=>b.classList.toggle('active',b===el));renderCards();});
   $('theme-results').addEventListener('click',event=>{
     const pin=(event.target as HTMLElement).closest<HTMLElement>('[data-pin]');if(pin){
-      const id=pin.dataset.pin!;if(pinnedThemes.includes(id))pinnedThemes=pinnedThemes.filter(v=>v!==id);else if(pinnedThemes.length<5)pinnedThemes.push(id);else{toast('最多置顶 5 个主题，请先取消一个置顶。',true);return;}
-      preference('pinned-themes',JSON.stringify(pinnedThemes));renderCards();($('theme-results').querySelector<HTMLElement>('[data-pin="'+id+'"]')||$('theme-search')).focus();return;
+      const id=pin.dataset.pin!;if(pinnedThemes.includes(id))pinnedThemes=pinnedThemes.filter(v=>v!==id);else pinnedThemes.push(id);
+      preference('pinned-themes',JSON.stringify(pinnedThemes));themeSidebar?.refresh();renderCards();($('theme-results').querySelector<HTMLElement>('[data-pin="'+id+'"]')||$('theme-search')).focus();return;
     }
     const preview=(event.target as HTMLElement).closest<HTMLElement>('[data-theme-preview]');if(preview){showDetail(preview.dataset.themePreview!,(event as MouseEvent).detail===0);return;}
     const el=(event.target as HTMLElement).closest<HTMLElement>('[data-theme]');if(el)applyTheme(el.dataset.theme!);
@@ -495,6 +513,7 @@ function checkIssues():string[]{
   return [...renderResult.errors.map(e=>`第 ${e.line} 行公式：${e.message}`),...renderResult.missing.map(p=>`图片缺失：${p}`),...renderResult.external.map(()=>`存在网络图片，离线阅读需先导入本地副本`),...($('preview').querySelector('img')?['本地图片粘贴后可能需要补插，请检查图片是否保留。']:[]),...(publisher==='wechat'&&current.stickers?.length?['贴纸可尝试保留轮廓，或改为普通左右环绕；自由叠放区域需要合成为图片。']:[])];
 }
 async function copyArticle(){
+  clearThemePreview(false);
   render();
   copyFeedback('正在检查…','busy',0);
   const issues=checkIssues();
@@ -720,6 +739,12 @@ async function init(){
   previewEditor=new PreviewEditor($('preview'),editor,render,toast);
   stickerController=new StickerController($('preview'),()=>current,assets,()=>{markDirty();requestAnimationFrame(()=>sync.rebuild());},makeSticker,restoreSticker,()=>void showStickerRegions().catch(e=>toast(errorMessage(e),true)));
   bind('modal-close',closeModal);modal.addEventListener('cancel',e=>{e.preventDefault();const detail=document.getElementById('theme-detail');if(detail&&!detail.hidden)$('theme-detail-close').click();else closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
+  themeSidebar=mountThemeSidebar($('theme-sidebar'),{current:()=>current.theme,enabled:()=>publisher==='wechat',pins:()=>pinnedThemes,thumbnail:themeThumbnail,preview:previewArticleTheme,cancel:()=>clearThemePreview(),apply:applyArticleTheme,pin:id=>{if(pinnedThemes.includes(id))pinnedThemes=pinnedThemes.filter(v=>v!==id);else pinnedThemes.push(id);preference('pinned-themes',JSON.stringify(pinnedThemes));},order:ids=>{pinnedThemes=ids;preference('pinned-themes',JSON.stringify(pinnedThemes));},details:()=>showThemes(),close:toggleThemeSidebar});
+  $('theme-sidebar').hidden=readPreference('theme-sidebar-open','true')!=='true';
+  bind('theme-sidebar-toggle',toggleThemeSidebar);
+  for(const [id,recycle] of [['rail-documents',false],['rail-trash',true]] as const)bind(id,()=>{const same=!$('library').hidden&&trash===recycle;trash=recycle;$('library').hidden=same;renderLibrary();});
+  for(const mode of ['compare','preview'])bind('view-'+mode,()=>{document.body.dataset.workspaceView=mode;for(const other of ['compare','preview'])$('view-'+other).setAttribute('aria-pressed',String(other===mode));editor.view.requestMeasure();sync.rebuild();});
+  window.addEventListener('blur',()=>clearThemePreview());
   bind('library-toggle',toggleLibrary);bind('library-button',toggleLibrary);bind('library-close',toggleLibrary);
   bind('new-folder',e=>folderEditor(e.currentTarget as HTMLElement));
   $('folder-list').addEventListener('click',e=>{const target=e.target as HTMLElement,edit=target.closest<HTMLElement>('[data-folder-edit]'),folder=target.closest<HTMLElement>('[data-folder]');if(edit)folderEditor(edit,edit.dataset.folderEdit!);else if(folder){libraryFolder=folder.dataset.folder!;saveFolders();renderLibrary();}});
@@ -752,7 +777,7 @@ async function init(){
   bind('math-button',showFormulas);bind('assets-button',showAssets);bind('toc-button',showTOC);bind('undo-button',()=>editor.undo());bind('redo-button',()=>editor.redo());bind('search-button',()=>editor.search());
   const writingButton=document.createElement('button');writingButton.id='writing-tools-button';writingButton.className='tool-button';writingButton.setAttribute('aria-label','写作工具');writingButton.title='写作检查、文字整理、恢复点与写作骨架';writingButton.innerHTML='✎ <span>写作工具</span> ▾';$('assets-button').before(writingButton);writingButton.onclick=()=>showWritingTools(writingButton);
   const editionButton=document.createElement('button');editionButton.id='edition-block-button';editionButton.textContent='模板组件 ▾';editionButton.title='预览与插入杂志、新闻和文学科普组件';$('folio-block-button').after(editionButton);editionButton.onclick=()=>showEditionElements(editionButton);
-  bind('publisher',()=>{publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
+  bind('publisher',()=>{clearThemePreview(false);publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
   bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>$('import-input').click());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
   document.querySelectorAll<HTMLElement>('[data-format]').forEach(el=>el.onclick=()=>{
     const type=el.dataset.format;
