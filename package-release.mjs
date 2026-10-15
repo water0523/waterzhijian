@@ -12,6 +12,7 @@ await add('plans/inline-style-picker.md');
 await add('plans/hover-menus.md');
 await add('plans/catalog-workspace.md');
 await add('plans/selection-export-polish.md');
+for(const name of ['docs/plans/2026-10-16-format-rewrite.md','主题格式改写提示词.md','tests/format-prompts.mjs','tests/format-rewrite.mjs','test-results/format-prompts.json','test-results/format-prompts-fixtures.json','test-results/format-rewrite-chrome.json','test-results/format-rewrite-msedge.json','dist/格式改写预览.png'])await add(name);
 await add('tests/selection-export.mjs');
 for(const channel of ['chrome','msedge'])await add('test-results/selection-export-'+channel+'.json');
 await add('dist/导出选项预览.png');

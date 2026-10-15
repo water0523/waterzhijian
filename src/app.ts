@@ -36,6 +36,7 @@ import {compareText,compactDiff} from './revision-diff';
 import {inspectWriting,tidyMarkdown,writingOutlines} from './writing-tools';
 import {mountThemeSidebar} from './theme-sidebar';
 import {exportOptionsHTML} from './export-options';
+import {showFormatRewrite} from './format-rewrite';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const assetStore=new Map<string,Asset>();const articles=new Map<string,Article>();
@@ -768,6 +769,7 @@ async function init(){
   $<HTMLSelectElement>('preview-width').value=['375','430','wide'].includes(savedWidth)?savedWidth:'375';
   $('preview').style.maxWidth=savedWidth==='wide'?'760px':(['375','430'].includes(savedWidth)?savedWidth:'375')+'px';
   const savedShare=Number(readPreference('split-share','49'));$('split-workspace').style.setProperty('--editor-share',(Number.isFinite(savedShare)?Math.max(25,Math.min(75,savedShare)):49)+'%');
+  bind('format-rewrite-button',()=>showFormatRewrite({current:()=>current.theme,article:()=>current.markdown,open:openModal,notify:toast}));
   bind('sync-button',()=>{sync.enabled=!sync.enabled;$('sync-button').classList.toggle('active',sync.enabled);$('sync-button').setAttribute('aria-pressed',String(sync.enabled));toast(sync.enabled?'双向同步滚动已开启':'已关闭同步，可独立浏览两侧');});
   bind('preview-width',()=>{const v=$<HTMLSelectElement>('preview-width').value;preference('preview-width',v);const line=sync.capture();$('preview').style.maxWidth=v==='wide'?'760px':v+'px';document.querySelector<HTMLElement>('.preview-caption')!.style.maxWidth=v==='wide'?'760px':v+'px';requestAnimationFrame(()=>{sync.rebuild();sync.restore(line);});},'change');
   bind('image-button',()=>$('image-input').click());bind('image-input',async()=>{const input=$<HTMLInputElement>('image-input');const files=[...(input.files||[])];input.value='';await addImages(files,editor.view.state.selection.main.head);},'change');
