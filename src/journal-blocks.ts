@@ -1,8 +1,10 @@
 import type MarkdownIt from 'markdown-it';
+import {containerEnd,registerContainers} from './container-scan';
 const names={abstract:'CORE ABSTRACT · 科学导读',theorem:'核心定律',equation:'',derivation:'数学物理推导专栏',takeaways:'本文核心要点回顾',references:'REFERENCES & FURTHER READING · 参考文献'};
 export const journalKinds=Object.keys(names) as (keyof typeof names)[];
 
 export function installJournalBlocks(md:MarkdownIt){
+  registerContainers(journalKinds);
   md.block.ruler.before('fence','journal_subtitle',(state,start,_end,silent)=>{
     if(state.sCount[start]-state.blkIndent>=4)return false;
     const raw=state.src.slice(state.bMarks[start]+state.tShift[start],state.eMarks[start]),m=/^:::subtitle\s+(.+)$/.exec(raw);if(!m)return false;if(silent)return true;
@@ -13,19 +15,7 @@ export function installJournalBlocks(md:MarkdownIt){
     if(state.sCount[start]-state.blkIndent>=4)return false;
     const line=(n:number)=>state.src.slice(state.bMarks[n]+state.tShift[n],state.eMarks[n]);
     const match=/^:::(abstract|theorem|equation|derivation|takeaways|references)(?:\s+(.*))?$/.exec(line(start));if(!match)return false;
-    let next=start+1,depth=1,fence='',fenceLength=0,opaque=false;
-    for(;next<end;next++){
-      const value=line(next).trim(),code=/^(`{3,}|~{3,})/.exec(value);
-      // Poetry and galleries consume literal lines until their own terminator.
-      // A container-looking poem line is text, not another nested container.
-      if(opaque){if(value===':::'){opaque=false;depth--;}continue;}
-      if(fence){if(code&&code[1][0]===fence&&code[1].length>=fenceLength&&!value.slice(code[1].length).trim())fence='';continue;}
-      if(state.sCount[next]-state.blkIndent>=4)continue;
-      if(code){fence=code[1][0];fenceLength=code[1].length;continue;}
-      if(/^:::(?:poem(?:\s+(?:left|center))?|gallery\s+(?:stack|grid2|grid3|featured)\s+[\w-]+)$/.test(value)){opaque=true;depth++;}
-      else if(/^:::(?:abstract|theorem|equation|derivation|takeaways|references)(?:\s|$)/.test(value))depth++;
-      else if(value===':::'&&!--depth)break;
-    }
+    const next=containerEnd(state,start,end);
     if(next>=end)return false;if(silent)return true;
     const kind=match[1] as keyof typeof names,tag=kind==='derivation'?'details':'section';
     const open=state.push('journal_open',tag,1);open.block=true;open.map=[start,next+1];open.attrs=[['class','journal-block journal-'+kind]];if(tag==='details')open.attrSet('open','');

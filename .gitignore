@@ -3,3 +3,5 @@ test-results/
 .npm-cache/
 dist/纸间-临时版-*.html
 *.log
+
+dist/纸间-已验收科普期刊-*.html

@@ -1,6 +1,6 @@
 import {build} from 'esbuild';
 import {readFile,writeFile,mkdir,readdir} from 'node:fs/promises';
-const result=await build({entryPoints:['src/app.ts'],bundle:true,write:false,metafile:true,format:'iife',platform:'browser',target:['chrome110','edge110'],minify:true,legalComments:'inline',define:{'process.env.NODE_ENV':'"production"'}});
+const result=await build({entryPoints:['src/app.ts'],loader:{'.webp':'dataurl'},bundle:true,write:false,metafile:true,format:'iife',platform:'browser',target:['chrome110','edge110'],minify:true,legalComments:'inline',define:{'process.env.NODE_ENV':'"production"'}});
 const packages=new Set(Object.keys(result.metafile.inputs).filter(p=>p.startsWith('node_modules/')).map(p=>{const parts=p.split('/');return parts.slice(0,parts[1].startsWith('@')?3:2).join('/');}));
 let notices='纸间 · Third-party software notices\nLibraries are embedded for offline use. Their respective licenses apply.\n';
 for(const dir of [...packages].sort()){

@@ -1,9 +1,11 @@
 import type {Theme} from './themes';
 import {scienceMotif,scienceCSS} from './science-design';
 import {decorateJournal,isJournal} from './journal-design';
+import {decorateFolio,isFolio} from './folio-design';
 
 type Design={label:string;mark:string;number?:boolean;quote?:string;code?:string;tags:string[]};
 export const designs:Record<string,Design>={
+ folio:{label:'',mark:'',tags:['鱼尾版心','朱批笺注','书画装裱']},
  'journal-indigo':{label:'SCIENCE / IDEAS / DISCOVERY',mark:'',number:true,tags:['人文衬线','公式释义卡']},
  'journal-jade':{label:'SCIENCE / IDEAS / DISCOVERY',mark:'',number:true,tags:['松石青翠','点阵定律卡']},
  magazine:{label:'YOUTH / STORIES & IDEAS',mark:'',number:true,quote:'读在心间',tags:['首字下沉','左右环绕插图']},
@@ -80,6 +82,7 @@ export function decorateTheme(node:HTMLElement,theme:Theme){
  if(science){const marks:Record<string,string>={rational:'↗',academic:'“',nature:'❧',cosmos:'✧',math:'∴',lab:'＋',earth:'≋',tech:'⌘',qa:'A',blueprint:'⌖',ocean:'≈',pixel:'›_'};node.querySelectorAll('blockquote').forEach(q=>q.prepend(span('quote-symbol',marks[id]||'·')));}
  node.querySelectorAll<HTMLElement>('pre').forEach(pre=>{if(d.code)pre.prepend(span('theme-code-label','●  ●  ●     '+d.code));});
  if(isJournal(theme))decorateJournal(node);
+ if(isFolio(theme))decorateFolio(node);
  if(id==='magazine'){
   const first=[...node.children].find(el=>el.tagName==='P'&&el.textContent?.trim()&&!el.querySelector('.image-wrap,.math-display'));
   if(first){

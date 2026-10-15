@@ -6,6 +6,11 @@ const files={};
 const add=async name=>files['纸间/'+name]=new Uint8Array(await readFile(name));
 for(const name of ['README.md','开发说明.md','CHANGELOG.md','RELEASE-v1.0.md','RELEASE-v1.0.1.md','使用说明.md','验收报告.md','主题升级说明.md','本轮更新说明.md','待续功能.md','主题格式规范-v1.md','主题示例/杉影札记.纸间主题.json','plans/product-polish.md','plans/journal-themes.md','plans/literary-folio.md','plans/digest-news-templates.md','期刊主题使用说明.md','package.json','package-lock.json','tsconfig.json','index.template.html','build.mjs','package-release.mjs','.gitignore'])await add(name);
 for(const name of await readdir('src'))await add('src/'+name);
+for(const name of ['山窗听雪使用说明.md','plans/literary-science-theme.md'])await add(name);
+async function addTree(dir){for(const item of await readdir(dir,{withFileTypes:true})){const name=dir+'/'+item.name;if(item.isDirectory())await addTree(name);else await add(name);}}
+await addTree('assets');
+for(const name of ['folio-themes.mjs','folio-workflow.mjs'])await add('tests/'+name);
+for(const name of ['folio-themes-chrome.json','folio-themes-msedge.json','folio-workflow-chrome.json','folio-workflow-msedge.json'])await add('test-results/'+name);
 for(const name of ['verify.mjs','stickers.mjs','documents.mjs','themes.mjs','preview-editing.mjs','inline-styles.mjs','publishing-extras.mjs','interaction-upgrade.mjs','theme-gallery-images.mjs','image-output.mjs','strong-heading.mjs','theme-library.mjs','theme-schema.mjs','theme-typography.mjs','element-settings.mjs','theme-accessibility.mjs','storage-reliability.mjs','writing-core.mjs','writing-workflow.mjs','theme-review.mjs','theme-output.mjs','popover-layout.mjs','journal-themes.mjs'])await add('tests/'+name);
 for(const name of ['report.json','stickers-report.json','documents-report.json','themes-report.json','themes-msedge-report.json','preview-editing-chrome.json','preview-editing-msedge.json','inline-styles-chrome.json','inline-styles-msedge.json','publishing-extras-chrome.json','publishing-extras-msedge.json','interaction-upgrade-chrome.json','interaction-upgrade-msedge.json','theme-gallery-images-chrome.json','theme-gallery-images-msedge.json','image-output-chrome.json','image-output-msedge.json','strong-heading-chrome.json','strong-heading-msedge.json'])await add('test-results/'+name);
 for(const name of ['theme-library-chrome.json','theme-library-msedge.json','theme-schema.json','theme-typography-chrome.json','theme-typography-msedge.json'])await add('test-results/'+name);
@@ -14,7 +19,7 @@ for(const name of ['storage-reliability-chrome.json','storage-reliability-msedge
 for(const name of ['theme-output-chrome.json','theme-output-msedge.json','popover-layout-chrome.json','popover-layout-msedge.json','review-chrome/report.json','review-msedge/report.json'])await add('test-results/'+name);
 for(const name of ['journal-themes-chrome.json','journal-themes-msedge.json'])await add('test-results/'+name);
 for(const name of ['popover-short-chrome.png','popover-compact-chrome.png','theme-output-blueprint-chrome.png'])await add('test-results/'+name);
-for(const name of ['纸间-离线公众号排版器.html','THIRD_PARTY_NOTICES.txt','主题风格预览.png','科普主题库预览.png','青春读本预览.png','期刊主题预览.png'])await add('dist/'+name);
+for(const name of ['纸间-离线公众号排版器.html','THIRD_PARTY_NOTICES.txt','主题风格预览.png','科普主题库预览.png','青春读本预览.png','期刊主题预览.png','山窗听雪预览.png'])await add('dist/'+name);
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/纸间-源码与使用说明.zip',data);

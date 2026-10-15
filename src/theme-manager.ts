@@ -6,6 +6,8 @@ import {decorateTheme} from './theme-design';
 import {renderMarkdown} from './render';
 import {download,safeName} from './files';
 import {journalPreviewSample} from './journal-sample';
+import {folioSample,folioAssets} from './folio-sample';
+import {isFolio} from './folio-design';
 
 type Host={open:(title:string,html:string,eyebrow?:string)=>void;close:()=>void;notify:(message:string,error?:boolean)=>void;changed:()=>void;apply:(id:string)=>void;current:()=>string};
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -53,7 +55,7 @@ ornaments 可选：label（刊头小字）、mark（章节符号，最多 8 字�
 
 export function themeGuide(){return guide+'\n## 内置基础主题标识\n\n'+themes.filter(t=>!t.definition).map(t=>`- ${t.id}：${t.name}`).join('\n')+'\n';}
 function preview(theme:Theme){
-  const node=document.createElement('article');node.className='theme-import-article';node.innerHTML=renderMarkdown(theme.variant==='journal'?journalPreviewSample:sample,new Map()).html;decorateTheme(node,theme);
+  const node=document.createElement('article');node.className='theme-import-article';node.innerHTML=renderMarkdown(isFolio(theme)?folioSample:theme.variant==='journal'?journalPreviewSample:sample,new Map(isFolio(theme)?folioAssets().map(a=>[a.id,a]):[])).html;decorateTheme(node,theme);
   return `<style>${themeCSS(theme).replaceAll('.article','.theme-import-article')}</style>${node.outerHTML}`;
 }
 const guarded=(host:Host,fn:()=>void)=>()=>{try{fn();}catch(e){host.notify(e instanceof Error?e.message:String(e),true);}};

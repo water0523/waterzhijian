@@ -17,6 +17,8 @@ import {installTextMapping} from './text-mapping';
 import {installInlineStyles} from './inline-style';
 import {dividerOptions,dividerSVG} from './dividers';
 import {installJournalBlocks} from './journal-blocks';
+import {installFolioBlocks} from './folio-blocks';
+import {normalizeFolioPublication} from './folio-design';
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
@@ -45,6 +47,7 @@ const md = new MarkdownIt({html:false,linkify:true,typographer:true,breaks:false
 }).use(footnote as unknown as (instance:MarkdownIt)=>void);
 const baseValidate=md.validateLink;
 installJournalBlocks(md);
+installFolioBlocks(md);
 md.validateLink=(url:string)=>/^asset:[a-zA-Z0-9-]+$/.test(url)||baseValidate(url);
 
 md.inline.ruler.before('escape','math_inline',(state,silent)=>{
@@ -186,7 +189,7 @@ export function firstArticleHeading(source:string):string|null{
   return text||null;
 }
 
-const copiedProperties=['color','background-color','font-family','font-size','font-weight','font-style','line-height','letter-spacing','text-align','text-indent','text-decoration','white-space','word-break','overflow-wrap','vertical-align','display','float','clear','text-wrap','margin-top','margin-bottom','margin-left','margin-right','padding-top','padding-bottom','padding-left','padding-right','border-top','border-bottom','border-left','border-right','border-radius','box-shadow','outline','background-image','background-size','background-position','background-repeat','opacity','border-collapse','table-layout','max-width','list-style-type','box-sizing'];
+const copiedProperties=['color','background-color','font-family','font-size','font-weight','font-style','line-height','letter-spacing','text-align','text-indent','text-decoration','text-emphasis-style','text-emphasis-position','text-emphasis-color','white-space','word-break','overflow-wrap','vertical-align','display','float','clear','text-wrap','margin-top','margin-bottom','margin-left','margin-right','padding-top','padding-bottom','padding-left','padding-right','border-top','border-bottom','border-left','border-right','border-radius','box-shadow','outline','background-image','background-size','background-position','background-repeat','opacity','border-collapse','table-layout','max-width','list-style-type','box-sizing'];
 export function exportFragment(article:HTMLElement):string{
   const clone=article.cloneNode(true) as HTMLElement;
   clone.removeAttribute('id');
@@ -218,13 +221,14 @@ export function exportFragment(article:HTMLElement):string{
   });
   // Publication has no fixed-height reading windows: export every derivation,
   // even when its on-screen disclosure was closed.
-  clone.querySelectorAll<HTMLElement>('.journal-derivation').forEach(el=>{
+  clone.querySelectorAll<HTMLElement>('details.journal-derivation,details.folio-gloss').forEach(el=>{
     const section=document.createElement('section');for(const attr of [...el.attributes])if(attr.name!=='open')section.setAttribute(attr.name,attr.value);
     const summary=el.querySelector(':scope > summary');if(summary){const header=document.createElement('header');for(const attr of [...summary.attributes])header.setAttribute(attr.name,attr.value);header.style.display='block';header.style.listStyleType='none';header.append(...summary.childNodes);summary.replaceWith(header);}
     section.append(...el.childNodes);section.style.overflow='visible';section.style.maxHeight='none';
-    const content=section.querySelector<HTMLElement>(':scope > .journal-content');if(content){content.style.maxHeight='none';content.style.height='auto';content.style.overflow='visible';content.style.display='block';}
+    const content=section.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content');if(content){content.style.maxHeight='none';content.style.height='auto';content.style.overflow='visible';content.style.display='block';}
     el.replaceWith(section);
   });
+  normalizeFolioPublication(clone);
   // Inline styles are authoritative, so no dependency on editor CSS remains.
   return clone.outerHTML;
 }
