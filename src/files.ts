@@ -1,5 +1,5 @@
 import {zipSync,unzipSync,strToU8,strFromU8} from 'fflate';
-import {uid,fontStacks,type Article,type Asset,type Typography,type Sticker} from './model';
+import {uid,fontStacks,type Article,type Asset,type AssetSettings,type Typography,type Sticker} from './model';
 import {themes,builtInIds,themesForArticles,themeLibraryDocument} from './themes';
 import {parseThemeFile,libraryDocument,validateElements} from './theme-schema';
 import type {ThemeDefinition} from './theme-types';
@@ -62,6 +62,18 @@ export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[]
     assetOutput.push({id,name:String(a.name||'图片'),mime:a.mime,data:dataFromBytes(bytes,a.mime),width:Math.max(10,Math.min(100,Number(a.width)||100)),align:['left','right'].includes(a.align)?a.align:'center',alt:String(a.alt||''),caption:String(a.caption||''),figureLabel:String(a.figureLabel||''),source:String(a.source||'')});
   }
   const rewrite=(s:string)=>s.replace(/asset:([a-zA-Z0-9-]+)/g,(_m,id)=>`asset:${mapping.get(id)||id}`);
+  const appearanceImport=(settings:any):AssetSettings=>{
+    if(settings===undefined)return {};
+    if(!settings||typeof settings!=='object'||Array.isArray(settings)||Object.keys(settings).length>5000)throw new Error('图片排版设置无效');
+    const output:AssetSettings={};
+    for(const [oldId,value] of Object.entries(settings)){
+      const id=mapping.get(oldId);if(!id)continue; // Unreferenced originals are not included in a single-article archive.
+      const a=value as any;
+      if(!a||!Number.isFinite(a.width)||a.width<10||a.width>100||!['left','center','right'].includes(a.align)||typeof a.alt!=='string'||typeof a.caption!=='string'||(a.figureLabel!==undefined&&typeof a.figureLabel!=='string')||(a.source!==undefined&&typeof a.source!=='string'))throw new Error('图片排版设置损坏');
+      output[id]={width:a.width,align:a.align,alt:a.alt,caption:a.caption,figureLabel:a.figureLabel||'',source:a.source||''};
+    }
+    return output;
+  };
   const stickerImport=(items:any):Sticker[]=>{
     if(!Array.isArray(items))return [];
     if(items.length>200)throw new Error('单篇文章的贴纸数量超过 200');
@@ -75,10 +87,13 @@ export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[]
     const markdown=rewrite(a.markdown);
     if(a.folder!==undefined&&a.folder!==''&&!validFolder(a.folder))throw new Error('文章文件夹无效');
     if(a.folder&&!folders.includes(a.folder))folders.push(a.folder);
-    return {version:1,id:uid(),title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:assetRefs(markdown),stickers:stickerImport(a.stickers),created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
+    if(a.linkMode!==undefined&&!['direct','end'].includes(a.linkMode))throw new Error('文章链接设置无效');
+    const stickers=stickerImport(a.stickers);
+    return {version:1,id:uid(),title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:[...new Set([...assetRefs(markdown),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(a.assetSettings),linkMode:a.linkMode,created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
       revisions:(Array.isArray(a.revisions)?a.revisions:[]).slice(-20).map((r:any)=>{
         if(typeof r.markdown!=='string')throw new Error('恢复版本损坏');
-        const text=rewrite(r.markdown);return {at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:checkedTheme(r.theme),typography:validTypography(r.typography),assets:assetRefs(text),stickers:stickerImport(r.stickers)};
+        if(r.linkMode!==undefined&&!['direct','end'].includes(r.linkMode))throw new Error('恢复版本链接设置无效');
+        const text=rewrite(r.markdown),stickers=stickerImport(r.stickers);return {at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:checkedTheme(r.theme),typography:validTypography(r.typography),assets:[...new Set([...assetRefs(text),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(r.assetSettings),linkMode:r.linkMode};
       })};
   });
   return {articles:articleOutput,assets:assetOutput,folders,themes:themeLibrary.themes,hiddenThemes:themeLibrary.hidden};

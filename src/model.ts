@@ -10,18 +10,22 @@ export interface Asset {
   width: number; align: 'left' | 'center' | 'right'; alt: string; caption: string;
   figureLabel?:string; source?:string;
 }
+export type AssetAppearance=Pick<Asset,'width'|'align'|'alt'|'caption'|'figureLabel'|'source'>;
+export type AssetSettings=Record<string,AssetAppearance>;
 export interface Sticker { id:string; assetId:string; line:number; x:number; offsetY:number; width:number; rotation:number; layout?:'free'|'wrap-left'|'wrap-right' }
-export interface Revision { at: number; title: string; titleMode?:'auto'|'manual'; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[] }
+export interface Revision { at: number; title: string; titleMode?:'auto'|'manual'; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[]; assetSettings?:AssetSettings; linkMode?:'direct'|'end' }
 export interface Article {
   version: 1; id: string; title: string; markdown: string; theme: string;
   typography: Typography; assets: string[]; created: number; updated: number;
   deleted: boolean; revisions: Revision[]; stickers?:Sticker[]; folder?:string;
   titleMode?:'auto'|'manual';
+  storeRevision?:string; assetSettings?:AssetSettings;
+  linkMode?:'direct'|'end';
 }
 export const uid = () => crypto.randomUUID();
 export const freshArticle = (title = '未命名文章', markdown = ''): Article => ({
   version: 1, id: uid(), title, titleMode:'auto', markdown, theme: 'rational', typography: {},
-  assets: [], created: Date.now(), updated: Date.now(), deleted: false, revisions: []
+  assets: [], created: Date.now(), updated: Date.now(), deleted: false, revisions: [],linkMode:'direct'
 });
 export function escapeHTML(s: string): string { return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!)); }
 export const fontStacks: Record<string, string> = {

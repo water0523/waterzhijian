@@ -4,7 +4,7 @@ import type {ThemeDefinition} from './theme-types';
 import {showThemeManager,chooseThemeFile} from './theme-manager';
 import {decorateTheme,themeDesign} from './theme-design';
 import {renderMarkdown,renderMath,exportFragment,firstArticleHeading,type RenderResult} from './render';
-import {freshArticle,escapeHTML as esc,uid,fontNames,type Article,type Asset,type Typography} from './model';
+import {freshArticle,escapeHTML as esc,uid,fontNames,type Article,type Asset,type Typography,type Revision} from './model';
 import {openStore,loadStore,persist,preference,readPreference} from './storage';
 import {download,safeName,createBackup,readBackup,fileToAsset,assetRefs,svgToPNG,bytesFromData,extension} from './files';
 import {standardCSS,standardBody,standardFragment,createWord,preparePrintWindow} from './documents';
@@ -20,11 +20,16 @@ import {openPopover,closePopover,enhanceColors} from './popover';
 import {blockFormat,toggleTextStyle,hasSelectedStyle,codeFormat,insertFootnote} from './formatting';
 import {dividerOptions,dividerSVG} from './dividers';
 import {mountElementPanel} from './element-panel';
+import {ArticleAssetMap,appearance,captureAssets} from './asset-view';
+import {checkpoint,clearCheckpoint,recoverDrafts,publishRecoverySidecar} from './recovery';
+import {compareText,compactDiff} from './revision-diff';
+import {inspectWriting,tidyMarkdown,writingOutlines} from './writing-tools';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
-const assets=new Map<string,Asset>();const articles=new Map<string,Article>();
+const assetStore=new Map<string,Asset>();const articles=new Map<string,Article>();
 const headingCache=new WeakMap<Article,{markdown:string;heading:string|null}>();
 let current:Article=freshArticle('光的来信 · 科普示例',science);
+const assets=new ArticleAssetMap(assetStore,()=>current);
 let editor:MarkdownEditor,sync:ScrollSync;
 let stickerController:StickerController;
 let previewEditor:PreviewEditor;
@@ -32,11 +37,19 @@ let night=readPreference('appearance','day')==='night';
 const savedBrightness=Number(readPreference('preview-brightness','78'));
 let brightness=Number.isFinite(savedBrightness)?Math.max(35,Math.min(100,savedBrightness)):78;
 let renderResult:RenderResult={html:'',errors:[],missing:[],external:[]};
-let renderTimer=0,saveTimer=0,toastTimer=0,dirtyGeneration=0,savedGeneration=0,saveRunning=false,trash=false;
+let renderTimer=0,saveTimer=0,toastTimer=0,dirtyGeneration=0,savedGeneration=0,trash=false;
+let savePromise:Promise<boolean>|undefined,recoveryWarning=false;
 const dirtyArticles=new Set<string>(),dirtyAssets=new Set<string>();
+const articleEdits=new Map<string,number>(),assetEdits=new Map<string,number>();
+function trackArticle(id:string){dirtyArticles.add(id);articleEdits.set(id,++dirtyGeneration);}
+function trackAsset(id:string){dirtyAssets.add(id);assetEdits.set(id,++dirtyGeneration);}
 let lastRenderMS=0;
 let publisher=readPreference('publisher','wechat')==='zhihu'?'zhihu':'wechat';
-let referencesEnabled=readPreference('references-enabled','true')!=='false';
+// Legacy documents keep an explicitly chosen preference; new documents start
+// with direct hyperlinks. The current choice travels with the article.
+const legacyReferences=readPreference('references-enabled','false')==='true';
+const referencesEnabled=()=>current.linkMode?current.linkMode==='end':legacyReferences;
+function setLinkMode(mode:'direct'|'end'){if(current.linkMode===mode)return;snapshot(current,true);current.linkMode=mode;markDirty();render();const input=document.getElementById('setting-references') as HTMLInputElement|null;if(input)input.checked=referencesEnabled();}
 let folders:string[]=[];try{const raw=JSON.parse(readPreference('folders','[]'));if(Array.isArray(raw))folders=raw.filter(n=>typeof n==='string'&&n.length<=40&&n!=='*'&&!/[\\/\r\n]/.test(n));}catch{}
 let libraryFolder=readPreference('library-folder','*');
 function saveFolders(){folders=[...new Set(folders)];preference('folders',JSON.stringify(folders));preference('library-folder',libraryFolder);}
@@ -53,10 +66,8 @@ function openModal(title:string,html:string,eyebrow='PAPER STUDIO'){closePopover
 function closeModal(){themeGalleryResize.disconnect();modal.close();$('modal-body').replaceChildren();}
 function markDirty(article=current){
   syncArticleTitle(article);
-  article.updated=Date.now();article.assets=[...new Set([...assetRefs(article.markdown),...(article.stickers||[]).map(s=>s.assetId)])];dirtyArticles.add(article.id);dirtyGeneration++;
-  // A small synchronous text checkpoint covers the gap before IndexedDB's
-  // debounced save. Original image data continues to live in IndexedDB.
-  if(article.id===current.id&&!article.deleted)preference('recovery',JSON.stringify({...article,revisions:[]}));
+  article.updated=Date.now();article.assets=[...new Set([...assetRefs(article.markdown),...(article.stickers||[]).map(s=>s.assetId)])];article.assetSettings=captureAssets(article,assetStore);trackArticle(article.id);
+  if(!checkpoint(article,article===current)&&!recoveryWarning){recoveryWarning=true;toast('临时恢复空间不足，正在尝试保存到文章库；建议导出文件备份。',true);}
   $('save-state').className='';$('save-state').textContent='正在保存到浏览器…';
   clearTimeout(saveTimer);saveTimer=window.setTimeout(()=>void save(),1000);
 }
@@ -71,25 +82,48 @@ function syncArticleTitle(article:Article){
   const name=$('article-list')?.querySelector<HTMLElement>(`[data-id="${article.id}"] strong`);if(name)name.textContent=article.title||'未命名文章';
 }
 function snapshot(a:Article,force=false){
+  const settings=captureAssets(a,assetStore);
   const last=a.revisions.at(-1);
-  if(last&&last.markdown===a.markdown&&last.title===a.title&&last.titleMode===a.titleMode&&last.theme===a.theme&&JSON.stringify(last.typography)===JSON.stringify(a.typography)&&JSON.stringify(last.stickers||[])===JSON.stringify(a.stickers||[]))return;
-  if(!force&&last&&Date.now()-last.at<30000)return;
-  a.revisions.push({at:Date.now(),title:a.title,titleMode:a.titleMode,markdown:a.markdown,theme:a.theme,typography:structuredClone(a.typography),assets:assetRefs(a.markdown),stickers:structuredClone(a.stickers||[])});
+  if(last&&last.markdown===a.markdown&&last.title===a.title&&last.titleMode===a.titleMode&&last.theme===a.theme&&last.linkMode===a.linkMode&&JSON.stringify(last.typography)===JSON.stringify(a.typography)&&JSON.stringify(last.stickers||[])===JSON.stringify(a.stickers||[])&&JSON.stringify(last.assetSettings||{})===JSON.stringify(settings))return false;
+  if(!force&&last&&Date.now()-last.at<30000)return false;
+  a.revisions.push({at:Date.now(),title:a.title,titleMode:a.titleMode,markdown:a.markdown,theme:a.theme,typography:structuredClone(a.typography),assets:[...new Set([...assetRefs(a.markdown),...(a.stickers||[]).map(s=>s.assetId)])],stickers:structuredClone(a.stickers||[]),assetSettings:structuredClone(settings),linkMode:a.linkMode});
   a.revisions=a.revisions.slice(-20);
+  return true;
 }
-async function save(){
-  if(saveRunning)return;
-  saveRunning=true;
-  const generation=dirtyGeneration,ids=[...dirtyArticles],imageIds=[...dirtyAssets];
-  const articleCopies=ids.map(id=>{const a=articles.get(id)!;snapshot(a);return structuredClone(a);});
-  const imageCopies=imageIds.map(id=>structuredClone(assets.get(id)!));
+async function save():Promise<boolean>{
+  if(savePromise){const ok=await savePromise;return ok&&(dirtyArticles.size||dirtyAssets.size)?save():ok;}
+  if(!dirtyArticles.size&&!dirtyAssets.size)return true;
+  savePromise=saveBatch();try{return await savePromise;}finally{savePromise=undefined;}
+}
+async function saveBatch(){
+  const generation=dirtyGeneration,ids=new Map([...dirtyArticles].map(id=>[id,articleEdits.get(id)])),imageIds=new Map([...dirtyAssets].map(id=>[id,assetEdits.get(id)]));
   try{
-    await persist(articleCopies,imageCopies);
-    savedGeneration=generation;
-    if(generation===dirtyGeneration){dirtyArticles.clear();dirtyAssets.clear();$('save-state').className='';$('save-state').innerHTML='<i></i> 已保存到浏览器';}
+    const articleCopies=[...ids.keys()].map(id=>{const a=articles.get(id);if(!a)throw new Error('待保存文章不存在');snapshot(a);return structuredClone(a);});
+    const imageCopies=[...imageIds.keys()].map(id=>{const a=assetStore.get(id);if(!a)throw new Error('待保存图片不存在');return structuredClone(a);});
+    const result=await persist(articleCopies,imageCopies);let conflicts=0;
+    for(const image of result.foreignAssets)assetStore.set(image.id,image);
+    for(const commit of result.commits){
+      const live=articles.get(commit.inputId)!;const pending=articleEdits.get(commit.inputId)!==ids.get(commit.inputId),edit=articleEdits.get(commit.inputId)!;
+      if(commit.article.id!==commit.inputId){
+        conflicts++;articles.delete(commit.inputId);if(commit.original){commit.original.titleMode??='manual';articles.set(commit.original.id,commit.original);}
+        live.id=commit.article.id;live.title=pending?live.title+' · '+(commit.original?'冲突副本':'恢复稿'):commit.article.title;live.titleMode='manual';live.created=commit.article.created;
+        articles.set(live.id,live);dirtyArticles.delete(commit.inputId);articleEdits.delete(commit.inputId);
+        if(pending){dirtyArticles.add(live.id);articleEdits.set(live.id,edit);}else dirtyArticles.delete(live.id);
+      }else if(!pending)dirtyArticles.delete(live.id);
+      if(!pending)Object.assign(live,commit.article);else {
+        live.storeRevision=commit.article.storeRevision;
+        const seen=new Set<string>();live.revisions=[...commit.article.revisions,...live.revisions].sort((a,b)=>a.at-b.at).filter(r=>{const key=JSON.stringify(r);if(seen.has(key))return false;seen.add(key);return true;}).slice(-20);
+      }
+      clearCheckpoint(commit.inputId);if(pending)checkpoint(live);
+      if(live===current){preference('current',live.id);syncArticleTitle(live);publishRecoverySidecar(live);}
+    }
+    for(const [id,edit] of imageIds)if(assetEdits.get(id)===edit)dirtyAssets.delete(id);
+    if(!dirtyArticles.size&&!dirtyAssets.size){savedGeneration=dirtyGeneration;$('save-state').className='';$('save-state').innerHTML='<i></i> 已保存到浏览器';}
+    else {savedGeneration=generation;clearTimeout(saveTimer);saveTimer=window.setTimeout(()=>void save(),500);}
     renderLibrary();
-  }catch(e){$('save-state').className='save-error';$('save-state').textContent='保存失败 · 请立即导出备份';toast('浏览器保存失败，当前内容仍在。请导出文件备份。'+errorMessage(e),true);}
-  finally{saveRunning=false;if(dirtyGeneration!==generation){clearTimeout(saveTimer);saveTimer=window.setTimeout(()=>void save(),500);}}
+    if(conflicts)toast('另一窗口更新了同一篇文章，已保留原稿和冲突副本。');
+    return true;
+  }catch(e){$('save-state').className='save-error';$('save-state').textContent='保存失败 · 请立即导出备份';toast('浏览器保存失败，当前内容仍在。请导出文件备份。'+errorMessage(e),true);return false;}
 }
 function queueRender(){clearTimeout(renderTimer);if(previewEditor?.updating){updateStats();return;}renderTimer=window.setTimeout(()=>{if(editor.view.composing){queueRender();return;}render();},200);}
 function updateStats(){
@@ -117,7 +151,7 @@ function render(){
     if(indentButton){const active=current.typography.indent??themeDefaults(theme).indent;indentButton.classList.toggle('active',active);indentButton.setAttribute('aria-pressed',String(active));indentButton.disabled=publisher==='zhihu';}
     $('preview').innerHTML=(publisher==='zhihu'?standardBody(current,assets,renderResult.html):renderResult.html)||'<p style="color:#a1aa9c;text-align:center;padding-top:70px;text-indent:0">从左侧写下第一句话。</p>';
     if(publisher==='wechat')decorateTheme($('preview'),theme);
-    if(publisher==='wechat'&&referencesEnabled)appendReferences($('preview'));
+    if(publisher==='wechat'&&referencesEnabled())appendReferences($('preview'));
     stickerController?.setEnabled(publisher==='wechat'&&!previewEditor?.enabled);if(publisher==='wechat')stickerController?.render();
     previewEditor?.attach();
     $('theme-name').textContent=theme.name;$('theme-dot').style.background=theme.accent;$('preview-caption-name').textContent=publisher==='zhihu'?'知乎 · 标准 Markdown':theme.name;
@@ -136,9 +170,11 @@ function render(){
 function switchArticle(id:string){
   closePopover();
   const next=articles.get(id);if(!next||next.deleted)return;
-  if(current.id!==id){snapshot(current,true);dirtyArticles.add(current.id);}
+  if(current.id!==id&&snapshot(current,true))markDirty(current);
   current=next;preference('current',id);$('document-title').setAttribute('value',current.title);$<HTMLInputElement>('document-title').value=current.title;
+  publishRecoverySidecar(current);
   editor.setText(current.markdown,true);$('preview-scroll').scrollTop=0;render();renderLibrary();if(!$('style-panel').hidden)renderStylePanel();
+  if(window.matchMedia('(max-width:760px)').matches)$('library').hidden=true;
   requestAnimationFrame(()=>$('preview-scroll').scrollTop=0);
 }
 function addArticle(title='未命名文章',markdown='',theme='rational'){
@@ -222,8 +258,8 @@ function renderStylePanel(){
   $('style-panel').innerHTML=`<div class="panel-title"><div><span class="eyebrow">TYPOGRAPHY</span><h2>排版设置</h2></div><button id="style-close" class="icon-button" aria-label="关闭排版设置">×</button></div><p class="help">${esc(t.name)} · 设置随当前文章保存</p><label>正文字体</label><select id="setting-font">${options(o.font||t.font)}</select><label>标题字体</label><select id="setting-headingFont">${options(o.headingFont||t.headingFont||o.font||t.font)}</select>${[['size','正文字号',12,24,.5,o.size??16,'px'],['lineHeight','行高',1.3,2.8,.05,o.lineHeight,''],['paragraphGap','段落间距',0,40,.5,o.paragraphGap??20,'px'],['padding','正文边距',12,48,1,o.padding??24,'px']].map(([key,label,min,max,step,value,unit])=>`<label>${label}<output id="value-${key}">${value}${unit}</output></label><div class="numeric-setting"><input id="setting-${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}滑块"><input id="number-${key}" type="number" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}数值"></div>`).join('')}<label>强调色</label><input id="setting-accent" type="color" value="${o.accent||t.accent}"><label class="switch-row">段首自动空两格<input id="setting-indent" type="checkbox" ${(o.indent??t.id==='classical')?'checked':''}></label><button id="reset-style" class="button outline full">恢复主题默认设置</button><p class="help">字体按设备可用字体自动回退，公众号读者看到的字形可能有所不同。</p>`;
   bind('style-close',()=>{$('style-panel').hidden=true;$('style-button').focus();});
   $('reset-style').insertAdjacentHTML('afterend','<button id="manage-theme-library" class="button outline full">完整主题库 / 导入与恢复</button>');bind('manage-theme-library',()=>showThemeManager(themeHost()));
-  $('reset-style').insertAdjacentHTML('beforebegin',`<label class="switch-row">外部链接转文末参考<input id="setting-references" type="checkbox" ${referencesEnabled?'checked':''}></label>`);
-  bind('setting-references',()=>{referencesEnabled=$<HTMLInputElement>('setting-references').checked;preference('references-enabled',String(referencesEnabled));render();},'change');
+  $('reset-style').insertAdjacentHTML('beforebegin',`<label class="switch-row">外部链接转文末参考<input id="setting-references" type="checkbox" ${referencesEnabled()?'checked':''}></label><p class="help">关闭时保留直接超链接（默认）。选择随当前文章保存；知乎模式始终保留超链接。</p>`);
+  bind('setting-references',()=>setLinkMode($<HTMLInputElement>('setting-references').checked?'end':'direct'),'change');
   $('reset-style').insertAdjacentHTML('beforebegin',`<label for="setting-tableStyle">表格样式</label><select id="setting-tableStyle">${[['theme','跟随主题'],['three-line','三线表 · 学术'],['striped','斑马纹 · 数据'],['grid','网格 · 清晰']].map(([id,name])=>`<option value="${id}" ${id===(o.tableStyle||'theme')?'selected':''}>${name}</option>`).join('')}</select><p class="help">表格样式用于公众号排版及主题 HTML / PDF。知乎与常规 Word 保持标准表格。</p>`);
   bind('setting-tableStyle',()=>{current.typography.tableStyle=$<HTMLSelectElement>('setting-tableStyle').value as Typography['tableStyle'];markDirty();render();},'change');
   for(const key of ['font','headingFont','size','lineHeight','paragraphGap','padding','accent','indent'])bind('setting-'+key,()=>{
@@ -278,15 +314,25 @@ async function addImages(files:File[],position:number){
   if(!files.length)return;
   const target=current;const baseMarkdown=target.markdown;toast('正在读取图片…');
   const imported:Asset[]=[];for(const file of files)imported.push(await fileToAsset(file));
-  for(const asset of imported){assets.set(asset.id,asset);dirtyAssets.add(asset.id);}
+  for(const asset of imported){assets.set(asset.id,asset);trackAsset(asset.id);}
+  const imagesSaved=await stageAssets(imported);
   const group=imported.length>1?uid():'';
   const images=imported.map(a=>`![${a.name.replace(/[\[\]\\\r\n]/g,'')}](asset:${a.id})`).join(group?'\n':'\n\n');
   const text='\n\n'+(group?`:::gallery grid2 ${group}\n${images}\n:::`:images)+'\n\n';
   // If typing continued while files were decoded, insert at the current caret instead of a stale offset.
   if(current.id===target.id){editor.insert(text,target.markdown===baseMarkdown?position:editor.view.state.selection.main.head);}
   else {target.markdown+=text;markDirty(target);}
-  render();toast(`已插入 ${imported.length} 张图片，随文章一起备份`);
+  render();if(imagesSaved)toast(`已插入 ${imported.length} 张图片，随文章一起备份`);
   if(group&&current.id===target.id)showImageLayouts(group,$('image-layout-button'));
+}
+async function stageAssets(imported:Asset[]){
+  const edits=new Map(imported.map(a=>[a.id,assetEdits.get(a.id)]));
+  try{await persist([],imported.map(a=>structuredClone(a)));for(const [id,edit] of edits)if(assetEdits.get(id)===edit)dirtyAssets.delete(id);return true;}
+  catch{toast('图片已保留在当前页面，但原图尚未保存到浏览器。请保留页面并导出备份。',true);return false;}
+}
+function changeAssetAppearance(id:string,patch:Partial<ReturnType<typeof appearance>>){
+  const asset=assets.get(id);if(!asset)return;
+  current.assetSettings={...current.assetSettings,[id]:{...appearance(asset),...patch}};markDirty();render();
 }
 function showImageLayouts(group:string,anchor:HTMLElement){
   const owner=current.id;
@@ -313,9 +359,29 @@ function showMagazineImage(image:HTMLElement){
   const asset=assets.get(image.dataset.asset||'');if(!asset)return;
   const owner=current.id,anchor=$('image-button');const width=asset.width===100?42:Math.max(20,Math.min(55,asset.width));
   const panel=openPopover(anchor,'杂志插图 · 正文环绕',`<div class="quick-choices"><button data-magazine-side="left" class="${asset.align!=='right'?'active':''}">居左环绕</button><button data-magazine-side="right" class="${asset.align==='right'?'active':''}">居右环绕</button></div><label class="magazine-size-label">插图宽度（占正文 %）</label><div class="numeric-setting"><input id="magazine-image-range" type="range" min="20" max="55" step="1" value="${width}" aria-label="插图宽度滑块"><input id="magazine-image-number" type="number" min="20" max="55" step="1" value="${width}" aria-label="插图宽度数值"></div><p class="help">拖动滑块或输入数值；原图完整保留。图注与来源可在素材面板编辑。</p>`);
-  const update=(size:number,side:string)=>{if(current.id!==owner||(themeById(current.theme).baseId||current.theme)!=='magazine'){closePopover();return;}asset.width=Math.max(20,Math.min(55,size));asset.align=side==='right'?'right':'left';dirtyAssets.add(asset.id);markDirty();render();};
+  let captured=false;
+  const update=(size:number,side:string)=>{if(current.id!==owner||(themeById(current.theme).baseId||current.theme)!=='magazine'){closePopover();return;}if(!captured){snapshot(current,true);captured=true;}asset.width=Math.max(20,Math.min(55,size));asset.align=side==='right'?'right':'left';changeAssetAppearance(asset.id,{width:asset.width,align:asset.align});};
   panel.querySelectorAll<HTMLElement>('[data-magazine-side]').forEach(button=>button.onclick=()=>{update(Number($<HTMLInputElement>('magazine-image-number').value)||width,button.dataset.magazineSide!);panel.querySelectorAll('[data-magazine-side]').forEach(el=>el.classList.toggle('active',(el as HTMLElement).dataset.magazineSide===asset.align));});
   for(const id of ['magazine-image-range','magazine-image-number'])bind(id,()=>{const input=$<HTMLInputElement>(id);if(!input.value||!Number.isFinite(input.valueAsNumber))return;update(input.valueAsNumber,asset.align);for(const other of ['magazine-image-range','magazine-image-number'])if(other!==id)$<HTMLInputElement>(other).value=String(asset.width);},'input');
+}
+function showLinkMenu(anchor:HTMLElement){
+  const owner=current,selection=editor.view.state.selection.main,before=current.markdown,selected=editor.view.state.sliceDoc(selection.from,selection.to);
+  const panel=openPopover(anchor,'插入链接',`<div class="inline-style-form"><label>显示文字<input id="link-label" class="field" value="${esc(selected)}" placeholder="如：阅读原文"></label><label>链接地址<input id="link-url" type="url" class="field" placeholder="https://…"></label></div>${publisher==='wechat'?`<p class="help" style="margin-top:16px">这篇文章的外部链接</p><div class="quick-choices" id="link-mode-choices"><button data-link-mode="direct" aria-pressed="${!referencesEnabled()}" class="${!referencesEnabled()?'active':''}">直接超链接 · 默认</button><button data-link-mode="end" aria-pressed="${referencesEnabled()}" class="${referencesEnabled()?'active':''}">汇总为文末参考</button></div><p class="help" style="margin-top:10px">预览、公众号复制、主题导出按此选择处理；Markdown 保留原链接。设置随文章保存。</p>`:'<p class="help" style="margin-top:12px">知乎模式保留普通超链接。</p>'}<div class="quick-actions"><button id="link-cancel" class="button outline">取消</button><button id="link-insert" class="button primary">插入链接</button></div>`);
+  panel.querySelectorAll<HTMLElement>('[data-link-mode]').forEach(button=>button.onclick=()=>{
+    if(current!==owner){closePopover();return;}setLinkMode(button.dataset.linkMode as 'direct'|'end');
+    panel.querySelectorAll<HTMLElement>('[data-link-mode]').forEach(el=>{const active=(el.dataset.linkMode==='end')===referencesEnabled();el.classList.toggle('active',active);el.setAttribute('aria-pressed',String(active));});
+  });
+  bind('link-cancel',closePopover);bind('link-insert',()=>{
+    if(current!==owner||current.markdown!==before){toast('正文已经变化，请重新选择要插入链接的位置。',true);return;}
+    const raw=$<HTMLInputElement>('link-url').value.trim(),label=$<HTMLInputElement>('link-label').value.trim()||raw;
+    if(!/^(?:https?:\/\/|mailto:|tel:|#)/i.test(raw)||/[\u0000-\u0020<>]/.test(raw)){toast('请输入完整的 http(s) 地址、邮件地址或文内锚点。',true);return;}
+    const url=raw.replace(/[()\\]/g,c=>'%'+c.charCodeAt(0).toString(16).toUpperCase());
+    // Keep the source markup of an unchanged selection (bold, color, math,
+    // etc.); only newly entered label text needs literal bracket escaping.
+    const text=selected&&label===selected?selected:label.replace(/[\\\[\]\r\n]/g,c=>c==='\r'||c==='\n'?' ':'\\'+c);
+    closePopover();editor.replaceText(selection.from,selection.to,`[${text}](${url})`);editor.view.focus();
+  });
+  (selected?$('link-url'):$('link-label')).focus();
 }
 const formulas=[
   ['行内公式','E=mc^2',false],['分式与根号','x=\\frac{-b\\pm\\sqrt{b^2-4ac}}{2a}',true],
@@ -329,7 +395,7 @@ const formulas=[
 function showFormulas(event?:Event){const panel=openPopover((event?.currentTarget as HTMLElement)||$('math-button'),'把思考，写成公式',`<p class="modal-subtitle">点击插入后可直接修改。行内使用 $…$，独立公式使用 $$…$$。</p><div class="formula-grid">${formulas.map(([name,tex,display],i)=>`<button class="formula-card" data-formula="${i}"><strong>${name}</strong><div class="formula-example">${renderMath(tex,display).html}</div></button>`).join('')}</div>`);panel.querySelectorAll<HTMLElement>('[data-formula]').forEach(el=>el.onclick=()=>{const [,tex,display]=formulas[Number(el.dataset.formula)];closePopover();editor.insert(display?`\n\n$$\n${tex}\n$$\n\n`:`$${tex}$`);});}
 function showSamples(){openModal('从一个小小的示例开始','<p class="modal-subtitle">示例将作为新文章打开，保留你正在编辑的草稿。</p><div class="option-list"><button class="option-card" data-sample="science"><strong>01 / 一束光，如何告诉我们宇宙的故事？</strong><small>科普文章 · 公式 · 表格 · 脚注</small></button><button class="option-card" data-sample="math"><strong>02 / 在符号之间，理解变化</strong><small>数学公式 · 矩阵 · 多行推导 · 编号</small></button><button class="option-card" data-sample="poetry"><strong>03 / 风经过的地方</strong><small>诗歌 · 散文 · 保留诗行与空行</small></button></div>');$('modal-body').querySelectorAll<HTMLElement>('[data-sample]').forEach(el=>el.onclick=()=>{closeModal();if(el.dataset.sample==='math')addArticle('在符号之间，理解变化',equations,'math');else if(el.dataset.sample==='poetry')addArticle('风经过的地方',poetry,'moon');else addArticle('一束光，如何告诉我们宇宙的故事？',science);});}
 
-function exportBackup(all=false){snapshot(current,true);const selected=all?[...articles.values()]:[current];const data=createBackup(selected,assets,all?folders:[],all);download(data as BlobPart,all?'纸间-文章库备份.zip':safeName(current.title)+'.纸间.zip','application/zip');$('last-export').textContent='已导出文件 · '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});toast(all?'文章库备份已下载（包含回收站）':'文章备份已下载，包含图片和排版设置');}
+function exportBackup(all=false){if(snapshot(current,true))markDirty();const selected=all?[...articles.values()]:[current];const data=createBackup(selected,assetStore,all?folders:[],all);download(data as BlobPart,all?'纸间-文章库备份.zip':safeName(current.title)+'.纸间.zip','application/zip');$('last-export').textContent='已导出文件 · '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});toast(all?'文章库备份已下载（包含回收站）':'文章备份已下载，包含图片和排版设置');}
 function checkIssues():string[]{
   return [...renderResult.errors.map(e=>`第 ${e.line} 行公式：${e.message}`),...renderResult.missing.map(p=>`图片缺失：${p}`),...renderResult.external.map(()=>`存在网络图片，离线阅读需先导入本地副本`),...($('preview').querySelector('img')?['本地图片粘贴后可能需要补插，请检查图片是否保留。']:[]),...(publisher==='wechat'&&current.stickers?.length?['贴纸可尝试保留轮廓，或改为普通左右环绕；自由叠放区域需要合成为图片。']:[])];
 }
@@ -435,17 +501,52 @@ async function importFiles(files:File[]){
     for(const group of backupGroups){const mapping=plan.maps[group.index];for(const a of group.articles){a.theme=mapping.get(a.theme)||a.theme;for(const r of a.revisions)r.theme=mapping.get(r.theme)||r.theme;}}
   }
   folders.push(...incomingFolders);libraryFolder="*";saveFolders();
-  for(const a of incoming){articles.set(a.id,a);dirtyArticles.add(a.id);}
-  for(const a of images){assets.set(a.id,a);dirtyAssets.add(a.id);}
+  for(const a of incoming){articles.set(a.id,a);trackArticle(a.id);checkpoint(a);}
+  for(const a of images){assets.set(a.id,a);trackAsset(a.id);}
   const first=incoming.find(a=>!a.deleted);if(first)switchArticle(first.id);else renderLibrary();
-  dirtyGeneration++;await save();if(dirtyGeneration!==savedGeneration)toast(`已加入 ${incoming.length} 篇文章，但尚未全部保存到浏览器。请保留页面并导出文章库备份。`,true);else toast(`已导入 ${incoming.length} 篇文章，同名文章保留为独立副本`);
+  await save();if(dirtyGeneration!==savedGeneration)toast(`已加入 ${incoming.length} 篇文章，但尚未全部保存到浏览器。请保留页面并导出文章库备份。`,true);else toast(`已导入 ${incoming.length} 篇文章，同名文章保留为独立副本`);
 }
 function showHistory(article:Article){
   const revisions=[...article.revisions].reverse();
-  openModal('找回之前的文字',`<p class="modal-subtitle">${esc(article.title)} · 保留最近 20 个恢复点。连续输入按约 30 秒合并，切换文章和导出时另存恢复点。</p>${revisions.length?revisions.map((r,i)=>`<div class="history-row"><div>${new Date(r.at).toLocaleString('zh-CN')}<small>${r.markdown.length} 字符 · ${themeById(r.theme).name}</small></div><button data-revision="${i}">恢复这个版本</button></div>`).join(''):'<div class="empty-state">继续写作后，这里将出现恢复版本。</div>'}`);
-  $('modal-body').querySelectorAll<HTMLElement>('[data-revision]').forEach(el=>el.onclick=()=>{const revision=structuredClone(revisions[Number(el.dataset.revision)]);snapshot(article,true);Object.assign(article,{title:revision.title,titleMode:revision.titleMode||'manual',markdown:revision.markdown,theme:revision.theme,typography:revision.typography,assets:revision.assets,stickers:revision.stickers||[]});markDirty(article);switchArticle(article.id);closeModal();toast('已恢复版本，恢复前的内容也已保留');});
+  openModal('找回之前的文字',`<p class="modal-subtitle">${esc(article.title)} · 保留最近 20 个恢复点。连续输入按约 30 秒合并，切换文章和导出时另存恢复点。先查看变动，再决定是否恢复。</p>${revisions.length?revisions.map((r,i)=>`<div class="history-row"><div>${new Date(r.at).toLocaleString('zh-CN')}<small>${r.markdown.length} 字符 · ${themeById(r.theme).name}</small></div><div class="history-actions"><button data-compare-revision="${i}">对比 / 查看</button><button data-revision="${i}">恢复这个版本</button></div></div>`).join(''):'<div class="empty-state">继续写作后，这里将出现恢复版本。</div>'}`);
+  $('modal-body').querySelectorAll<HTMLElement>('[data-revision]').forEach(el=>el.onclick=()=>restoreRevision(article,revisions[Number(el.dataset.revision)]));
+  $('modal-body').querySelectorAll<HTMLElement>('[data-compare-revision]').forEach(el=>el.onclick=()=>showRevisionDiff(article,revisions[Number(el.dataset.compareRevision)]));
+}
+function restoreRevision(article:Article,source:Revision){
+  const revision=structuredClone(source);snapshot(article,true);Object.assign(article,{title:revision.title,titleMode:revision.titleMode||'manual',markdown:revision.markdown,theme:revision.theme,typography:revision.typography,assets:revision.assets,stickers:revision.stickers||[],assetSettings:revision.assetSettings||{},linkMode:revision.linkMode});markDirty(article);switchArticle(article.id);closeModal();toast('已恢复版本，恢复前的内容也已保留');
+}
+function showRevisionDiff(article:Article,revision:Revision){
+  const diff=compareText(revision.markdown,article.markdown),view=compactDiff(diff);
+  const changes:string[]=[];
+  if(revision.title!==article.title)changes.push('文章名称');
+  if(revision.theme!==article.theme)changes.push(`主题：${themeById(revision.theme).name} → ${themeById(article.theme).name}`);
+  if(JSON.stringify(revision.typography)!==JSON.stringify(article.typography))changes.push('字体 / 排版设置');
+  if(JSON.stringify(captureAssets(revision,assetStore))!==JSON.stringify(captureAssets(article,assetStore)))changes.push('图片尺寸 / 图注');
+  if(JSON.stringify(revision.stickers||[])!==JSON.stringify(article.stickers||[]))changes.push('贴纸布局');
+  if((revision.linkMode||'direct')!==(article.linkMode||'direct'))changes.push('链接发布方式');
+  openModal('看看这次改了什么',`<div class="revision-comparison"><div class="revision-labels"><span><small>恢复点</small>${new Date(revision.at).toLocaleString('zh-CN')}</span><span><small>对照稿</small>${esc(article.title)} · 当前内容</span></div><div class="revision-summary"><span class="diff-added">＋ ${diff.added} 行新增</span><span class="diff-removed">− ${diff.removed} 行移除</span><span>按 Markdown 源码行对比</span></div>${changes.length?`<p class="revision-settings">排版变动：${changes.map(esc).join('；')}</p>`:''}<div class="revision-diff" tabindex="0" aria-label="恢复点与当前文章的文字差异">${diff.tooLarge?'<p class="empty-state">行数较多，暂不展开逐行对比。可先导出当前稿，再恢复此版本。</p>':!diff.lines.length?'<p class="empty-state">两份稿件的正文一致。</p>':view.rows.map(row=>row.kind==='gap'?`<div class="diff-gap">··· 省略 ${row.count} 行相同内容 ···</div>`:`<div class="diff-line diff-${row.kind}"><span aria-label="恢复点行号">${row.oldLine??''}</span><span aria-label="当前稿行号">${row.newLine??''}</span><b aria-hidden="true">${row.kind==='added'?'+':row.kind==='removed'?'−':' '}</b><code>${esc(row.text)||' '}</code></div>`).join('')}${view.truncated?'<p class="help">已显示前 600 行变动，更多内容请在编辑区查看。</p>':''}</div><div class="revision-actions"><button id="revision-diff-back" class="button outline">返回恢复点</button><button id="revision-diff-restore" class="button primary">恢复此版本</button></div><p class="help">恢复时同时恢复主题、排版与图片设置，当前稿会先保存为一个恢复点。</p></div>`,'REVISION COMPARISON');
+  bind('revision-diff-back',()=>showHistory(article));bind('revision-diff-restore',()=>restoreRevision(article,revision));
 }
 function showTOC(){const headings=[...$('preview').querySelectorAll<HTMLElement>('h1,h2,h3,h4')];openModal('文章目录',`<ul class="toc-list">${headings.map((h,i)=>`<li><button data-heading="${i}" style="padding-left:${10+(Number(h.tagName.slice(1))-1)*15}px">${esc(h.textContent||'')}</button></li>`).join('')}</ul>${headings.length?'':'<p class="empty-state">添加 Markdown 标题后，目录会自动生成。</p>'}`);$('modal-body').querySelectorAll<HTMLElement>('[data-heading]').forEach(el=>el.onclick=()=>{const h=headings[Number(el.dataset.heading)];closeModal();editor.goto(Number(h.dataset.line||0)+1);h.scrollIntoView({block:'start'});});}
+
+function showWritingTools(anchor:HTMLElement){
+  const panel=openPopover(anchor,'写作工具',`<div class="writing-tool-list"><button id="writing-check"><strong>发布前检查</strong><small>找出待补标记、占位链接、标题与脚注问题</small></button><button id="writing-tidy"><strong>轻量整理</strong><small>预览整理空行与无意义行尾空格，支持撤销</small></button><button id="writing-history"><strong>版本对比 / 恢复</strong><small>先看改了什么，再找回之前的文字</small></button><button id="writing-checkpoint"><strong>留一个恢复点</strong><small>大幅修改前，手动记录此时的稿件与排版</small></button></div><p class="help" style="margin-top:16px">从写作骨架开始 · 在新文章中打开</p><div class="quick-choices">${writingOutlines.map((o,i)=>`<button data-writing-outline="${i}" title="${esc(o.description)}">${o.name}</button>`).join('')}</div>`);
+  bind('writing-check',()=>{closePopover();showWritingCheck();});bind('writing-tidy',()=>{closePopover();showWritingTidy();});bind('writing-history',()=>{closePopover();showHistory(current);});
+  bind('writing-checkpoint',async()=>{closePopover();const added=snapshot(current,true);if(added)markDirty();const ok=await save();toast(ok?(added?'已保存此时的恢复点':'此时内容已有恢复点'):'恢复点尚未保存到浏览器，请保留页面并导出备份。',!ok);});
+  panel.querySelectorAll<HTMLElement>('[data-writing-outline]').forEach(button=>button.onclick=()=>{const outline=writingOutlines[Number(button.dataset.writingOutline)];closePopover();addArticle(outline.name,outline.text,outline.theme);toast('已在新文章中打开写作骨架，原稿保留在文章库。');});
+}
+function showWritingCheck(){
+  render();const article=current,issues=inspectWriting(article.markdown);
+  for(const error of renderResult.errors)issues.push({line:error.line,title:'公式需要检查',detail:error.message});
+  for(const id of renderResult.missing)issues.push({line:Math.max(1,article.markdown.slice(0,article.markdown.indexOf(id)).split('\n').length),title:'图片缺失',detail:'请重新插入本地图片或导入含原图的备份。'});
+  openModal('发布前，读一遍这些地方',`<div class="writing-check"><p class="modal-subtitle">检查待补标记和常见格式问题；知识事实与资料可信度仍需要你审阅。代码、公式和诗歌中的留白不纳入整理。</p><div class="writing-check-summary"><strong>${issues.length?issues.length+' 处可检查':'没有发现常见格式问题'}</strong><button id="writing-check-refresh" class="text-button">重新检查</button></div>${issues.map((issue,i)=>`<button class="writing-issue" data-writing-issue="${i}"><span>第 ${issue.line} 行</span><div><strong>${esc(issue.title)}</strong><small>${esc(issue.detail)}</small></div><b aria-hidden="true">↗</b></button>`).join('')||'<p class="empty-state">再读一遍开头、结尾与图注，就可以准备复制或导出了。</p>'}<p class="help">点击任一项回到对应源码。当前显示最多 80 条文字检查结果。</p></div>`,'BEFORE PUBLISHING');
+  bind('writing-check-refresh',showWritingCheck);$('modal-body').querySelectorAll<HTMLElement>('[data-writing-issue]').forEach(button=>button.onclick=()=>{if(current!==article){closeModal();return;}const issue=issues[Number(button.dataset.writingIssue)];closeModal();if(window.matchMedia('(max-width:760px)').matches)$('mobile-edit').click();editor.goto(issue.line);});
+}
+function showWritingTidy(){
+  const article=current,before=article.markdown,result=tidyMarkdown(before),diff=compareText(before,result.text),view=compactDiff(diff);
+  openModal('轻量整理 · 先看改动',`<div class="revision-comparison"><p class="modal-subtitle">整理普通段落之间过多的空行和单个行尾空格；保留 Markdown 双空格换行，以及代码、公式、诗歌与组图块。</p><p class="revision-settings">${result.singleSpaces} 处单个行尾空格 · ${result.extraBlankLines} 行多余空行${result.newlines?' · 统一换行符':''}</p><div class="revision-diff" tabindex="0" aria-label="文字整理前后对比">${view.rows.map(row=>row.kind==='gap'?`<div class="diff-gap">··· ${row.count} 行相同内容 ···</div>`:`<div class="diff-line diff-${row.kind}"><span>${row.oldLine??''}</span><span>${row.newLine??''}</span><b>${row.kind==='added'?'+':row.kind==='removed'?'−':' '}</b><code>${esc(row.text)||' '}</code></div>`).join('')||`<p class="empty-state">${diff.tooLarge?'行数较多，暂不提供批量整理。':'没有需要整理的内容。'}</p>`}${view.truncated?'<p class="help">已显示前 600 行变动。</p>':''}</div><div class="revision-actions"><button id="writing-tidy-cancel" class="button outline">取消</button><button id="writing-tidy-apply" class="button primary" ${before===result.text||diff.tooLarge?'disabled':''}>应用整理</button></div><p class="help">应用前保留恢复点，应用后可按 Ctrl + Z 撤销。</p></div>`,'GENTLE CLEANUP');
+  bind('writing-tidy-cancel',closeModal);bind('writing-tidy-apply',()=>{if(current!==article||article.markdown!==before){toast('正文已经变化，请关闭窗口并重新整理。',true);return;}snapshot(article,true);const head=editor.view.state.selection.main.head;closeModal();editor.view.dispatch({changes:{from:0,to:before.length,insert:result.text},selection:{anchor:Math.min(head,result.text.length)},userEvent:'input.tidy'});editor.view.focus();toast('已整理，可撤销或从恢复点找回。');});
+}
 
 function showAssets(){
   render();const nodes=[...$('preview').querySelectorAll<HTMLElement>('.image-wrap,.math-inline,.math-display,.sticker-item')].sort((a,b)=>Number(a.dataset.stickerLine??a.dataset.line??a.closest<HTMLElement>('[data-line]')?.dataset.line??0)-Number(b.dataset.stickerLine??b.dataset.line??b.closest<HTMLElement>('[data-line]')?.dataset.line??0));
@@ -455,20 +556,22 @@ function showAssets(){
   }).join('')||'<div class="empty-state">还没有图片或公式。试试在编辑区直接粘贴一张截图。</div>'}`,'ARTICLE ASSETS');
   if(publisher==='wechat'&&current.stickers?.length){const notice=document.createElement('div');notice.className='notice';notice.innerHTML=`文中有 ${current.stickers.length} 张贴纸。选中贴纸可切换左右轮廓环绕，也可合成局部图片。<br><button id="download-sticker-regions" class="text-button">生成并下载贴纸局部图 ↗</button>`;$('modal-body').prepend(notice);bind('download-sticker-regions',showStickerRegions);}
   $('modal-body').querySelectorAll<HTMLElement>('.asset-fields').forEach(fields=>{const id=fields.querySelector<HTMLElement>('[data-asset-id]')?.dataset.assetId;const a=id&&assets.get(id);if(a)fields.insertAdjacentHTML('beforeend',`<label class="asset-caption">图号（如 图 1）<input data-asset-field="figureLabel" data-asset-id="${a.id}" value="${esc(a.figureLabel||'')}"></label><label class="asset-caption">来源信息<input data-asset-field="source" data-asset-id="${a.id}" value="${esc(a.source||'')}" placeholder="作者、机构、文献或网址"></label>`);});
+  let captured=false;
   $('modal-body').querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-asset-field]').forEach(el=>el.onchange=()=>{
     const a=assets.get(el.dataset.assetId!)!;const field=el.dataset.assetField!;
+    if(!captured){snapshot(current,true);captured=true;}
     if(field==='width'){a.width=Math.max(10,Math.min(100,Number(el.value)||100));el.value=String(a.width);}
     else if(field==='alt'){
       a.alt=el.value;const id=a.id;const newText=current.markdown.replace(new RegExp('!\\[[^\\]]*\\]\\(asset:'+id+'\\)','g'),()=>`![${a.alt.replace(/[\[\]\\\r\n]/g,'')}](asset:${id})`);editor.setText(newText);current.markdown=newText;
     }else (a as any)[field]=el.value;
-    dirtyAssets.add(a.id);markDirty();render();
+    changeAssetAppearance(a.id,appearance(a));
   });
   $('modal-body').querySelectorAll<HTMLElement>('[data-download-asset]').forEach(el=>el.onclick=()=>{const a=assets.get(el.dataset.downloadAsset!)!;download(bytesFromData(a.data) as BlobPart,safeName(a.name),a.mime);});
   $('modal-body').querySelectorAll<HTMLElement>('[data-svg]').forEach(el=>el.onclick=()=>{const svg=nodes[Number(el.dataset.svg)].querySelector('svg')!;const clone=svg.cloneNode(true) as SVGElement;clone.setAttribute('xmlns','http://www.w3.org/2000/svg');clone.style.color='#1f2937';download(new XMLSerializer().serializeToString(clone),`公式-${Number(el.dataset.svg)+1}.svg`,'image/svg+xml');});
   $('modal-body').querySelectorAll<HTMLElement>('[data-png]').forEach(el=>el.onclick=()=>void(async()=>{try{const svg=nodes[Number(el.dataset.png)].querySelector('svg')!;download(await svgToPNG(svg),`公式-${Number(el.dataset.png)+1}.png`,'image/png');}catch(e){toast(errorMessage(e),true);}})());
   $('modal-body').querySelectorAll<HTMLElement>('[data-localize]').forEach(el=>el.onclick=()=>void(async()=>{
     const node=nodes[Number(el.dataset.localize)],url=node.dataset.source!;const target=current;
-    try{el.textContent='正在读取…';const response=await fetch(url,{credentials:'omit',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('网络请求失败');const blob=await response.blob();const a=await fileToAsset(new File([blob],'网络图片.'+extension(blob.type),{type:blob.type}));assets.set(a.id,a);dirtyAssets.add(a.id);target.markdown=target.markdown.split(url).join('asset:'+a.id);markDirty(target);if(current.id===target.id){editor.setText(target.markdown);showAssets();}toast('已导入本地副本');}
+    try{el.textContent='正在读取…';const response=await fetch(url,{credentials:'omit',signal:AbortSignal.timeout(15000)});if(!response.ok)throw new Error('网络请求失败');const blob=await response.blob();const a=await fileToAsset(new File([blob],'网络图片.'+extension(blob.type),{type:blob.type}));assets.set(a.id,a);trackAsset(a.id);const staged=await stageAssets([a]);snapshot(target,true);target.markdown=target.markdown.split(url).join('asset:'+a.id);markDirty(target);if(current.id===target.id){editor.setText(target.markdown);showAssets();}if(staged)toast('已导入本地副本');}
     catch{el.textContent='导入本地副本';toast('网站不允许读取或图片不可用。请先下载图片，再用「图片」插入。',true);}
   })());
   $('modal-body').querySelectorAll<HTMLElement>('[data-compress-asset]').forEach(el=>el.onclick=()=>void compressImage(el.dataset.compressAsset!).catch(e=>toast(errorMessage(e),true)));
@@ -477,8 +580,8 @@ async function compressImage(id:string){
   const original=assets.get(id)!,target=current;const img=new Image();await new Promise<void>((resolve,reject)=>{img.onload=()=>resolve();img.onerror=()=>reject(new Error('无法读取图片'));img.src=original.data;});
   const ratio=Math.min(1,1600/img.naturalWidth);const canvas=document.createElement('canvas');canvas.width=Math.round(img.naturalWidth*ratio);canvas.height=Math.round(img.naturalHeight*ratio);canvas.getContext('2d')!.drawImage(img,0,0,canvas.width,canvas.height);
   const data=canvas.toDataURL('image/webp',.85);const copy={...original,id:uid(),name:original.name.replace(/\.[^.]+$/,'')+'-压缩.webp',mime:'image/webp',data};
-  snapshot(target,true);assets.set(copy.id,copy);dirtyAssets.add(copy.id);target.markdown=target.markdown.replaceAll('asset:'+id,'asset:'+copy.id);for(const sticker of target.stickers||[])if(sticker.assetId===id)sticker.assetId=copy.id;markDirty(target);
-  if(current.id===target.id){editor.setText(target.markdown);showAssets();}toast('已换用压缩副本，原图仍保留在之前的恢复版本中');
+  assets.set(copy.id,copy);trackAsset(copy.id);const staged=await stageAssets([copy]);snapshot(target,true);target.markdown=target.markdown.replaceAll('asset:'+id,'asset:'+copy.id);for(const sticker of target.stickers||[])if(sticker.assetId===id)sticker.assetId=copy.id;target.assetSettings={...target.assetSettings,[copy.id]:appearance(copy)};markDirty(target);
+  if(current.id===target.id){editor.setText(target.markdown);showAssets();}if(staged)toast('已换用压缩副本，原图仍保留在之前的恢复版本中');
 }
 
 function makeSticker(assetId:string){
@@ -506,10 +609,9 @@ async function showStickerRegions(){
 async function init(){
   let storageError='';
   try{await openStore();const stored=await loadStore();for(const a of stored.articles){if(!a.titleMode)a.titleMode='manual';articles.set(a.id,a);}for(const a of stored.assets)assets.set(a.id,a);}catch(e){storageError=errorMessage(e);}
-  let recovered=false;
-  try{const draft=JSON.parse(readPreference('recovery','null')) as Article|null;if(draft?.version===1&&typeof draft.markdown==='string'&&typeof draft.id==='string'&&typeof draft.title==='string'&&Number.isFinite(draft.updated)){
-    const saved=articles.get(draft.id);if(!saved?.deleted&&(!saved||draft.updated>saved.updated)){articles.set(draft.id,{...freshArticle(),...saved,...draft,titleMode:draft.titleMode||saved?.titleMode||'manual',revisions:saved?.revisions||[]});preference('current',draft.id);recovered=true;}
-  }}catch{/* A corrupt recovery checkpoint cannot block the saved library. */}
+  const recovery=await recoverDrafts(articles);
+  for(const article of articles.values()){article.linkMode??=legacyReferences?'end':'direct';for(const revision of article.revisions)revision.linkMode??=article.linkMode;}
+  const newestRecovered=recovery.recovered.filter(a=>!a.deleted).sort((a,b)=>b.updated-a.updated)[0];if(newestRecovered)preference('current',newestRecovered.id);
   const active=[...articles.values()].filter(a=>!a.deleted).sort((a,b)=>b.updated-a.updated);
   current=active.find(a=>a.id===readPreference('current',''))||active[0]||current;
   const first=!articles.has(current.id);if(first)articles.set(current.id,current);
@@ -547,6 +649,7 @@ async function init(){
   const dividerButton=document.createElement('button');dividerButton.id='divider-button';dividerButton.textContent='分割线 ▾';$('image-layout-button').after(dividerButton);dividerButton.onclick=()=>showDividers(dividerButton);
   const indentButton=document.createElement('button');indentButton.id='indent-toggle';indentButton.textContent='段首空两格';indentButton.title='自动缩进正文首行；不改变 Markdown 内容';$('inline-style-button').before(indentButton);indentButton.onclick=()=>{current.typography.indent=!(current.typography.indent??themeDefaults(themeById(current.theme)).indent);markDirty();render();if(!$('style-panel').hidden)renderStylePanel();};
   bind('math-button',showFormulas);bind('assets-button',showAssets);bind('toc-button',showTOC);bind('undo-button',()=>editor.undo());bind('redo-button',()=>editor.redo());bind('search-button',()=>editor.search());
+  const writingButton=document.createElement('button');writingButton.id='writing-tools-button';writingButton.className='tool-button';writingButton.setAttribute('aria-label','写作工具');writingButton.title='写作检查、文字整理、恢复点与写作骨架';writingButton.innerHTML='✎ <span>写作工具</span> ▾';$('assets-button').before(writingButton);writingButton.onclick=()=>showWritingTools(writingButton);
   bind('publisher',()=>{publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
   bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>$('import-input').click());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
   document.querySelectorAll<HTMLElement>('[data-format]').forEach(el=>el.onclick=()=>{
@@ -560,7 +663,7 @@ async function init(){
     else if(type==='quote'||type==='poem')blockFormat(editor,type);
     else if(type==='code')codeFormat(editor);
     else if(type==='footnote'){insertFootnote(editor);toast('脚注标记已插入，直接填写文末选中的注释内容。');}
-    else if(type==='link')editor.wrap('[','](https://example.com)');
+    else if(type==='link')showLinkMenu(el);
     else if(type==='table')showTableMenu(el);
   });
   bind('selection-block-button',e=>showBlockMenu(e.currentTarget as HTMLElement));
@@ -573,8 +676,7 @@ async function init(){
     else if(action==='move')moveArticle(target,article);
     else if(action==='history')showHistory(article);
     else if(action==='duplicate'){
-      const copy=freshArticle(article.title+' · 副本',article.markdown);copy.titleMode='manual';copy.folder=article.folder;copy.theme=article.theme;copy.typography=structuredClone(article.typography);copy.stickers=structuredClone(article.stickers||[]).map(s=>({...s,id:uid()}));
-      for(const id of new Set([...assetRefs(copy.markdown),...copy.stickers.map(s=>s.assetId)])){const a=assets.get(id);if(a){const cloned={...a,id:uid()};assets.set(cloned.id,cloned);dirtyAssets.add(cloned.id);copy.markdown=copy.markdown.replaceAll('asset:'+id,'asset:'+cloned.id);for(const s of copy.stickers)if(s.assetId===id)s.assetId=cloned.id;}}
+      const copy=freshArticle(article.title+' · 副本',article.markdown);copy.titleMode='manual';copy.folder=article.folder;copy.theme=article.theme;copy.typography=structuredClone(article.typography);copy.stickers=structuredClone(article.stickers||[]).map(s=>({...s,id:uid()}));copy.assetSettings=captureAssets(article,assetStore);copy.linkMode=article.linkMode;
       articles.set(copy.id,copy);markDirty(copy);switchArticle(copy.id);
     }else if(!trash)switchArticle(article.id);
   });
@@ -590,6 +692,11 @@ async function init(){
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirtyArticles.size)void save();});
   switchArticle(current.id);
   if(themeLibraryError())toast(themeLibraryError(),true);
-  if(storageError){$('save-state').className='save-error';$('save-state').textContent='本地存储不可用 · 请导出备份';toast('浏览器未开放本地存储。可继续编辑，请用文件备份保存。',true);}else if(first||recovered){markDirty();if(recovered)toast('已找回上次尚未保存完成的文字。');}else $('save-state').innerHTML='<i></i> 已保存到浏览器';
+  for(const article of recovery.recovered)markDirty(article);
+  if(first)markDirty();
+  if(storageError){$('save-state').className='save-error';$('save-state').textContent='本地存储不可用 · 请导出备份';toast('浏览器未开放本地存储。可继续编辑，请用文件备份保存。',true);}
+  else if(recovery.recovered.length)toast(`已找回 ${recovery.recovered.length} 篇未完成稿件；有其他窗口更新时会保留恢复副本。`);
+  else if(!first)$('save-state').innerHTML='<i></i> 已保存到浏览器';
+  if(recovery.invalid)toast(`有 ${recovery.invalid} 条临时恢复记录损坏，已保留原记录，文章库仍可使用。`,true);
 }
 void init().catch(e=>{toast('初始化失败：'+errorMessage(e),true);$('save-state').textContent='初始化失败，请重新打开';});

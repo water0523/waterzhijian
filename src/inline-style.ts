@@ -72,6 +72,10 @@ export function installInlineStyles(md:MarkdownIt){
     state.pos=close+3;state.posMax=max;return true;
   });
   md.inline.ruler.before('link','text_style',(state,silent)=>{
+    // During native link-label lookahead, consuming a styled [span]{...} as
+    // one token makes markdown-it mistake it for a nested link. Let lookahead
+    // count its brackets; the real (non-silent) label pass renders the span.
+    if(silent)return false;
     const start=state.pos,max=state.posMax;if(state.src[start]!=='[')return false;
     const end=md.helpers.parseLinkLabel(state,start,false);
     if(end<0||state.src[end+1]!=='{')return false;
