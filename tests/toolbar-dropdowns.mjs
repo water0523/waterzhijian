@@ -1,0 +1,35 @@
+import {chromium} from 'playwright';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const channel=process.env.TOOLBAR_BROWSER||'chrome',checks=[],errors=[],network=[];
+await mkdir(`test-results/toolbar-${channel}-temp`,{recursive:true});process.env.TEMP=process.env.TMP=process.env.TMPDIR=path.resolve(`test-results/toolbar-${channel}-temp`);
+const browser=await chromium.launch({channel,headless:true}),context=await browser.newContext({offline:true,viewport:{width:1440,height:900}}),page=await context.newPage();
+page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url()))network.push(r.url());});
+const check=s=>{checks.push(s);console.log('PASS '+s);};
+const source=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('paper-recovery')).markdown);
+const select=async()=>{await page.locator('.cm-content').focus();await page.keyboard.press('Control+End');await page.keyboard.press('Home');await page.keyboard.press('Shift+End');await page.waitForTimeout(120);};
+const press=async(id,open=false)=>{
+ const button=page.locator('#'+id);await button.scrollIntoViewIfNeeded();const box=await button.boundingBox();assert.ok(box,id+' should be visible');await page.mouse.move(box.x+box.width/2,box.y+box.height/2);await page.mouse.down();await page.waitForTimeout(130);
+ if(open)assert.equal(await page.locator('#selection-tools').isVisible(),true,'toolbar vanished between pointer down and click: '+id);
+ await page.mouse.up();await page.waitForTimeout(180);
+};
+const anchor=async id=>{assert.equal(await page.locator('#quick-popover').count(),1);assert.equal(await page.locator('#quick-popover').getAttribute('data-anchor'),id);assert.equal(await page.locator('#'+id).getAttribute('aria-expanded'),'true');assert.equal(await page.locator('#selection-tools').isVisible(),true);};
+try{
+ await page.goto(pathToFileURL(path.resolve('dist/纸间-离线公众号排版器.html')).href);await page.waitForSelector('.cm-content');const initial='# 快捷条切换\n\n这段文字需要连续设置样式';await page.locator('.cm-content').focus();await page.keyboard.press('Control+a');await page.keyboard.insertText(initial);await select();
+ await press('selection-style-button');await anchor('selection-style-button');
+ const menus=['selection-size-button','selection-color-button','selection-highlight-button','selection-marker-button','selection-effect-button','selection-role-button','selection-block-button','selection-style-button'];
+ for(const id of menus){await press(id,true);await anchor(id);assert.equal(await source(),initial);}
+ check('human-paced pointer down/up switches among every floating dropdown without hiding the toolbar or changing text');
+ await press('selection-style-button',true);assert.equal(await page.locator('#quick-popover').count(),0);assert.equal(await page.locator('#selection-tools').isVisible(),true);assert.equal(await page.locator('#selection-style-button').getAttribute('aria-expanded'),'false');await press('selection-style-button');await anchor('selection-style-button');check('clicking the same trigger closes its menu, retains the toolbar and opens normally on the next click');
+ await page.click('#quick-close');await page.waitForTimeout(160);assert.equal(await page.locator('#selection-tools').isVisible(),true);assert.equal(await page.locator('#selection-style-button').evaluate(n=>n===document.activeElement),true);await press('selection-marker-button');await anchor('selection-marker-button');await page.keyboard.press('Escape');await page.waitForTimeout(160);assert.equal(await page.locator('#quick-popover').count(),0);assert.equal(await page.locator('#selection-tools').isVisible(),true);check('close button and Escape return focus to the trigger and leave other floating controls usable');
+ await press('selection-style-button');await press('selection-marker-button',true);await page.click('#quick-popover [data-color="#bbf7d0"]');await page.waitForTimeout(230);assert.match(await source(),/\[这段文字需要连续设置样式\]\{marker=#bbf7d0\}/);assert.equal(await page.locator('#selection-tools').isVisible(),true);await press('selection-style-button');await page.click('[data-picker-font="kai"]');await page.waitForTimeout(230);assert.match(await source(),/font=kai marker=#bbf7d0/);check('switching menus then choosing colors and fonts still applies immediately to the original selection');
+ await press('selection-role-button');await page.locator('#selection-tools [data-format="bold"]').click();await page.waitForTimeout(220);assert.equal(await page.locator('#quick-popover').count(),0);assert.equal(await page.locator('#selection-tools').isVisible(),true);assert.match(await source(),/font=kai bold marker=#bbf7d0/);check('a direct formatting action closes the old dropdown and applies to the retained selection');
+ await press('selection-color-button');await page.locator('#selection-tools [data-format="link"]').click();await page.waitForTimeout(200);assert.equal(await page.locator('#quick-popover [id=link-url]').count(),1);await page.click('#link-cancel');await select();await press('selection-block-button');await press('selection-block-button',true);assert.equal(await page.locator('#quick-popover').count(),0);assert.equal(await page.locator('#selection-tools').isVisible(),true);check('paragraph and link popovers share switching and toggle behavior with font dropdowns');
+ for(const id of ['inline-style-button','inline-marker-button','inline-role-button']){await press(id);assert.equal(await page.locator('#quick-popover').getAttribute('data-anchor'),id);await press(id);assert.equal(await page.locator('#quick-popover').count(),0);}
+ check('main toolbar dropdown triggers also toggle closed on the second click');
+ await select();await press('selection-style-button');await page.locator('#preview').click({position:{x:50,y:50}});await page.waitForTimeout(180);assert.equal(await page.locator('#quick-popover').count(),0);assert.equal(await page.locator('#selection-tools').isVisible(),false);await select();await press('selection-marker-button');await page.keyboard.press('Escape');await page.locator('#document-title').focus();await page.waitForTimeout(180);assert.equal(await page.locator('#selection-tools').isVisible(),false);check('clicking away or moving focus out dismisses the floating controls normally');
+ await page.setViewportSize({width:1280,height:520});await select();await press('selection-marker-button');await press('selection-style-button',true);await anchor('selection-style-button');await press('selection-style-button',true);assert.equal(await page.locator('#quick-popover').count(),0);await page.screenshot({path:`test-results/toolbar-dropdowns-${channel}.png`,fullPage:false});check('short desktop windows retain switching and repeated-click behavior');
+ assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
+}finally{await writeFile(`test-results/toolbar-dropdowns-${channel}.json`,JSON.stringify({channel,checks,errors,network},null,2));await browser.close();}

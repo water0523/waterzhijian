@@ -1,10 +1,13 @@
 import {escapeHTML} from './model';
 let anchor:HTMLElement|null=null;
 let disposeLayout=()=>{};
+const toolbarFor=(target:HTMLElement|null)=>target?.closest<HTMLElement>('[role="toolbar"],.format-toolbar');
 export function closePopover(){disposeLayout();disposeLayout=()=>{};const panel=document.getElementById('quick-popover');panel?.remove();anchor?.setAttribute('aria-expanded','false');anchor=null;if(panel)window.dispatchEvent(new Event('paper-popover-close'));}
+function closeAndFocus(){const trigger=anchor;closePopover();trigger?.focus({preventScroll:true});}
 export function openPopover(target:HTMLElement,title:string,html:string,options:{width?:number}={}){
   closePopover();anchor=target;target.setAttribute('aria-expanded','true');
   const panel=document.createElement('section');panel.id='quick-popover';panel.className='quick-popover';panel.setAttribute('aria-label',title);panel.dataset.anchor=target.id;
+  panel.dataset.toolbar=toolbarFor(target)?.id||'';
   panel.innerHTML=`<header><strong>${escapeHTML(title)}</strong><button class="icon-button" aria-label="收起菜单" id="quick-close">×</button></header><div class="quick-body"><div class="quick-content">${html}</div></div>`;
   const header=panel.querySelector('header')!,body=panel.querySelector<HTMLElement>('.quick-body')!,content=panel.querySelector<HTMLElement>('.quick-content')!;
   const actions=content.querySelector<HTMLElement>(':scope > .inline-style-actions,:scope > .quick-actions');
@@ -34,10 +37,18 @@ export function openPopover(target:HTMLElement,title:string,html:string,options:
   window.visualViewport?.addEventListener('resize',schedule);window.visualViewport?.addEventListener('scroll',schedule);
   disposeLayout=()=>{observer.disconnect();cancelAnimationFrame(frame);window.removeEventListener('resize',schedule);window.removeEventListener('scroll',scroll,true);window.visualViewport?.removeEventListener('resize',schedule);window.visualViewport?.removeEventListener('scroll',schedule);};
   layout();
-  panel.querySelector('#quick-close')!.addEventListener('click',closePopover);return panel;
+  panel.querySelector('#quick-close')!.addEventListener('click',closeAndFocus);return panel;
 }
-document.addEventListener('pointerdown',e=>{const panel=document.getElementById('quick-popover');if(panel&&!panel.contains(e.target as Node)&&!anchor?.contains(e.target as Node))closePopover();});
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('quick-popover')){const old=anchor;closePopover();old?.focus();e.preventDefault();}});
+// Keep the toolbar alive between pointerdown and click. Removing a focused
+// menu here would blur the editor and hide the next trigger before its click.
+document.addEventListener('pointerdown',e=>{const panel=document.getElementById('quick-popover'),target=e.target as Node;if(panel&&!panel.contains(target)&&!anchor?.contains(target)&&!toolbarFor(anchor)?.contains(target))closePopover();});
+document.addEventListener('click',e=>{
+  if(!document.getElementById('quick-popover')||!anchor)return;
+  const target=e.target as HTMLElement;
+  if(anchor.contains(target)){closeAndFocus();e.preventDefault();e.stopPropagation();}
+  else if(toolbarFor(anchor)?.contains(target)){closePopover();target.closest<HTMLElement>('button')?.focus({preventScroll:true});}
+},true);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('quick-popover')){closeAndFocus();e.preventDefault();}});
 export const standardColors=[['墨黑','#202124'],['石灰','#6b7280'],['白色','#ffffff'],['朱红','#dc2626'],['橙色','#ea580c'],['金黄','#eab308'],['草绿','#16a34a'],['青绿','#0d9488'],['天蓝','#0284c7'],['钴蓝','#2563eb'],['紫色','#7c3aed'],['玫红','#db2777'],['浅黄','#fff29b'],['浅绿','#bbf7d0'],['浅蓝','#bfdbfe'],['浅粉','#fbcfe8']];
 export function enhanceColors(root:HTMLElement){
   root.querySelectorAll<HTMLInputElement>('input[type=color]').forEach(input=>{

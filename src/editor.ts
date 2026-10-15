@@ -59,15 +59,16 @@ export class MarkdownEditor {
     ];
     this.view=new EditorView({parent,state:EditorState.create({doc:text,extensions:this.extensions})});
     document.getElementById('selection-tools')?.addEventListener('mousedown',e=>e.preventDefault());
+    document.getElementById('selection-tools')?.addEventListener('focusout',()=>requestAnimationFrame(()=>this.selectionTools()));
     document.querySelector('.format-toolbar')?.addEventListener('mousedown',e=>{if((e.target as HTMLElement).closest('button'))e.preventDefault();});
     this.view.scrollDOM.addEventListener('scroll',()=>this.selectionTools());
     window.addEventListener('paper-popover-close',()=>requestAnimationFrame(()=>this.selectionTools()));
   }
   private selectionTools(){
     const tools=document.getElementById('selection-tools');if(!tools)return;
-    if(document.getElementById('quick-popover')?.dataset.anchor?.startsWith('selection-'))return;
+    if(document.getElementById('quick-popover')?.dataset.toolbar===tools.id)return;
     const selection=this.view.state.selection.main,coords=this.view.coordsAtPos(selection.head),bounds=this.view.scrollDOM.getBoundingClientRect();
-    tools.hidden=!this.view.hasFocus||selection.empty||!coords||coords.top<bounds.top||coords.top>bounds.bottom;
+    tools.hidden=(!this.view.hasFocus&&!tools.contains(document.activeElement))||selection.empty||!coords||coords.top<bounds.top||coords.top>bounds.bottom;
     if(!tools.hidden&&coords){tools.style.left=Math.max(8,Math.min(window.innerWidth-tools.offsetWidth-8,coords.left))+'px';tools.style.top=Math.max(bounds.top,coords.top-tools.offsetHeight-7)+'px';}
   }
   setText(text:string,resetHistory=false){this.suppress=true;if(resetHistory){this.view.setState(EditorState.create({doc:text,extensions:this.extensions}));this.theme(this.themeId);}else this.view.dispatch({changes:{from:0,to:this.view.state.doc.length,insert:text},selection:{anchor:0}});this.suppress=false;this.view.scrollDOM.scrollTop=0;}
