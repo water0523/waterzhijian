@@ -1,6 +1,6 @@
 import {EditorState,Compartment,type Extension} from '@codemirror/state';
 import {EditorView,keymap,lineNumbers,highlightActiveLine,highlightActiveLineGutter,drawSelection,dropCursor,rectangularSelection} from '@codemirror/view';
-import {defaultKeymap,history,historyKeymap,indentWithTab,undo,redo} from '@codemirror/commands';
+import {defaultKeymap,history,historyKeymap,indentWithTab,undo,redo,isolateHistory} from '@codemirror/commands';
 import {markdown} from '@codemirror/lang-markdown';
 import {syntaxHighlighting,HighlightStyle,bracketMatching,indentOnInput} from '@codemirror/language';
 import {tags} from '@lezer/highlight';
@@ -59,6 +59,7 @@ export class MarkdownEditor {
     ];
     this.view=new EditorView({parent,state:EditorState.create({doc:text,extensions:this.extensions})});
     document.getElementById('selection-tools')?.addEventListener('mousedown',e=>e.preventDefault());
+    document.querySelector('.format-toolbar')?.addEventListener('mousedown',e=>{if((e.target as HTMLElement).closest('button'))e.preventDefault();});
     this.view.scrollDOM.addEventListener('scroll',()=>this.selectionTools());
     window.addEventListener('paper-popover-close',()=>requestAnimationFrame(()=>this.selectionTools()));
   }
@@ -72,6 +73,12 @@ export class MarkdownEditor {
   setText(text:string,resetHistory=false){this.suppress=true;if(resetHistory){this.view.setState(EditorState.create({doc:text,extensions:this.extensions}));this.theme(this.themeId);}else this.view.dispatch({changes:{from:0,to:this.view.state.doc.length,insert:text},selection:{anchor:0}});this.suppress=false;this.view.scrollDOM.scrollTop=0;}
   theme(id:string){this.themeId=id;this.view.dispatch({effects:this.themeSlot.reconfigure(themeExtension(id))});}
   replaceText(from:number,to:number,insert:string){this.view.dispatch({changes:{from,to,insert},userEvent:'input.preview'});}
+  formatSelection(from:number,to:number,outerFrom:number,outerTo:number,attributes:string){
+    const prefix=attributes?'[':'',suffix=attributes?']{'+attributes+'}':'',anchor=outerFrom+prefix.length;
+    // Keep selected text untouched so DOM selection and undo mapping survive
+    // quick consecutive menu choices, including a directive wrapping formulas.
+    this.view.dispatch({changes:[{from:outerFrom,to:from,insert:prefix},{from:to,to:outerTo,insert:suffix}],selection:{anchor,head:anchor+to-from},userEvent:'input.format',annotations:isolateHistory.of('full')});
+  }
   insert(text:string,at?:number){const sel=this.view.state.selection.main;const from=at??sel.from;this.view.dispatch({changes:{from,to:at===undefined?sel.to:from,insert:text},selection:{anchor:from+text.length},scrollIntoView:true});this.view.focus();}
   wrap(before:string,after=before){
     const s=this.view.state.selection.main,selected=this.view.state.sliceDoc(s.from,s.to)||'文字';
@@ -81,7 +88,7 @@ export class MarkdownEditor {
     this.view.focus();
   }
   goto(line:number){const l=this.view.state.doc.line(Math.max(1,Math.min(this.view.state.doc.lines,line)));this.view.dispatch({selection:{anchor:l.from},effects:EditorView.scrollIntoView(l.from,{y:'center'})});this.view.focus();}
-  undo(){undo(this.view);} redo(){redo(this.view);} search(){openSearchPanel(this.view);}
+  undo(){undo(this.view);this.view.focus();} redo(){redo(this.view);this.view.focus();} search(){openSearchPanel(this.view);}
 }
 
 export class ScrollSync {

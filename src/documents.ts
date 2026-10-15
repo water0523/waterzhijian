@@ -79,6 +79,9 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
         if(node.style.fontSize)next.size=Math.round(Number.parseFloat(node.style.fontSize)*1.5);
         const color=node.style.color.match(/\d+/g);if(color?.length===3)next.color=color.map(n=>Number(n).toString(16).padStart(2,'0')).join('');
         const background=node.style.backgroundColor.match(/\d+/g);if(background?.length===3)next.shading={fill:background.map(n=>Number(n).toString(16).padStart(2,'0')).join('')};
+        // Word cannot express partial-height gradients; retain the chosen ink
+        // as editable text shading when no full highlight overrides it.
+        else if(/^#[\da-f]{6}$/i.test(node.dataset.inlineMarker||''))next.shading={fill:node.dataset.inlineMarker!.slice(1)};
         if(node.style.fontWeight==='700')next.bold=true;if(node.style.fontStyle==='italic')next.italics=true;
         if(node.dataset.inlineUnderline)next.underline={type:node.dataset.inlineUnderline==='wave'?UnderlineType.WAVE:UnderlineType.SINGLE};
         if(node.dataset.inlineStrike)next.strike=true;

@@ -8,6 +8,10 @@ for(const name of ['README.md','开发说明.md','CHANGELOG.md','RELEASE-v1.0.md
 for(const name of await readdir('src'))await add('src/'+name);
 for(const name of ['山窗听雪使用说明.md','plans/literary-science-theme.md'])await add(name);
 await add('新增模板与组件使用说明.md');
+await add('plans/inline-style-picker.md');
+for(const name of ['inline-dropdowns.mjs','picker-helpers.mjs'])await add('tests/'+name);
+for(const channel of ['chrome','msedge'])await add('test-results/inline-dropdowns-'+channel+'.json');
+await add('test-results/inline-dropdown-marker-chrome.png');
 for(const name of ['edition-themes.mjs','component-workflow.mjs','rewrite.mjs','theme-browsing.mjs'])await add('tests/'+name);
 for(const name of ['edition-themes-chrome.json','edition-themes-msedge.json','component-workflow-chrome.json','component-workflow-msedge.json','rewrite-chrome.json','rewrite-msedge.json','theme-browsing-chrome.json','theme-browsing-msedge.json'])await add('test-results/'+name);
 await add('dist/三套新主题预览.png');

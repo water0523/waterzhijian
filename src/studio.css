@@ -85,3 +85,28 @@ body[data-appearance=night] .revision-diff{background:#1b2820}body[data-appearan
 .workspace-toolbar{flex-wrap:wrap}.toolbar-right{flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
 
 .theme-detail-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
+
+.inline-menu-popover{animation:none}
+.inline-menu-popover .quick-body{padding:4px 0;max-height:100%}
+.inline-menu-list{display:flex;flex-direction:column}
+.inline-menu-list>button{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:38px;padding:8px 36px 8px 16px;text-align:left;border:0;border-radius:0;background:transparent;color:inherit;font-size:16px;line-height:1.6}
+.inline-menu-list>button:hover,.inline-menu-list>button:focus-visible{background:#e8efe6;outline:0;box-shadow:inset 3px 0 #5e8972}
+.inline-menu-list>button[aria-checked=true]{background:#eff3e9}
+.inline-menu-list small{font:11px/1.6 "Microsoft YaHei",sans-serif;color:var(--muted)}
+.inline-menu-check{position:absolute;right:13px;top:50%;transform:translateY(-50%);font:600 13px/1 sans-serif;color:var(--accent)}
+.inline-menu-list>button:first-child{border-bottom:1px solid var(--line);margin-bottom:4px}
+.inline-menu-list .inline-menu-clear{font-size:12px;color:var(--muted);border-top:1px solid var(--line);margin-top:4px}
+.inline-menu-list .inline-role-row.article{display:flow-root;width:100%;max-width:none;min-height:0;max-height:88px;overflow:hidden;margin:0;padding:0;border:0;background:transparent;box-shadow:none;font-size:16px;pointer-events:none}
+.inline-role-row.article p{margin:0;text-indent:0}.inline-role-row.article .literary-aside{margin:0;max-height:6em;float:none;display:inline-block}.inline-role-row.article .literary-preface{margin:0}
+.inline-menu-color-swatch{width:16px;height:16px;border:1px solid #97a397;border-radius:2px;flex-shrink:0}
+.inline-menu-color-demo{margin-left:auto;font-size:14px;padding:0 5px}
+.inline-menu-custom{display:flex;align-items:center;justify-content:space-between;gap:8px;border-top:1px solid var(--line);padding:12px 16px;font-size:12px}
+.inline-menu-custom input[type=number]{width:86px;padding:6px;border:1px solid var(--line);border-radius:4px;color:inherit;background:transparent}
+.inline-menu-custom input[type=color]{width:42px;height:30px;padding:2px;border:1px solid var(--line);border-radius:4px;background:transparent}
+.inline-menu-custom small{font-size:10px;color:var(--muted)}
+.inline-marker-palette{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:7px;padding:12px}
+.inline-marker-palette .inline-marker-swatch{position:relative;height:28px;min-width:0;padding:0;border:1px solid #87988b99;border-radius:3px}
+.inline-marker-palette .inline-menu-check{inset:0;display:grid;place-items:center;transform:none;color:var(--marker-contrast);font-size:15px}
+.inline-marker-palette .inline-marker-swatch:is(:hover,:focus-visible,[aria-checked=true]){outline:2px solid var(--accent);outline-offset:2px;box-shadow:inset 0 0 0 1px #ffffff80}
+body[data-appearance=night] .inline-menu-list>button:is(:hover,:focus-visible,[aria-checked=true]){background:#3b5541;color:#edf3e7}
+body[data-appearance=night] .inline-menu-list .inline-role-row.article{background:#f8f5ee;padding:2px 5px}

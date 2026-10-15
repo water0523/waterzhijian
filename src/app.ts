@@ -20,7 +20,8 @@ import {showRewrite,cancelRewrite} from './rewrite';
 import {inspectFonts} from './font-inspection';
 import {StickerController,updateStickerLines,flattenStickers,publicationHTML} from './stickers';
 import {PreviewEditor} from './preview-editor';
-import {inlineFonts,inlineCSS,styleAttributes,parseInlineStyle,literaryRoles,type InlineStyle} from './inline-style';
+import {styleAttributes,parseInlineStyle,literaryRoles} from './inline-style';
+import {showInlineMenu,mountInlineMenus,type InlineMenu} from './inline-picker';
 import {appendReferences} from './references';
 import {boldSelection,mathAt} from './math-format';
 import {createLongImage} from './long-image';
@@ -321,19 +322,19 @@ function showInlineStyle(event?:Event){
   if(math&&(selection.from!==math.start||selection.to!==math.end)){toast('公式加粗可直接使用 B 按钮；设置颜色或荧光时，请连同两侧 $ 完整选中行内公式。');return;}
   const suffix=before.slice(selection.to).match(/^\]\{([^}]+)\}/);
   const existing=before[selection.from-1]==='['&&suffix?parseInlineStyle(suffix[1]):null;
-  const panel=openPopover((event?.currentTarget as HTMLElement)||$('inline-style-button'),'选中文字的样式',`<p class="modal-subtitle">只作用于当前选区，可叠加多种样式。预览区仍只允许修改文字。</p><div class="inline-style-form"><label>字体<select id="inline-font"><option value="">跟随正文</option>${Object.entries(inlineFonts).map(([id,font])=>`<option value="${id}">${font.name}</option>`).join('')}</select></label><label>文体标记<select id="inline-role"><option value="">普通文字</option>${Object.entries(literaryRoles).map(([role,name])=>`<option value="${role}">${name}</option>`).join('')}</select></label><label>字号（px）<input id="inline-size" type="number" min="10" max="64" step=".5" placeholder="跟随正文"></label><label class="inline-color-label"><span><input id="inline-use-color" type="checkbox"> 自定文字颜色</span><input id="inline-color" type="color" value="#315e53"></label><label class="inline-color-label"><span><input id="inline-use-highlight" type="checkbox"> 荧光标记</span><input id="inline-highlight" type="color" value="#fff29b"></label><div class="inline-style-toggles">${[['bold','加粗'],['italic','斜体'],['underline','下划线'],['wave','波浪线'],['strike','删除线'],['dots','字下着重号'],['gold','泥金金句'],['marker','半高荧光']].map(([id,name])=>`<label><input id="inline-${id}" type="checkbox"> ${name}</label>`).join('')}</div></div><div id="inline-style-sample">${esc(selected)}</div><p class="help">使用设备已有字体；缺少字体时自动回退。西文字体遇到中文会回退到对应中文字体。没有嵌入或下载字体文件。</p><div class="inline-style-actions"><button id="inline-cancel" class="button outline">取消</button><button id="inline-apply" class="button primary">应用到选中文字</button></div>`);
-  enhanceColors(panel);
-  const read=():InlineStyle=>({role:($<HTMLSelectElement>('inline-role').value||undefined) as InlineStyle['role'],highlight:$<HTMLInputElement>('inline-use-highlight').checked?$<HTMLInputElement>('inline-highlight').value:undefined,font:$<HTMLSelectElement>('inline-font').value||undefined,size:Number($<HTMLInputElement>('inline-size').value)||undefined,color:$<HTMLInputElement>('inline-use-color').checked?$<HTMLInputElement>('inline-color').value:undefined,...Object.fromEntries(['bold','italic','underline','wave','strike','dots','gold','marker'].map(key=>[key,$<HTMLInputElement>('inline-'+key).checked]))});
-  const update=()=>{$('inline-style-sample').style.cssText=inlineCSS(read());};
-  if(existing){$<HTMLSelectElement>('inline-role').value=existing.role||'';$<HTMLInputElement>('inline-use-highlight').checked=!!existing.highlight;$<HTMLInputElement>('inline-highlight').value=existing.highlight||'#fff29b';$<HTMLSelectElement>('inline-font').value=existing.font||'';$<HTMLInputElement>('inline-size').value=existing.size?String(existing.size):'';$<HTMLInputElement>('inline-use-color').checked=!!existing.color;$<HTMLInputElement>('inline-color').value=existing.color||'#315e53';for(const key of ['bold','italic','underline','wave','strike','dots','gold','marker'] as const)$<HTMLInputElement>('inline-'+key).checked=!!existing[key];update();}
-  panel.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',update));
-  bind('inline-color',()=>{$<HTMLInputElement>('inline-use-color').checked=true;update();},'input');
-  bind('inline-highlight',()=>{$<HTMLInputElement>('inline-use-highlight').checked=true;update();},'input');bind('inline-cancel',closePopover);bind('inline-apply',()=>{
-    if(before!==editor.view.state.doc.toString()){toast('选区内容已经变化，请重新选择文字。',true);return;}
-    const style=read();if(style.size&&(style.size<10||style.size>64||Math.round(style.size*10)!==style.size*10)){toast('选区字号范围是 10–64 px，最多一位小数。');return;}
-    const attrs=styleAttributes(style);if(!attrs&&!existing){toast('请选择至少一项字体、颜色或文字样式。');return;}
+  const target=(event?.currentTarget as HTMLElement)||$('inline-style-button');
+  showInlineMenu(target,(target.dataset.inlineMenu||'font') as InlineMenu,existing,(root,markdown)=>{
+    root.innerHTML=renderMarkdown(markdown,assets).html;
+    if(publisher==='wechat')decorateTheme(root,themeById(current.theme));
+  },style=>{
+    if(before!==editor.view.state.doc.toString()){toast('选区内容已经变化，请重新选择文字。',true);return false;}
+    if(style.size!==undefined&&(!Number.isFinite(style.size)||style.size<10||style.size>64||Math.round(style.size*10)!==style.size*10)){toast('选区字号范围是 10–64 px，最多一位小数。');return false;}
+    const attrs=styleAttributes(style);
     const from=existing?selection.from-1:selection.from,to=existing?selection.to+suffix![0].length:selection.to;
-    const insert=attrs?`[${selected}]{${attrs}}`:selected,anchor=from+(attrs?1:0);closePopover();editor.replaceText(from,to,insert);editor.view.dispatch({selection:{anchor,head:anchor+selected.length}});editor.view.focus();
+    const insert=attrs?`[${selected}]{${attrs}}`:selected,anchor=from+(attrs?1:0);closePopover();
+    if(insert!==before.slice(from,to))editor.formatSelection(selection.from,selection.to,from,to,attrs);
+    else editor.view.dispatch({selection:{anchor,head:anchor+selected.length}});
+    editor.view.focus();return true;
   });
 }
 async function addImages(files:File[],position:number){
@@ -731,7 +732,7 @@ async function init(){
   const journalButton=document.createElement('button');journalButton.id='journal-block-button';journalButton.textContent='期刊元素 ▾';journalButton.title='导读、定律、公式释义、推导、要点和参考文献';$('math-button').after(journalButton);journalButton.onclick=()=>showJournalBlocks(journalButton);
   bind('theme-button',()=>showThemes());bind('samples-button',showSamples);bind('style-button',e=>{const p=$('style-panel');p.hidden=!p.hidden;if(!p.hidden){renderStylePanel();if((e as MouseEvent).detail===0)$('style-close').focus();}});
   document.addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented||modal.open)return;const target=e.target as Node;if(!$('style-panel').hidden&&($('style-panel').contains(target)||target===$('style-button'))){e.preventDefault();$('style-panel').hidden=true;$('style-button').focus();}else if(!$('library').hidden&&($('library').contains(target)||target===$('library-button'))){e.preventDefault();toggleLibrary();$('library-button').focus();}});
-  bind('inline-style-button',showInlineStyle);bind('selection-style-button',showInlineStyle);const rewriteButton=document.createElement('button');rewriteButton.id='selection-rewrite';rewriteButton.textContent='改写';$('selection-style-button').after(rewriteButton);rewriteButton.onclick=startRewrite;modal.addEventListener('close',cancelRewrite);
+  mountInlineMenus(showInlineStyle);const rewriteButton=document.createElement('button');rewriteButton.id='selection-rewrite';rewriteButton.textContent='改写';$('selection-role-button').after(rewriteButton);rewriteButton.onclick=startRewrite;modal.addEventListener('close',cancelRewrite);
   bind('editor-theme',()=>{const value=$<HTMLSelectElement>('editor-theme').value;editor.theme(value);editorChrome(value);preference(night?'editor-theme-night':'editor-theme',value);},'change');
   bind('night-button',()=>{night=!night;preference('appearance',night?'night':'day');const id=readPreference(night?'editor-theme-night':'editor-theme','dark');const value=editorThemes[id]?id:'dark';$<HTMLSelectElement>('editor-theme').value=value;editor.theme(value);editorChrome(value);applyAppearance();});
   bind('preview-brightness',()=>{brightness=Number($<HTMLInputElement>('preview-brightness').value);preference('preview-brightness',String(brightness));applyAppearance();},'input');
