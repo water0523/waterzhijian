@@ -41,6 +41,11 @@ export const designs:Record<string,Design>={
  classical:{label:'文 言 阅 读',mark:'',number:true,quote:'摘录与旁批',tags:['语文课本','文言文宋楷']}
 };
 
+export function themeDesign(theme:Theme):Design{
+ const base=designs[theme.baseId||theme.id]||designs.plain,o=theme.definition?.ornaments;
+ return {...base,...(o?.label!==undefined?{label:o.label}:{}),...(o?.mark!==undefined?{mark:o.mark}:{}),...(o?.numbered!==undefined?{number:o.numbered}:{}),...(o?.quoteLabel!==undefined?{quote:o.quoteLabel}:{}),...(o?.codeLabel!==undefined?{code:o.codeLabel}:{}),tags:theme.definition?['自定义',...base.tags]:base.tags};
+}
+
 const motifs:Record<string,string>={
  cartoon:'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="48" viewBox="0 0 100 48"><path d="M14 8l3 8 8 2-7 5 1 9-7-5-8 3 3-8-4-7 9 1z" fill="#ffcc6c" stroke="#77634a" stroke-width="2"/><path d="M72 7l5 6 8-2-3 8 5 6-8 1-4 7-3-8-8-2 7-4z" fill="#ec9dae" stroke="#77634a" stroke-width="2"/><ellipse cx="47" cy="27" rx="19" ry="17" fill="#fff5d0" stroke="#77634a" stroke-width="2.5"/><circle cx="41" cy="25" r="2" fill="#69523e"/><circle cx="53" cy="25" r="2" fill="#69523e"/><path d="M42 32q5 5 10 0" fill="none" stroke="#69523e" stroke-width="2" stroke-linecap="round"/><ellipse cx="35" cy="30" rx="4" ry="2" fill="#f2b0a7"/><ellipse cx="59" cy="30" rx="4" ry="2" fill="#f2b0a7"/></svg>',
  arcade:'<svg xmlns="http://www.w3.org/2000/svg" width="100" height="44" viewBox="0 0 100 44" shape-rendering="crispEdges"><path d="M19 7h62v6h7v24H12V13h7z" fill="#283755"/><path d="M24 13h52v6h6v12H18V19h6z" fill="#a9e7d8"/><path d="M29 17h6v5h5v6h-5v5h-6v-5h-5v-6h5z" fill="#273550"/><path d="M62 18h7v7h-7zm10 9h7v7h-7z" fill="#ed92be"/><path d="M45 25h10v4H45z" fill="#497d81"/></svg>',
@@ -51,19 +56,19 @@ const motifs:Record<string,string>={
 // Real elements keep chapter badges and ornaments in inline HTML exports.
 // They are created only for themed articles, never for Zhihu or standard Word.
 export function decorateTheme(node:HTMLElement,theme:Theme){
- const d=designs[theme.id];if(!d)return;
+ const id=theme.baseId||theme.id,d=themeDesign(theme);
  const span=(cls:string,text:string)=>{const el=document.createElement('span');el.className=cls;el.textContent=text;el.setAttribute('aria-hidden','true');return el;};
- node.querySelectorAll<HTMLElement>('h1').forEach(h=>{if(d.label)h.prepend(span('theme-kicker',d.label));if(motifs[theme.id]){const motif=span('theme-motif','');motif.innerHTML=motifs[theme.id];h.prepend(motif);}});
- const science=theme.group==='科普'?scienceMotif(theme.id):'';
+ node.querySelectorAll<HTMLElement>('h1').forEach(h=>{if(d.label)h.prepend(span('theme-kicker',d.label));if(motifs[id]){const motif=span('theme-motif','');motif.innerHTML=motifs[id];h.prepend(motif);}});
+ const science=scienceMotif(id);
  if(science)node.querySelectorAll('h1').forEach(h=>{const motif=span('science-motif','');motif.innerHTML=science;h.prepend(motif);});
  node.querySelectorAll<HTMLElement>('h2').forEach((h,i)=>{
   const content=document.createElement('span');content.className='theme-heading-text';content.append(...h.childNodes);h.append(content);
-  if(d.number||d.mark)h.prepend(span('theme-badge',d.number?(theme.id==='classical'?(['一','二','三','四','五','六','七','八','九','十'][i]||String(i+1)):theme.id==='arcade'?'LV.'+String(i+1).padStart(2,'0'):String(i+1).padStart(2,'0')):d.mark));
+  if(d.number||d.mark)h.prepend(span('theme-badge',d.number?(id==='classical'?(['一','二','三','四','五','六','七','八','九','十'][i]||String(i+1)):id==='arcade'?'LV.'+String(i+1).padStart(2,'0'):String(i+1).padStart(2,'0')):d.mark));
  });
  node.querySelectorAll<HTMLElement>('blockquote').forEach(q=>{if(d.quote)q.prepend(span('theme-quote-label',d.quote));});
- if(science){const marks:Record<string,string>={rational:'↗',academic:'“',nature:'❧',cosmos:'✧',math:'∴',lab:'＋',earth:'≋',tech:'⌘',qa:'A',blueprint:'⌖',ocean:'≈',pixel:'›_'};node.querySelectorAll('blockquote').forEach(q=>q.prepend(span('quote-symbol',marks[theme.id]||'·')));}
+ if(science){const marks:Record<string,string>={rational:'↗',academic:'“',nature:'❧',cosmos:'✧',math:'∴',lab:'＋',earth:'≋',tech:'⌘',qa:'A',blueprint:'⌖',ocean:'≈',pixel:'›_'};node.querySelectorAll('blockquote').forEach(q=>q.prepend(span('quote-symbol',marks[id]||'·')));}
  node.querySelectorAll<HTMLElement>('pre').forEach(pre=>{if(d.code)pre.prepend(span('theme-code-label','●  ●  ●     '+d.code));});
- if(theme.id==='magazine'){
+ if(id==='magazine'){
   const first=[...node.children].find(el=>el.tagName==='P'&&el.textContent?.trim()&&!el.querySelector('.image-wrap,.math-display'));
   if(first){
    const walker=document.createTreeWalker(first,NodeFilter.SHOW_TEXT);let text:Text|null;
@@ -139,7 +144,7 @@ export function richThemeCSS(t:Theme,a:string){
  pop:`h1{text-align:center;background:#ffe63c;background-image:radial-gradient(#24242428 1px,transparent 1px);background-size:7px 7px;border:4px solid #242424;border-radius:0;padding:20px 12px;color:#222;box-shadow:6px 6px 0 #ed4267;margin-right:7px;font-size:30px}h1 .theme-kicker{background:#fff;display:table;margin:0 auto 12px;border:2px solid #222;color:#222;padding:3px 8px;font-size:10px;letter-spacing:1px;opacity:1}h2{border:3px solid #222;background:#39c0d1;color:#182529;padding:9px 10px;box-shadow:5px 5px 0 #ffe04c;margin-right:6px;border-radius:0}h2 .theme-badge{background:#fff04c;color:#252525;border:2px solid #222;border-radius:0;padding:1px 5px}blockquote{background:#fff0f3;border:3px solid #222;border-radius:24px 24px 24px 0;padding:20px;box-shadow:5px 5px 0 #ed7795;margin-right:6px}.theme-quote-label{display:table;background:#ed4267;color:#fff;border:2px solid #222;padding:3px 6px;letter-spacing:1px}.math-display{background:#fffbdc;border:3px solid #222;box-shadow:4px 4px 0 #7dccd6;margin-right:5px}strong{background:#ffeb60;color:#242424;padding:1px 4px}hr{border-top:6px dashed #252525}th{background:#ffe65c;border:2px solid #222;color:#222}td{border:1px solid #777}pre{border:3px solid #222;border-radius:0;background:#263c49}.theme-code-label{color:#f9db66}`,
  classical:`h1{text-align:center;font-family:SimSun,"Songti SC",serif;color:#9a443c;font-size:29px;font-weight:700;border:0;border-top:1px solid #bf8274;border-bottom:3px double #bf8274;padding:22px 8px 25px;letter-spacing:5px;line-height:1.7}h1 .theme-kicker{font:12px/1.9 KaiTi,STKaiti,serif;color:#a86e61;letter-spacing:5px;margin-bottom:12px}h2{border:0;color:#a04d40;font:700 21px/1.7 SimSun,serif;padding:0;margin:30px 0 15px;letter-spacing:2px}h2 .theme-badge{background:none;color:#a04d40;font:700 20px/1.7 SimSun,serif;border:0;border-right:1px solid #d0a08f;padding:0 12px 0 0;border-radius:0}h3{font-family:KaiTi,STKaiti,serif;color:#695041;font-weight:700;font-size:19px}p{letter-spacing:.5px;line-height:inherit}strong{color:#944d3e;background:none;border-bottom:1px solid #c18b74;font-weight:700}blockquote{font-family:KaiTi,STKaiti,serif;background:#f5efdf;border:0;border-top:1px solid #d1bba0;border-bottom:1px solid #d1bba0;padding:18px;color:#645343}.theme-quote-label{font:12px/1.8 KaiTi,STKaiti,serif;color:#aa6550;letter-spacing:2px}.math-display{background:none;border:1px solid #dfcfb5}.poem{font-family:KaiTi,STKaiti,serif;line-height:2.4}.image-caption{font-family:KaiTi,serif;color:#8d735b!important;border:0}.footnotes{font-family:KaiTi,serif;border-top:1px solid #c9ae92;color:#7e6e5e;font-size:13px}hr{border-top:1px solid #bd8c77;width:90px;margin:36px auto}th{background:#f0e7d4;color:#7b5a42;border-bottom:1px solid #bf9a7b}pre{background:#f1ebdf;color:#64543f;border:1px solid #ddccb2;border-radius:0}`
  };
- const value=(styles[t.id]||'').replace(/\bA\b/g,a).replace(/\bS\b/g,soft).replace(/\bL\b/g,line);
+ const id=t.baseId||t.id,value=(styles[id]||'').replace(/\bA\b/g,a).replace(/\bS\b/g,soft).replace(/\bL\b/g,line);
  // Scope every selector so gallery previews cannot alter the open document or UI.
- return common+value.replace(/(^|})([^{}]+){/g,(_m,brace,selectors)=>brace+selectors.split(',').map((s:string)=>'.article '+s.trim()).join(',')+'{')+(t.group==='科普'?scienceCSS(t.id,a):'');
+ return common+value.replace(/(^|})([^{}]+){/g,(_m,brace,selectors)=>brace+selectors.split(',').map((s:string)=>'.article '+s.trim()).join(',')+'{')+scienceCSS(id,a);
 }

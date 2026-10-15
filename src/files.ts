@@ -1,6 +1,8 @@
 import {zipSync,unzipSync,strToU8,strFromU8} from 'fflate';
-import {uid,type Article,type Asset,type Typography,type Sticker} from './model';
-import {themeById} from './themes';
+import {uid,fontStacks,type Article,type Asset,type Typography,type Sticker} from './model';
+import {themes,builtInIds,themesForArticles,themeLibraryDocument} from './themes';
+import {parseThemeFile,libraryDocument} from './theme-schema';
+import type {ThemeDefinition} from './theme-types';
 export const safeName=(s:string)=>s.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/,'').slice(0,90)||'未命名文章';
 export function download(data:BlobPart,name:string,type='application/octet-stream'){
   const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
@@ -9,12 +11,13 @@ export const extension=(mime:string)=>({'image/png':'png','image/jpeg':'jpg','im
 export function bytesFromData(data:string){const raw=atob(data.split(',')[1]);return Uint8Array.from(raw,c=>c.charCodeAt(0));}
 function dataFromBytes(bytes:Uint8Array,mime:string){let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));return `data:${mime};base64,${btoa(raw)}`;}
 export function assetRefs(markdown:string){return [...new Set([...markdown.matchAll(/asset:([a-zA-Z0-9-]+)/g)].map(m=>m[1]))];}
-export function createBackup(articles:Article[],assets:Map<string,Asset>,folders:string[]=[]):Uint8Array{
+export function createBackup(articles:Article[],assets:Map<string,Asset>,folders:string[]=[],all=false):Uint8Array{
   const files:Record<string,Uint8Array>={};
   const ids=new Set(articles.flatMap(a=>[...assetRefs(a.markdown),...(a.stickers||[]).map(s=>s.assetId),...a.revisions.flatMap(r=>[...assetRefs(r.markdown),...(r.stickers||[]).map(s=>s.assetId)])]));
   const assetList:Omit<Asset,'data'>[]=[];
   for(const id of ids){const asset=assets.get(id);if(!asset)continue;const {data,...rest}=asset;assetList.push(rest);files[`assets/${id}.${extension(asset.mime)}`]=bytesFromData(data);}
-  const manifest={format:'paper-studio',version:1,exportedAt:Date.now(),articles,assets:assetList,folders:[...new Set([...folders,...articles.map(a=>a.folder).filter(Boolean)])]};
+  const themeLibrary=all?themeLibraryDocument():libraryDocument(themesForArticles(articles),[]);
+  const manifest={format:'paper-studio',version:1,exportedAt:Date.now(),articles,assets:assetList,folders:[...new Set([...folders,...articles.map(a=>a.folder).filter(Boolean)])],themeLibrary};
   files['manifest.json']=strToU8(JSON.stringify(manifest,null,2));
   for(const a of articles){
     const lines=a.markdown.split('\n');
@@ -28,21 +31,24 @@ export function createBackup(articles:Article[],assets:Map<string,Asset>,folders
 function validTypography(t:any):Typography{
   if(!t||typeof t!=='object')return {};
   const out:Typography={};
-  if(['sans','serif','kai','mono'].includes(t.font))out.font=t.font;
-  if(['sans','serif','kai','mono'].includes(t.headingFont))out.headingFont=t.headingFont;
+  if(typeof t.font==='string'&&Object.hasOwn(fontStacks,t.font))out.font=t.font;
+  if(typeof t.headingFont==='string'&&Object.hasOwn(fontStacks,t.headingFont))out.headingFont=t.headingFont;
   for(const [key,min,max] of [['size',12,24],['lineHeight',1.3,2.8],['paragraphGap',0,40],['padding',12,48]] as const)if(Number.isFinite(t[key]))out[key]=Math.min(max,Math.max(min,t[key]));
   if(/^#[a-f\d]{6}$/i.test(t.accent))out.accent=t.accent;
   if(typeof t.indent==='boolean')out.indent=t.indent;
   if(['theme','three-line','striped','grid'].includes(t.tableStyle))out.tableStyle=t.tableStyle;
   return out;
 }
-export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[];folders:string[]}{
+export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[];folders:string[];themes:ThemeDefinition[];hiddenThemes:string[]}{
   if(buffer.length>100*1024*1024)throw new Error('备份超过 100 MB，请拆分为单篇备份');
   let total=0;
   const entries=unzipSync(buffer,{filter:file=>{total+=file.originalSize;if(total>200*1024*1024)throw new Error('解压后超过 200 MB，已停止导入');return true;}});
   if(!entries['manifest.json'])throw new Error('这不是本工具导出的文章备份，请导入 .md 或带 manifest.json 的 ZIP');
   const m=JSON.parse(strFromU8(entries['manifest.json']));
   if(m.format!=='paper-studio'||m.version!==1||!Array.isArray(m.articles)||!Array.isArray(m.assets)||m.articles.length>1000||m.assets.length>5000)throw new Error('备份格式或版本不支持');
+  const themeLibrary=m.themeLibrary===undefined?{themes:[],hidden:[]}:parseThemeFile(JSON.stringify(m.themeLibrary),builtInIds);
+  const knownThemes=new Set([...themes.map(t=>t.id),...themeLibrary.themes.map(t=>t.id)]);
+  const checkedTheme=(id:unknown)=>{if(typeof id==='string'&&knownThemes.has(id))return id;if(typeof id==='string'&&id.startsWith('custom-'))throw new Error('备份缺少自定义主题定义：'+id);return builtInIds[0];};
   const validFolder=(name:unknown)=>typeof name==='string'&&name.length>0&&name.length<=40&&name!=='*'&&!/[\\/\r\n]/.test(name);
   if(m.folders!==undefined&&(!Array.isArray(m.folders)||m.folders.length>500||!m.folders.every(validFolder)))throw new Error('备份文件夹信息无效');
   const folders:string[]=[...new Set<string>(m.folders||[])];
@@ -68,13 +74,13 @@ export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[]
     const markdown=rewrite(a.markdown);
     if(a.folder!==undefined&&a.folder!==''&&!validFolder(a.folder))throw new Error('文章文件夹无效');
     if(a.folder&&!folders.includes(a.folder))folders.push(a.folder);
-    return {version:1,id:uid(),title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:themeById(a.theme).id,typography:validTypography(a.typography),assets:assetRefs(markdown),stickers:stickerImport(a.stickers),created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
+    return {version:1,id:uid(),title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:assetRefs(markdown),stickers:stickerImport(a.stickers),created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
       revisions:(Array.isArray(a.revisions)?a.revisions:[]).slice(-20).map((r:any)=>{
         if(typeof r.markdown!=='string')throw new Error('恢复版本损坏');
-        const text=rewrite(r.markdown);return {at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:themeById(r.theme).id,typography:validTypography(r.typography),assets:assetRefs(text),stickers:stickerImport(r.stickers)};
+        const text=rewrite(r.markdown);return {at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:checkedTheme(r.theme),typography:validTypography(r.typography),assets:assetRefs(text),stickers:stickerImport(r.stickers)};
       })};
   });
-  return {articles:articleOutput,assets:assetOutput,folders};
+  return {articles:articleOutput,assets:assetOutput,folders,themes:themeLibrary.themes,hiddenThemes:themeLibrary.hidden};
 }
 export async function fileToAsset(file:File):Promise<Asset>{
   if(!['image/png','image/jpeg','image/gif','image/webp'].includes(file.type))throw new Error('支持 PNG、JPEG、GIF、WebP 图片；其他格式请先转换');

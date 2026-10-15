@@ -1,7 +1,9 @@
 import {richThemeCSS} from './theme-design';
 import {fontStacks, type Typography} from './model';
-export interface Theme { id:string; name:string; group:string; description:string; accent:string; paper:string; ink:string; font:string; variant:string; headingFont?:string }
-export const themes: Theme[] = [
+import type {Theme,ThemeDefinition,ElementStyle} from './theme-types';
+import {parseThemeFile,libraryDocument,validateTheme} from './theme-schema';
+export type {Theme} from './theme-types';
+export const builtInThemes: Theme[] = [
   {id:'rational',name:'理性蓝',group:'科普',description:'有条理，也有好奇心',accent:'#2563a6',paper:'#ffffff',ink:'#293647',font:'sans',variant:'bar'},
   {id:'academic',name:'学术简报',group:'科普',description:'沉稳的论述，清楚的证据',accent:'#3b4148',paper:'#ffffff',ink:'#303237',font:'serif',variant:'rule'},
   {id:'nature',name:'自然观察',group:'科普',description:'把目光交给万物',accent:'#486a47',paper:'#fafbf5',ink:'#354033',font:'sans',variant:'leaf'},
@@ -39,13 +41,105 @@ export const themes: Theme[] = [
   {id:'pop',name:'波普漫画',group:'通用',description:'网点爆炸框、粗黑描边与高对比色块',accent:'#d33460',paper:'#fffefd',ink:'#343034',font:'sans',variant:'pop'},
   {id:'classical',name:'文言课本',group:'文学',description:'宋楷书页、朱红课题与旁批式引用',accent:'#9a5141',paper:'#fffdf6',ink:'#473f33',font:'serif',headingFont:'serif',variant:'classical'}
 ];
+// Typography is part of the art direction: small labels use a different voice
+// from the reading text, while explicit article settings remain the last word.
+const pairings:Record<string,[string,string,string?,string?]>={
+  rational:['sans','hei','serif','sans'],academic:['serif','sans','kai','mono'],nature:['sans','serif','kai','serif'],cosmos:['sans','sans','serif','mono'],
+  math:['serif','times','kai','mono'],lab:['sans','sans','kai','mono'],earth:['serif','kai','serif','kai'],tech:['sans','hei','sans','mono'],qa:['sans','hei','kai','sans'],
+  magazine:['serif','sans','kai','kai'],plain:['serif','serif','kai','serif'],ink:['serif','kai','kai','fang'],moon:['serif','kai','kai','serif'],letter:['serif','kai','kai','kai'],wild:['serif','serif','kai','serif'],
+  editorial:['serif','hei','georgia','sans'],weekend:['serif','serif','kai','serif'],mint:['sans','serif','sans','sans'],minimal:['sans','sans','serif','sans'],
+  orange:['sans','hei','kai','sans'],blueprint:['sans','mono','sans','mono'],matcha:['serif','kai','kai','serif'],berry:['sans','sans','serif','sans'],gold:['serif','serif','kai','serif'],ocean:['sans','serif','kai','serif'],pixel:['sans','mono','mono','mono'],sunset:['serif','kai','kai','serif'],lavender:['serif','kai','kai','serif'],newspaper:['serif','serif','kai','mono'],cream:['sans','kai','kai','sans'],terracotta:['serif','hei','serif','sans'],cartoon:['sans','sans','kai','sans'],arcade:['sans','mono','mono','mono'],kuromi:['sans','hei','kai','sans'],pop:['sans','hei','hei','sans'],classical:['serif','serif','kai','fang']
+};
+for(const t of builtInThemes){const [body,heading,quote,caption]=pairings[t.id];Object.assign(t,{font:body,headingFont:heading,quoteFont:quote,captionFont:caption,poemFont:['moon','ink','classical'].includes(t.id)?'kai':body,codeFont:'mono'});}
+export const builtInIds=builtInThemes.map(t=>t.id);
+export function materializeTheme(d:ThemeDefinition):Theme{
+  const base=builtInThemes.find(t=>t.id===d.base)!;
+  return {...base,id:d.id,name:d.name,description:d.description,group:d.group,baseId:d.base,definition:d,...d.palette,font:d.fonts?.body||base.font,headingFont:d.fonts?.heading||base.headingFont,quoteFont:d.fonts?.quote||base.quoteFont,captionFont:d.fonts?.caption||base.captionFont,poemFont:d.fonts?.poem||base.poemFont,codeFont:d.fonts?.code||base.codeFont,defaults:d.typography};
+}
+export const themes:Theme[]=[...builtInThemes];
+let definitions:ThemeDefinition[]=[],hidden:string[]=[],loadError='',savedRecord:string|null=null;
+const libraryKey='paper-theme-library-v1';
+function publish(){themes.splice(0,themes.length,...builtInThemes,...definitions.map(materializeTheme));}
+try{const raw=localStorage.getItem(libraryKey);savedRecord=raw;if(raw){const parsed=parseThemeFile(raw,builtInIds);definitions=parsed.themes;hidden=parsed.hidden;publish();}}catch{loadError='主题库记录无法读取。内置主题仍可使用；原记录已保留，请先导出或修复后再管理主题。';}
+export const themeLibraryError=()=>loadError;
+export const rawThemeLibrary=()=>localStorage.getItem(libraryKey)||'';
+export function resetBrokenThemeLibrary(){
+  if(!loadError)return;
+  const previousError=loadError;loadError='';savedRecord=localStorage.getItem(libraryKey);
+  try{commitLibrary([],[]);}catch(e){loadError=previousError;throw e;}
+}
 export const themeById = (id:string) => themes.find(t=>t.id===id) || themes[0];
+export const visibleThemes=()=>themes.filter(t=>!hidden.includes(t.id));
+export const isThemeHidden=(id:string)=>hidden.includes(id);
+export const themeLibraryDocument=()=>libraryDocument(structuredClone(definitions),[...hidden]);
+function commitLibrary(next:ThemeDefinition[],removed:string[]){
+  if(loadError)throw new Error(loadError);
+  const serialized=JSON.stringify(libraryDocument(next,removed));
+  if(new TextEncoder().encode(serialized).length>2*1024*1024)throw new Error('主题库已超过 2 MB，请精简后重试');
+  try{if(localStorage.getItem(libraryKey)!==savedRecord)throw new Error('changed');localStorage.setItem(libraryKey,serialized);}catch(e){if(e instanceof Error&&e.message==='changed')throw new Error('主题库已在其他标签页发生变化。请先备份文章，再刷新此页面后重试，避免覆盖另一窗口的修改。');throw new Error('主题库保存失败，可能是浏览器空间不足或禁止存储。当前主题和文章保持原样，请先导出备份。');}
+  savedRecord=serialized;
+  definitions=next;hidden=removed;publish();
+}
+export function setThemeHidden(id:string,remove:boolean){
+  if(!themes.some(t=>t.id===id))throw new Error('找不到这个主题');
+  const next=remove?[...new Set([...hidden,id])]:hidden.filter(v=>v!==id);
+  if(remove&&next.length>=themes.length)throw new Error('请至少保留一个可选主题');
+  commitLibrary(definitions,next);
+}
+export function restoreThemes(){commitLibrary(definitions,[]);}
+function fingerprint(value:unknown):string{
+  if(value&&typeof value==='object')return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+fingerprint((value as Record<string,unknown>)[k])).join(',')+'}';
+  return JSON.stringify(value);
+}
+// Plan imports without side effects so a damaged file in a batch cannot leave
+// half a theme library behind. Each archive gets its own ID mapping.
+export function planThemeImports(groups:ThemeDefinition[][],mode:'keep'|'update'='keep',removed:string[]=[],removedGroups:string[][]=[]){
+  const next=structuredClone(definitions),maps:Map<string,string>[]=[],used=new Set([...builtInIds,...next.map(t=>t.id)]);
+  const visible=new Set<string>();
+  for(const group of groups){
+    const map=new Map<string,string>();
+    for(const raw of group){
+      const d=validateTheme(raw,builtInIds),existing=next.find(t=>t.id===d.id);let id=d.id;
+      if(existing&&fingerprint(existing)!==fingerprint(d)&&mode==='keep'){
+        let n=2;while(used.has(id=d.id.slice(0,50)+'-'+n))n++;d.name=d.name.slice(0,26)+' · 导入 '+(n-1);
+      }
+      map.set(d.id,id);used.add(id);visible.add(id);d.id=id;
+      const at=next.findIndex(t=>t.id===id);if(at>=0)next[at]=d;else next.push(d);
+    }
+    maps.push(map);
+  }
+  if(next.length>100)throw new Error('自定义主题最多保留 100 个，请导出整理后重试');
+  const mappedRemoved=[...removed.map(id=>maps[0]?.get(id)||id),...removedGroups.flatMap((ids,i)=>ids.map(id=>maps[i]?.get(id)||id))];
+  const nextHidden=[...new Set([...hidden.filter(id=>!visible.has(id)),...mappedRemoved])].filter(id=>used.has(id));
+  if(nextHidden.length>=builtInIds.length+next.length)throw new Error('主题库需要至少保留一个可选主题');
+  return {maps,commit:()=>commitLibrary(next,nextHidden)};
+}
+export function themesForArticles(articles:{theme:string;revisions:{theme:string}[]}[],all=false){
+  if(all)return structuredClone(definitions);
+  const used=new Set(articles.flatMap(a=>[a.theme,...a.revisions.map(r=>r.theme)]));return structuredClone(definitions.filter(d=>used.has(d.id)));
+}
+export function themeDefaults(theme:Theme):Typography{return {size:16,lineHeight:(theme.baseId||theme.id)==='classical'?2.15:theme.group==='文学'?2:1.85,paragraphGap:20,padding:24,indent:(theme.baseId||theme.id)==='classical',...theme.defaults};}
+function elementCSS(elements:ThemeDefinition['elements']){
+  const selectors={h1:'h1',h2:'h2',h3:'h3',quote:'blockquote',caption:'.image-caption',table:'table',list:'ul,.article ol',code:'pre',formula:'.math-display',poem:'.poem',divider:'.decorative-divider'};
+  return Object.entries(elements||{}).map(([key,s])=>{
+    const css:string[]=[],style=s as ElementStyle;
+    for(const [property,value]of Object.entries(style)){
+      const names:Record<string,string>={size:'font-size',weight:'font-weight',lineHeight:'line-height',letterSpacing:'letter-spacing',align:'text-align',marginTop:'margin-top',marginBottom:'margin-bottom',padding:'padding',radius:'border-radius',color:'color',background:'background'};
+      if(names[property])css.push(`${names[property]}:${value}${['size','letterSpacing','marginTop','marginBottom','padding','radius'].includes(property)?'px':''}${key==='caption'&&property==='color'?'!important':''}`);
+    }
+    if(style.font)css.push('font-family:'+fontStacks[style.font]);if(style.italic!==undefined)css.push('font-style:'+(style.italic?'italic':'normal'));
+    if(style.borderWidth!==undefined||style.borderSide||style.borderColor||style.borderStyle){const side=style.borderSide&&style.borderSide!=='all'?'-'+style.borderSide:'';css.push('border:0',`border${side}:${style.borderWidth??1}px ${style.borderStyle||'solid'} ${style.borderColor||'currentColor'}`);}
+    if(style.shadow)css.push('box-shadow:'+({none:'none',soft:'0 3px 12px #0000000c',offset:'4px 4px 0 #00000014'}[style.shadow]));
+    return `.article ${selectors[key as keyof typeof selectors]}{${css.join(';')}}`;
+  }).join('\n');
+}
 export function themeCSS(theme: Theme, o: Typography = {}): string {
+  o={...themeDefaults(theme),...o};
   const a = /^#[0-9a-f]{6}$/i.test(o.accent||'') ? o.accent! : theme.accent;
   const f = fontStacks[o.font||theme.font] || fontStacks.sans;
   const hf = fontStacks[o.headingFont||theme.headingFont||o.font||theme.font] || f;
   const size = Math.min(24,Math.max(12,Number(o.size)||16));
-  const lh = Math.min(2.8,Math.max(1.3,Number(o.lineHeight)||(theme.id==='classical'?2.15:theme.group==='文学'?2:1.85)));
+  const lh = Math.min(2.8,Math.max(1.3,Number(o.lineHeight)||1.85));
   const gap = Math.min(40,Math.max(0,o.paragraphGap??20));
   const padding = Math.min(48,Math.max(12,o.padding??24));
   const v = theme.variant;
@@ -82,7 +176,13 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   .article .poem{white-space:pre-wrap;line-height:2.3;margin:26px 0;padding:12px 0;text-indent:0}.article .poem[data-align=center]{text-align:center}.article .poem[data-align=left]{text-align:left}.article .footnotes{font-size:12px;color:#707880;margin-top:32px;border-top:1px solid #ddd;padding-top:12px}.article .footnotes p{margin:4px 0}.article .footnote-ref{font-size:11px}
   ${special.replaceAll('ACCENT',a)}
   ${richThemeCSS(theme,a)}
-  ${theme.id==='magazine'?`.article{display:flow-root}.article p:has(.magazine-initial){text-indent:0}.article .magazine-initial{margin-left:${o.indent?size*2:0}px}`:''}
+  .article h1,.article h2,.article h3,.article h4,.article h5,.article h6{font-family:${hf}}
+  .article blockquote{font-family:${fontStacks[theme.quoteFont||theme.font]||f}}
+  .article .image-caption{font-family:${fontStacks[theme.captionFont||theme.font]||f}}
+  .article pre,.article code{font-family:${fontStacks[theme.codeFont||'mono']||fontStacks.mono}}
+  .article .poem{font-family:${fontStacks[theme.poemFont||theme.font]||f}}
+  ${elementCSS(theme.definition?.elements)}
+  ${(theme.baseId||theme.id)==='magazine'?`.article{display:flow-root}.article p:has(.magazine-initial){text-indent:0}.article .magazine-initial{margin-left:${o.indent?size*2:0}px}`:''}
   .article .decorative-divider{color:${a}}
   ${o.headingFont?`.article h1,.article h2,.article h3,.article h4,.article h5,.article h6{font-family:${hf}}`:''}
   ${o.paragraphGap!==undefined?`.article p{margin-bottom:${gap}px}`:''}

@@ -1,6 +1,8 @@
 import {MarkdownEditor,ScrollSync,editorThemes} from './editor';
-import {themes,themeById,themeCSS} from './themes';
-import {decorateTheme,designs} from './theme-design';
+import {themes,themeById,themeCSS,visibleThemes,themeDefaults,planThemeImports,themeLibraryError} from './themes';
+import type {ThemeDefinition} from './theme-types';
+import {showThemeManager,chooseThemeFile} from './theme-manager';
+import {decorateTheme,themeDesign} from './theme-design';
 import {renderMarkdown,renderMath,exportFragment,firstArticleHeading,type RenderResult} from './render';
 import {freshArticle,escapeHTML as esc,uid,fontNames,type Article,type Asset,type Typography} from './model';
 import {openStore,loadStore,persist,preference,readPreference} from './storage';
@@ -111,7 +113,7 @@ function render(){
     renderResult=renderMarkdown(current.markdown,assets,previewEditor?.enabled);
     const theme=themeById(current.theme);$('article-style').textContent=publisher==='zhihu'?standardCSS():themeCSS(theme,current.typography);
     const indentButton=document.getElementById('indent-toggle') as HTMLButtonElement|null;
-    if(indentButton){const active=current.typography.indent??theme.id==='classical';indentButton.classList.toggle('active',active);indentButton.setAttribute('aria-pressed',String(active));indentButton.disabled=publisher==='zhihu';}
+    if(indentButton){const active=current.typography.indent??themeDefaults(theme).indent;indentButton.classList.toggle('active',active);indentButton.setAttribute('aria-pressed',String(active));indentButton.disabled=publisher==='zhihu';}
     $('preview').innerHTML=(publisher==='zhihu'?standardBody(current,assets,renderResult.html):renderResult.html)||'<p style="color:#a1aa9c;text-align:center;padding-top:70px;text-indent:0">从左侧写下第一句话。</p>';
     if(publisher==='wechat')decorateTheme($('preview'),theme);
     if(publisher==='wechat'&&referencesEnabled)appendReferences($('preview'));
@@ -175,14 +177,17 @@ function themeThumbnail(id:string){
   const html=`<style>${themeCSS(t).replaceAll('.article','.theme-sample-'+id)}</style><div class="theme-live-window">${node.outerHTML}</div>`;
   themePreviews.set(id,html);return html;
 }
+function applyArticleTheme(id:string){snapshot(current,true);current.theme=id;current.typography={};markDirty();render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast('已切换为「'+themeById(id).name+'」');}
+function themeHost(){return {open:openModal,close:closeModal,notify:toast,current:()=>current.theme,apply:applyArticleTheme,changed:()=>{themePreviews.clear();render();if(!$('style-panel').hidden)renderStylePanel();}};}
 function showThemes(filter='全部'){
-  openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时恢复主题默认设置。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','装饰精选','科普','文学','通用'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g}${g==='全部'?' · '+themes.length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><p class="theme-gallery-foot">真实排版缩略图 · ☆ 置顶常用主题，最多 5 个 · 知乎模式使用无主题排版</p>`,'THE THEME COLLECTION / '+themes.length);
-  const applyTheme=(id:string)=>{snapshot(current,true);current.theme=id;current.typography={};markDirty();render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast(`已切换为「${themeById(current.theme).name}」`);};
+  openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时恢复主题默认设置。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 置顶常用主题，最多 5 个 · 知乎模式使用无主题排版</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
+  const applyTheme=applyArticleTheme;
+  bind('theme-import-button',()=>chooseThemeFile(themeHost()));bind('theme-manage-button',()=>showThemeManager(themeHost()));
   const showDetail=(id:string)=>{
     const t=themeById(id),sample=document.createElement('article');sample.className='theme-detail-article';
     const sampleText=t.group==='文学'?'# 在平凡里，收集微光\n\n## 写在日常的页边\n\n风从窗边经过，留下一页值得珍藏的文字。\n\n### 片刻的停留\n\n> 让文字留下温柔的回声。\n\n:::poem center\n光落在纸上\n也落在**未说完的故事**里\n\n愿你记得\n每一次出发\n:::\n\n## 留住那些瞬间\n\n- 一段散步的时光\n- 一封写给自己的信': '# 一束光，读懂宇宙\n\n## 从一个好问题开始\n\n科学始于好奇，也来自一次次**认真观察**。好的排版让推理更清晰。\n\n### 观察与证据\n\n> 我们用可重复的观察，检验关于世界的猜想。\n\n## 把现象写成规律\n\n$$E=mc^2$$\n\n| 观测对象 | 特征 |\n| --- | --- |\n| 光 | 传播与能量 |\n| 物质 | 质量与运动 |\n\n- 提出可检验的问题\n- 记录证据，比较结果\n\n---\n\n继续探索，让知识成为自己的理解。';
     sample.innerHTML=renderMarkdown(sampleText,new Map()).html;decorateTheme(sample,t);
-    const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${t.name}</strong><small>${t.description}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div class="theme-detail-scroll"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>375px 手机阅读效果</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
+    const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div class="theme-detail-scroll"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>375px 手机阅读效果</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
     document.querySelector('.theme-browser')!.classList.add('has-detail');
     $('theme-results').querySelectorAll<HTMLElement>('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themePreview===id)));
     bind('theme-detail-close',()=>{detail.hidden=true;document.querySelector('.theme-browser')!.classList.remove('has-detail');$('theme-results').querySelectorAll('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed','false'));});
@@ -193,9 +198,9 @@ function showThemes(filter='全部'){
     const query=$<HTMLInputElement>('theme-search').value.trim().toLowerCase();
     const pinRank=(id:string)=>pinnedThemes.includes(id)?pinnedThemes.indexOf(id):99;
     $('theme-pin-count').textContent=`置顶 ${pinnedThemes.length} / 5 · 优先显示`;
-    const visible=themes.filter(t=>(filter==='全部'||(filter==='已置顶'?pinnedThemes.includes(t.id):filter==='装饰精选'?!['plain','minimal','academic','wild'].includes(t.id):t.group===filter))&&(!query||[t.name,t.description,...designs[t.id].tags].join(' ').toLowerCase().includes(query))).sort((a,b)=>pinRank(a.id)-pinRank(b.id));
+    const visible=visibleThemes().filter(t=>(filter==='全部'||(filter==='已置顶'?pinnedThemes.includes(t.id):filter==='自定义'?!!t.definition:filter==='装饰精选'?!['plain','minimal','academic','wild'].includes(t.id):t.group===filter))&&(!query||[t.name,t.description,...themeDesign(t).tags].join(' ').toLowerCase().includes(query))).sort((a,b)=>pinRank(a.id)-pinRank(b.id));
     $('theme-result-count').textContent=`${visible.length} 个主题`;
-    $('theme-results').innerHTML=visible.map(t=>`<div class="theme-card ${current.theme===t.id?'selected':''} ${pinnedThemes.includes(t.id)?'pinned':''}"><button class="theme-preview-button" data-theme-preview="${t.id}" aria-label="查看${t.name}完整预览" aria-pressed="false"><div class="theme-card-topline"><span>${t.group}</span><span>${current.theme===t.id?'使用中':'点击放大'}</span></div>${themeThumbnail(t.id)}</button><div class="theme-card-info"><strong title="${t.description}">${t.name}</strong><button class="theme-apply" data-theme="${t.id}" aria-label="使用${t.name}主题">使用</button><small>${designs[t.id].tags.join(' · ')}</small></div><button class="theme-pin ${pinnedThemes.includes(t.id)?'active':''}" data-pin="${t.id}" aria-label="${pinnedThemes.includes(t.id)?'取消置顶':'置顶'}${t.name}" aria-pressed="${pinnedThemes.includes(t.id)}" title="${pinnedThemes.includes(t.id)?'取消置顶':'置顶主题（最多5个）'}">${pinnedThemes.includes(t.id)?'★':'☆'}</button></div>`).join('')||'<div class="empty-state">没有匹配的主题，试试搜索名称或装饰特点。</div>';
+    $('theme-results').innerHTML=visible.map(t=>`<div class="theme-card ${current.theme===t.id?'selected':''} ${pinnedThemes.includes(t.id)?'pinned':''}"><button class="theme-preview-button" data-theme-preview="${t.id}" aria-label="查看${esc(t.name)}完整预览" aria-pressed="false"><div class="theme-card-topline"><span>${t.group}</span><span>${current.theme===t.id?'使用中':'点击放大'}</span></div>${themeThumbnail(t.id)}</button><div class="theme-card-info"><strong title="${esc(t.description)}">${esc(t.name)}</strong><button class="theme-apply" data-theme="${t.id}" aria-label="使用${esc(t.name)}主题">使用</button><small>${esc(themeDesign(t).tags.join(' · '))}</small></div><button class="theme-pin ${pinnedThemes.includes(t.id)?'active':''}" data-pin="${t.id}" aria-label="${pinnedThemes.includes(t.id)?'取消置顶':'置顶'}${esc(t.name)}" aria-pressed="${pinnedThemes.includes(t.id)}" title="${pinnedThemes.includes(t.id)?'取消置顶':'置顶主题（最多5个）'}">${pinnedThemes.includes(t.id)?'★':'☆'}</button></div>`).join('')||'<div class="empty-state">没有匹配的主题，试试搜索名称或装饰特点。</div>';
     $('theme-results').querySelectorAll<HTMLElement>('.theme-live-window').forEach(el=>themeGalleryResize.observe(el));
   };
   renderCards();bind('theme-search',renderCards,'input');
@@ -211,10 +216,11 @@ function showThemes(filter='全部'){
 }
 
 function renderStylePanel(){
-  const t=themeById(current.theme),o=current.typography;
+  const t=themeById(current.theme),o={...themeDefaults(t),...current.typography};
   const options=(value:string)=>Object.entries(fontNames).map(([key,name])=>`<option value="${key}" ${key===value?'selected':''}>${name}</option>`).join('');
-  $('style-panel').innerHTML=`<div class="panel-title"><div><span class="eyebrow">TYPOGRAPHY</span><h2>排版设置</h2></div><button id="style-close" class="icon-button" aria-label="关闭排版设置">×</button></div><p class="help">${t.name} · 设置随当前文章保存</p><label>正文字体</label><select id="setting-font">${options(o.font||t.font)}</select><label>标题字体</label><select id="setting-headingFont">${options(o.headingFont||t.headingFont||o.font||t.font)}</select>${[['size','正文字号',12,24,.5,o.size??16,'px'],['lineHeight','行高',1.3,2.8,.05,o.lineHeight??(t.id==='classical'?2.15:t.group==='文学'?2:1.85),''],['paragraphGap','段落间距',0,40,.5,o.paragraphGap??20,'px'],['padding','正文边距',12,48,1,o.padding??24,'px']].map(([key,label,min,max,step,value,unit])=>`<label>${label}<output id="value-${key}">${value}${unit}</output></label><div class="numeric-setting"><input id="setting-${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}滑块"><input id="number-${key}" type="number" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}数值"></div>`).join('')}<label>强调色</label><input id="setting-accent" type="color" value="${o.accent||t.accent}"><label class="switch-row">段首自动空两格<input id="setting-indent" type="checkbox" ${(o.indent??t.id==='classical')?'checked':''}></label><button id="reset-style" class="button outline full">恢复主题默认设置</button><p class="help">字体按设备可用字体自动回退，公众号读者看到的字形可能有所不同。</p>`;
+  $('style-panel').innerHTML=`<div class="panel-title"><div><span class="eyebrow">TYPOGRAPHY</span><h2>排版设置</h2></div><button id="style-close" class="icon-button" aria-label="关闭排版设置">×</button></div><p class="help">${esc(t.name)} · 设置随当前文章保存</p><label>正文字体</label><select id="setting-font">${options(o.font||t.font)}</select><label>标题字体</label><select id="setting-headingFont">${options(o.headingFont||t.headingFont||o.font||t.font)}</select>${[['size','正文字号',12,24,.5,o.size??16,'px'],['lineHeight','行高',1.3,2.8,.05,o.lineHeight,''],['paragraphGap','段落间距',0,40,.5,o.paragraphGap??20,'px'],['padding','正文边距',12,48,1,o.padding??24,'px']].map(([key,label,min,max,step,value,unit])=>`<label>${label}<output id="value-${key}">${value}${unit}</output></label><div class="numeric-setting"><input id="setting-${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}滑块"><input id="number-${key}" type="number" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}数值"></div>`).join('')}<label>强调色</label><input id="setting-accent" type="color" value="${o.accent||t.accent}"><label class="switch-row">段首自动空两格<input id="setting-indent" type="checkbox" ${(o.indent??t.id==='classical')?'checked':''}></label><button id="reset-style" class="button outline full">恢复主题默认设置</button><p class="help">字体按设备可用字体自动回退，公众号读者看到的字形可能有所不同。</p>`;
   bind('style-close',()=>{$('style-panel').hidden=true;});
+  $('reset-style').insertAdjacentHTML('afterend','<button id="manage-theme-library" class="button outline full">完整主题库 / 导入与恢复</button>');bind('manage-theme-library',()=>showThemeManager(themeHost()));
   $('reset-style').insertAdjacentHTML('beforebegin',`<label class="switch-row">外部链接转文末参考<input id="setting-references" type="checkbox" ${referencesEnabled?'checked':''}></label>`);
   bind('setting-references',()=>{referencesEnabled=$<HTMLInputElement>('setting-references').checked;preference('references-enabled',String(referencesEnabled));render();},'change');
   $('reset-style').insertAdjacentHTML('beforebegin',`<label for="setting-tableStyle">表格样式</label><select id="setting-tableStyle">${[['theme','跟随主题'],['three-line','三线表 · 学术'],['striped','斑马纹 · 数据'],['grid','网格 · 清晰']].map(([id,name])=>`<option value="${id}" ${id===(o.tableStyle||'theme')?'selected':''}>${name}</option>`).join('')}</select><p class="help">表格样式用于公众号排版及主题 HTML / PDF。知乎与常规 Word 保持标准表格。</p>`);
@@ -297,7 +303,7 @@ function showImageLayouts(group:string,anchor:HTMLElement){
 function showDividers(anchor:HTMLElement){
   const owner=current.id,position=editor.view.state.selection.main.head;
   const preferred:Record<string,string>={nature:'leaf',wild:'leaf',matcha:'leaf',cosmos:'orbit',ocean:'wave',pixel:'pixel',arcade:'pixel',academic:'double',magazine:'double',gold:'diamond',cartoon:'dots',kuromi:'diamond',pop:'pixel'};
-  const choice=preferred[current.theme]||'fine';const t=themeById(current.theme),accent=current.typography.accent||t.accent;
+  const t=themeById(current.theme),choice=preferred[t.baseId||t.id]||'fine',accent=current.typography.accent||t.accent;
   const panel=openPopover(anchor,'主题分割线',`<p class="help">配色随文章主题变化；点击插入当前位置。</p><div class="divider-choices" style="color:${accent}">${[...dividerOptions].sort((a,b)=>Number(b[0]===choice)-Number(a[0]===choice)).map(([id,name])=>`<button data-divider-choice="${id}">${dividerSVG(id)}<span>${name}${id===choice?' · 本主题推荐':''}</span></button>`).join('')}</div>`);
   panel.querySelectorAll<HTMLElement>('[data-divider-choice]').forEach(button=>button.onclick=()=>{if(current.id!==owner){closePopover();return;}editor.insert(`\n\n:::divider ${button.dataset.dividerChoice}\n\n`,Math.min(position,current.markdown.length));closePopover();});
 }
@@ -305,7 +311,7 @@ function showMagazineImage(image:HTMLElement){
   const asset=assets.get(image.dataset.asset||'');if(!asset)return;
   const owner=current.id,anchor=$('image-button');const width=asset.width===100?42:Math.max(20,Math.min(55,asset.width));
   const panel=openPopover(anchor,'杂志插图 · 正文环绕',`<div class="quick-choices"><button data-magazine-side="left" class="${asset.align!=='right'?'active':''}">居左环绕</button><button data-magazine-side="right" class="${asset.align==='right'?'active':''}">居右环绕</button></div><label class="magazine-size-label">插图宽度（占正文 %）</label><div class="numeric-setting"><input id="magazine-image-range" type="range" min="20" max="55" step="1" value="${width}" aria-label="插图宽度滑块"><input id="magazine-image-number" type="number" min="20" max="55" step="1" value="${width}" aria-label="插图宽度数值"></div><p class="help">拖动滑块或输入数值；原图完整保留。图注与来源可在素材面板编辑。</p>`);
-  const update=(size:number,side:string)=>{if(current.id!==owner||current.theme!=='magazine'){closePopover();return;}asset.width=Math.max(20,Math.min(55,size));asset.align=side==='right'?'right':'left';dirtyAssets.add(asset.id);markDirty();render();};
+  const update=(size:number,side:string)=>{if(current.id!==owner||(themeById(current.theme).baseId||current.theme)!=='magazine'){closePopover();return;}asset.width=Math.max(20,Math.min(55,size));asset.align=side==='right'?'right':'left';dirtyAssets.add(asset.id);markDirty();render();};
   panel.querySelectorAll<HTMLElement>('[data-magazine-side]').forEach(button=>button.onclick=()=>{update(Number($<HTMLInputElement>('magazine-image-number').value)||width,button.dataset.magazineSide!);panel.querySelectorAll('[data-magazine-side]').forEach(el=>el.classList.toggle('active',(el as HTMLElement).dataset.magazineSide===asset.align));});
   for(const id of ['magazine-image-range','magazine-image-number'])bind(id,()=>{const input=$<HTMLInputElement>(id);if(!input.value||!Number.isFinite(input.valueAsNumber))return;update(input.valueAsNumber,asset.align);for(const other of ['magazine-image-range','magazine-image-number'])if(other!==id)$<HTMLInputElement>(other).value=String(asset.width);},'input');
 }
@@ -321,7 +327,7 @@ const formulas=[
 function showFormulas(event?:Event){const panel=openPopover((event?.currentTarget as HTMLElement)||$('math-button'),'把思考，写成公式',`<p class="modal-subtitle">点击插入后可直接修改。行内使用 $…$，独立公式使用 $$…$$。</p><div class="formula-grid">${formulas.map(([name,tex,display],i)=>`<button class="formula-card" data-formula="${i}"><strong>${name}</strong><div class="formula-example">${renderMath(tex,display).html}</div></button>`).join('')}</div>`);panel.querySelectorAll<HTMLElement>('[data-formula]').forEach(el=>el.onclick=()=>{const [,tex,display]=formulas[Number(el.dataset.formula)];closePopover();editor.insert(display?`\n\n$$\n${tex}\n$$\n\n`:`$${tex}$`);});}
 function showSamples(){openModal('从一个小小的示例开始','<p class="modal-subtitle">示例将作为新文章打开，保留你正在编辑的草稿。</p><div class="option-list"><button class="option-card" data-sample="science"><strong>01 / 一束光，如何告诉我们宇宙的故事？</strong><small>科普文章 · 公式 · 表格 · 脚注</small></button><button class="option-card" data-sample="math"><strong>02 / 在符号之间，理解变化</strong><small>数学公式 · 矩阵 · 多行推导 · 编号</small></button><button class="option-card" data-sample="poetry"><strong>03 / 风经过的地方</strong><small>诗歌 · 散文 · 保留诗行与空行</small></button></div>');$('modal-body').querySelectorAll<HTMLElement>('[data-sample]').forEach(el=>el.onclick=()=>{closeModal();if(el.dataset.sample==='math')addArticle('在符号之间，理解变化',equations,'math');else if(el.dataset.sample==='poetry')addArticle('风经过的地方',poetry,'moon');else addArticle('一束光，如何告诉我们宇宙的故事？',science);});}
 
-function exportBackup(all=false){snapshot(current,true);const selected=all?[...articles.values()]:[current];const data=createBackup(selected,assets,all?folders:[]);download(data as BlobPart,all?'纸间-文章库备份.zip':safeName(current.title)+'.纸间.zip','application/zip');$('last-export').textContent='已导出文件 · '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});toast(all?'文章库备份已下载（包含回收站）':'文章备份已下载，包含图片和排版设置');}
+function exportBackup(all=false){snapshot(current,true);const selected=all?[...articles.values()]:[current];const data=createBackup(selected,assets,all?folders:[],all);download(data as BlobPart,all?'纸间-文章库备份.zip':safeName(current.title)+'.纸间.zip','application/zip');$('last-export').textContent='已导出文件 · '+new Date().toLocaleTimeString('zh-CN',{hour:'2-digit',minute:'2-digit'});toast(all?'文章库备份已下载（包含回收站）':'文章备份已下载，包含图片和排版设置');}
 function checkIssues():string[]{
   return [...renderResult.errors.map(e=>`第 ${e.line} 行公式：${e.message}`),...renderResult.missing.map(p=>`图片缺失：${p}`),...renderResult.external.map(()=>`存在网络图片，离线阅读需先导入本地副本`),...($('preview').querySelector('img')?['本地图片粘贴后可能需要补插，请检查图片是否保留。']:[]),...(publisher==='wechat'&&current.stickers?.length?['贴纸可尝试保留轮廓，或改为普通左右环绕；自由叠放区域需要合成为图片。']:[])];
 }
@@ -415,18 +421,22 @@ function showPDF(){
 }
 
 async function importFiles(files:File[]){
-  const incoming:Article[]=[],images:Asset[]=[],incomingFolders:string[]=[];
+  const incoming:Article[]=[],images:Asset[]=[],incomingFolders:string[]=[],themeGroups:ThemeDefinition[][]=[],hiddenThemes:string[][]=[],backupGroups:{articles:Article[];index:number}[]=[];
   for(const file of files){
     if(file.size>100*1024*1024)throw new Error('导入文件请小于 100 MB');
-    if(/\.zip$/i.test(file.name)){const result=readBackup(new Uint8Array(await file.arrayBuffer()));incoming.push(...result.articles);images.push(...result.assets);incomingFolders.push(...result.folders);}
+    if(/\.zip$/i.test(file.name)){const result=readBackup(new Uint8Array(await file.arrayBuffer()));incoming.push(...result.articles);images.push(...result.assets);incomingFolders.push(...result.folders);backupGroups.push({articles:result.articles,index:themeGroups.length});themeGroups.push(result.themes);hiddenThemes.push(result.hiddenThemes);}
     else {if(!/\.(md|markdown|txt)$/i.test(file.name))throw new Error('请选择 Markdown 或文章备份 ZIP');incoming.push(freshArticle(file.name.replace(/\.[^.]+$/,''),await file.text()));}
   }
   // Validate the entire batch before modifying the live collection.
+  if(themeGroups.some(g=>g.length)||hiddenThemes.some(g=>g.length)){
+    const plan=planThemeImports(themeGroups,'keep',[],hiddenThemes);plan.commit();themePreviews.clear();
+    for(const group of backupGroups){const mapping=plan.maps[group.index];for(const a of group.articles){a.theme=mapping.get(a.theme)||a.theme;for(const r of a.revisions)r.theme=mapping.get(r.theme)||r.theme;}}
+  }
   folders.push(...incomingFolders);libraryFolder="*";saveFolders();
   for(const a of incoming){articles.set(a.id,a);dirtyArticles.add(a.id);}
   for(const a of images){assets.set(a.id,a);dirtyAssets.add(a.id);}
   const first=incoming.find(a=>!a.deleted);if(first)switchArticle(first.id);else renderLibrary();
-  dirtyGeneration++;await save();toast(`已导入 ${incoming.length} 篇文章，同名文章保留为独立副本`);
+  dirtyGeneration++;await save();if(dirtyGeneration!==savedGeneration)toast(`已加入 ${incoming.length} 篇文章，但尚未全部保存到浏览器。请保留页面并导出文章库备份。`,true);else toast(`已导入 ${incoming.length} 篇文章，同名文章保留为独立副本`);
 }
 function showHistory(article:Article){
   const revisions=[...article.revisions].reverse();
@@ -530,9 +540,9 @@ async function init(){
   bind('preview-width',()=>{const v=$<HTMLSelectElement>('preview-width').value;preference('preview-width',v);const line=sync.capture();$('preview').style.maxWidth=v==='wide'?'760px':v+'px';document.querySelector<HTMLElement>('.preview-caption')!.style.maxWidth=v==='wide'?'760px':v+'px';requestAnimationFrame(()=>{sync.rebuild();sync.restore(line);});},'change');
   bind('image-button',()=>$('image-input').click());bind('image-input',async()=>{const input=$<HTMLInputElement>('image-input');const files=[...(input.files||[])];input.value='';await addImages(files,editor.view.state.selection.main.head);},'change');
   const layoutButton=document.createElement('button');layoutButton.id='image-layout-button';layoutButton.textContent='组图 ▾';layoutButton.title='切换图片组排版';$('image-button').after(layoutButton);layoutButton.onclick=()=>showImageLayouts('',layoutButton);
-  $('preview').addEventListener('click',event=>{if(previewEditor.enabled||publisher!=='wechat')return;const target=event.target as HTMLElement,group=target.closest<HTMLElement>('.image-gallery');if(group){event.stopImmediatePropagation();showImageLayouts(group.dataset.gallery!,layoutButton);return;}const image=target.closest<HTMLElement>('.image-wrap');if(current.theme==='magazine'&&image){event.stopImmediatePropagation();showMagazineImage(image);}},true);
+  $('preview').addEventListener('click',event=>{if(previewEditor.enabled||publisher!=='wechat')return;const target=event.target as HTMLElement,group=target.closest<HTMLElement>('.image-gallery');if(group){event.stopImmediatePropagation();showImageLayouts(group.dataset.gallery!,layoutButton);return;}const image=target.closest<HTMLElement>('.image-wrap');if((themeById(current.theme).baseId||current.theme)==='magazine'&&image){event.stopImmediatePropagation();showMagazineImage(image);}},true);
   const dividerButton=document.createElement('button');dividerButton.id='divider-button';dividerButton.textContent='分割线 ▾';$('image-layout-button').after(dividerButton);dividerButton.onclick=()=>showDividers(dividerButton);
-  const indentButton=document.createElement('button');indentButton.id='indent-toggle';indentButton.textContent='段首空两格';indentButton.title='自动缩进正文首行；不改变 Markdown 内容';$('inline-style-button').before(indentButton);indentButton.onclick=()=>{current.typography.indent=!(current.typography.indent??current.theme==='classical');markDirty();render();if(!$('style-panel').hidden)renderStylePanel();};
+  const indentButton=document.createElement('button');indentButton.id='indent-toggle';indentButton.textContent='段首空两格';indentButton.title='自动缩进正文首行；不改变 Markdown 内容';$('inline-style-button').before(indentButton);indentButton.onclick=()=>{current.typography.indent=!(current.typography.indent??themeDefaults(themeById(current.theme)).indent);markDirty();render();if(!$('style-panel').hidden)renderStylePanel();};
   bind('math-button',showFormulas);bind('assets-button',showAssets);bind('toc-button',showTOC);bind('undo-button',()=>editor.undo());bind('redo-button',()=>editor.redo());bind('search-button',()=>editor.search());
   bind('publisher',()=>{publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
   bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>$('import-input').click());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
@@ -576,6 +586,7 @@ async function init(){
   window.addEventListener('beforeunload',e=>{if(dirtyGeneration!==savedGeneration){e.preventDefault();e.returnValue='';}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirtyArticles.size)void save();});
   switchArticle(current.id);
+  if(themeLibraryError())toast(themeLibraryError(),true);
   if(storageError){$('save-state').className='save-error';$('save-state').textContent='本地存储不可用 · 请导出备份';toast('浏览器未开放本地存储。可继续编辑，请用文件备份保存。',true);}else if(first||recovered){markDirty();if(recovered)toast('已找回上次尚未保存完成的文字。');}else $('save-state').innerHTML='<i></i> 已保存到浏览器';
 }
 void init().catch(e=>{toast('初始化失败：'+errorMessage(e),true);$('save-state').textContent='初始化失败，请重新打开';});

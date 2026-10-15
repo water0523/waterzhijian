@@ -26,6 +26,11 @@ export const fontStacks: Record<string, string> = {
   sans: '"Microsoft YaHei", "PingFang SC", "Noto Sans CJK SC", sans-serif',
   serif: '"Source Han Serif SC", "Noto Serif CJK SC", "Songti SC", SimSun, serif',
   kai: 'KaiTi, STKaiti, "Kaiti SC", serif',
-  mono: 'Consolas, "Cascadia Code", monospace'
+  mono: 'Consolas, "Cascadia Code", monospace',
+  hei: 'SimHei, "Heiti SC", "Microsoft YaHei", sans-serif',
+  fang: 'FangSong, STFangsong, "Songti SC", SimSun, serif',
+  times: '"Times New Roman", "Noto Serif CJK SC", SimSun, serif',
+  georgia: 'Georgia, "Noto Serif CJK SC", "Songti SC", SimSun, serif',
+  arial: 'Arial, "Microsoft YaHei", "PingFang SC", sans-serif'
 };
-export const fontNames: Record<string, string> = {sans:'黑体 · 清晰',serif:'宋体 · 书卷',kai:'楷体 · 人文',mono:'等宽 · 代码'};
+export const fontNames: Record<string, string> = {sans:'微软雅黑 / 苹方',serif:'思源宋体 / 宋体',kai:'楷体',hei:'黑体',fang:'仿宋',times:'Times New Roman · 宋体回退',georgia:'Georgia · 宋体回退',arial:'Arial · 中文黑体回退',mono:'Consolas · 等宽'};

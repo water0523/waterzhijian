@@ -1,0 +1,83 @@
+{
+  "format": "zhijian-theme",
+  "version": 1,
+  "theme": {
+    "id": "custom-cedar-journal",
+    "name": "杉影札记",
+    "group": "文学",
+    "description": "宋楷书页、杉绿色题签与温润的档案式引文",
+    "base": "plain",
+    "palette": {
+      "accent": "#3f6254",
+      "paper": "#fffdf7",
+      "ink": "#373f39"
+    },
+    "fonts": {
+      "body": "serif",
+      "heading": "kai",
+      "quote": "fang",
+      "caption": "sans",
+      "code": "mono",
+      "poem": "kai"
+    },
+    "typography": {
+      "size": 16,
+      "lineHeight": 2,
+      "paragraphGap": 24,
+      "padding": 26,
+      "indent": false,
+      "tableStyle": "three-line"
+    },
+    "elements": {
+      "h1": {
+        "font": "serif",
+        "size": 30,
+        "weight": 600,
+        "letterSpacing": 2,
+        "borderSide": "top",
+        "borderWidth": 3,
+        "borderColor": "#3f6254",
+        "padding": 18,
+        "marginBottom": 34
+      },
+      "h2": {
+        "font": "kai",
+        "size": 22,
+        "weight": 700,
+        "borderSide": "bottom",
+        "borderWidth": 1,
+        "borderColor": "#c8d4c7",
+        "padding": 8,
+        "marginTop": 34
+      },
+      "quote": {
+        "font": "fang",
+        "size": 17,
+        "background": "#f1f4ec",
+        "borderSide": "left",
+        "borderWidth": 2,
+        "borderColor": "#3f6254",
+        "padding": 20,
+        "radius": 0
+      },
+      "caption": {
+        "font": "sans",
+        "size": 12,
+        "color": "#6f7c70",
+        "letterSpacing": 0.5
+      },
+      "formula": {
+        "background": "#f4f6ef",
+        "borderWidth": 0,
+        "padding": 20
+      }
+    },
+    "ornaments": {
+      "label": "CEDAR / FIELD JOURNAL",
+      "mark": "",
+      "numbered": false,
+      "quoteLabel": "页边札记",
+      "codeLabel": "NOTES / CODE"
+    }
+  }
+}
