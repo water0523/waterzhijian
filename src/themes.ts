@@ -119,18 +119,23 @@ export function themesForArticles(articles:{theme:string;revisions:{theme:string
   const used=new Set(articles.flatMap(a=>[a.theme,...a.revisions.map(r=>r.theme)]));return structuredClone(definitions.filter(d=>used.has(d.id)));
 }
 export function themeDefaults(theme:Theme):Typography{return {size:16,lineHeight:(theme.baseId||theme.id)==='classical'?2.15:theme.group==='文学'?2:1.85,paragraphGap:20,padding:24,indent:(theme.baseId||theme.id)==='classical',...theme.defaults};}
-function elementCSS(elements:ThemeDefinition['elements']){
-  const selectors={h1:'h1',h2:'h2',h3:'h3',quote:'blockquote',caption:'.image-caption',table:'table',list:'ul,.article ol',code:'pre',formula:'.math-display',poem:'.poem',divider:'.decorative-divider'};
+export function elementCSS(elements:ThemeDefinition['elements'],partial=false){
+  const selectors={h1:'h1',h2:'h2',h3:'h3',quote:'blockquote',caption:'.image-wrap .image-caption',table:'table:not([role=presentation])',list:'ul,.article ol',code:'pre',formula:'.math-display',poem:'.poem',divider:'hr:not(.footnotes-sep),.article .decorative-divider'};
   return Object.entries(elements||{}).map(([key,s])=>{
     const css:string[]=[],style=s as ElementStyle;
     for(const [property,value]of Object.entries(style)){
       const names:Record<string,string>={size:'font-size',weight:'font-weight',lineHeight:'line-height',letterSpacing:'letter-spacing',align:'text-align',marginTop:'margin-top',marginBottom:'margin-bottom',padding:'padding',radius:'border-radius',color:'color',background:'background'};
-      if(names[property])css.push(`${names[property]}:${value}${['size','letterSpacing','marginTop','marginBottom','padding','radius'].includes(property)?'px':''}${key==='caption'&&property==='color'?'!important':''}`);
+      if(names[property])css.push(`${names[property]}:${value}${['size','letterSpacing','marginTop','marginBottom','padding','radius'].includes(property)?'px':''}${key==='caption'?'!important':''}`);
     }
     if(style.font)css.push('font-family:'+fontStacks[style.font]);if(style.italic!==undefined)css.push('font-style:'+(style.italic?'italic':'normal'));
-    if(style.borderWidth!==undefined||style.borderSide||style.borderColor||style.borderStyle){const side=style.borderSide&&style.borderSide!=='all'?'-'+style.borderSide:'';css.push('border:0',`border${side}:${style.borderWidth??1}px ${style.borderStyle||'solid'} ${style.borderColor||'currentColor'}`);}
+    if(style.borderWidth!==undefined||style.borderSide||style.borderColor||style.borderStyle){
+      if(partial&&!style.borderSide){if(style.borderWidth!==undefined)css.push(`border-width:${style.borderWidth}px`);if(style.borderColor)css.push(`border-color:${style.borderColor}`);if(style.borderStyle)css.push(`border-style:${style.borderStyle}`);}
+      else{const side=style.borderSide&&style.borderSide!=='all'?'-'+style.borderSide:'';css.push('border:0',`border${side}:${style.borderWidth??1}px ${style.borderStyle||'solid'} ${style.borderColor||'currentColor'}`);}
+    }
     if(style.shadow)css.push('box-shadow:'+({none:'none',soft:'0 3px 12px #0000000c',offset:'4px 4px 0 #00000014'}[style.shadow]));
-    return `.article ${selectors[key as keyof typeof selectors]}{${css.join(';')}}`;
+    const cellNames:Record<string,string>={font:'font-family',color:'color',background:'background',align:'text-align',weight:'font-weight',size:'font-size',lineHeight:'line-height'};
+    const cells=key==='table'?Object.keys(cellNames).filter(k=>Object.hasOwn(style,k)).map(k=>`${cellNames[k]}:${k==='font'?fontStacks[style.font!]:(style as Record<string,unknown>)[k]}${k==='size'?'px':''}!important`).join(';'):'';
+    return `.article ${selectors[key as keyof typeof selectors]}{${css.join(';')}}${cells?`.article table:not([role=presentation]) th,.article table:not([role=presentation]) td{${cells}}`:''}${key==='poem'&&style.align?`.article .poem[data-align]{text-align:${style.align}}`:''}`;
   }).join('\n');
 }
 export function themeCSS(theme: Theme, o: Typography = {}): string {
@@ -171,7 +176,7 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   .article pre{margin:20px 0;padding:16px;background:#202936;color:#e6edf5;font:13px/1.75 Consolas,monospace;border-radius:6px;white-space:pre-wrap;overflow-wrap:anywhere}.article code{font-family:Consolas,monospace;font-size:.88em;background:#eef1f4;padding:2px 4px;border-radius:3px}.article pre code{background:transparent;color:inherit;padding:0;font-size:inherit}
   .article .hljs-keyword,.article .hljs-selector-tag{color:#dba9ef}.article .hljs-string,.article .hljs-attr{color:#b6d997}.article .hljs-number,.article .hljs-literal{color:#f2c38b}.article .hljs-comment{color:#8b9cab}.article .hljs-title{color:#8ecdec}
   .article table{border-collapse:collapse;width:100%;font-size:.88em;table-layout:fixed;margin:20px 0}.article th,.article td{border:1px solid #dce1e5;padding:9px 7px;word-break:break-word}.article th{background:#f0f3f6;font-weight:600}.article tr:nth-child(even) td{background:#fafbfc}
-  .article figure{margin:24px 0;text-indent:0}.article img{max-width:100%;height:auto;vertical-align:middle}.article figcaption{font-size:12px;line-height:1.7;color:#80858b;text-align:center;margin-top:10px;text-indent:0}.article .image-wrap{display:block;text-indent:0}.article .missing-image{display:block;border:1px dashed #c59069;color:#966438;padding:16px;font-size:13px}
+  .article figure{margin:24px 0;text-indent:0}.article img{max-width:100%;height:auto;vertical-align:middle}.article figcaption{font-size:12px;line-height:1.7;color:#80858b;text-align:center;margin-top:10px;text-indent:0}.article .image-caption{display:block;font-size:12px;line-height:1.7;margin-top:10px;text-indent:0}.article .image-wrap{display:block;text-indent:0}.article .missing-image{display:block;border:1px dashed #c59069;color:#966438;padding:16px;font-size:13px}
   .article .math-inline{display:inline-block;vertical-align:middle;max-width:100%;text-indent:0}.article .math-display{display:block;overflow-x:auto;text-align:center;padding:14px 4px;margin:20px 0;text-indent:0}.article mjx-container{max-width:100%;display:inline-block;margin:0!important}.article .math-display mjx-container{display:block}.article svg{max-width:100%;height:auto;vertical-align:middle}.article .math-error{color:#a43434;background:#fff0ed;font:13px/1.6 Consolas,monospace;white-space:pre-wrap;padding:8px;cursor:pointer}
   .article .poem{white-space:pre-wrap;line-height:2.3;margin:26px 0;padding:12px 0;text-indent:0}.article .poem[data-align=center]{text-align:center}.article .poem[data-align=left]{text-align:left}.article .footnotes{font-size:12px;color:#707880;margin-top:32px;border-top:1px solid #ddd;padding-top:12px}.article .footnotes p{margin:4px 0}.article .footnote-ref{font-size:11px}
   ${special.replaceAll('ACCENT',a)}
@@ -179,14 +184,16 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   .article h1,.article h2,.article h3,.article h4,.article h5,.article h6{font-family:${hf}}
   .article blockquote{font-family:${fontStacks[theme.quoteFont||theme.font]||f}}
   .article .image-caption{font-family:${fontStacks[theme.captionFont||theme.font]||f}}
+  .article .image-source{display:block;color:#80858b;font:11px/1.7 ${fontStacks[theme.captionFont||theme.font]||f};margin-top:4px;text-indent:0}
   .article pre,.article code{font-family:${fontStacks[theme.codeFont||'mono']||fontStacks.mono}}
   .article .poem{font-family:${fontStacks[theme.poemFont||theme.font]||f}}
   ${elementCSS(theme.definition?.elements)}
   ${(theme.baseId||theme.id)==='magazine'?`.article{display:flow-root}.article p:has(.magazine-initial){text-indent:0}.article .magazine-initial{margin-left:${o.indent?size*2:0}px}`:''}
-  .article .decorative-divider{color:${a}}
+  .article .decorative-divider{color:${a};margin:26px 0}
   ${o.headingFont?`.article h1,.article h2,.article h3,.article h4,.article h5,.article h6{font-family:${hf}}`:''}
   ${o.paragraphGap!==undefined?`.article p{margin-bottom:${gap}px}`:''}
   ${o.tableStyle==='three-line'?`.article table{border:0;border-top:2px solid ${theme.ink};border-bottom:2px solid ${theme.ink};border-radius:0}.article table th,.article table td{border:0;background:transparent;color:${theme.ink}}.article table th{border-bottom:1px solid ${theme.ink}}.article table tr:nth-child(even) td{background:transparent}`:''}
   ${o.tableStyle==='striped'?`.article table{border:0}.article table th,.article table td{border:0;border-bottom:1px solid #dce1e5}.article table th{background:${a}18;color:${theme.ink}}.article table tr:nth-child(even) td{background:${a}0c}`:''}
-  ${o.tableStyle==='grid'?`.article table{border:1px solid #aeb8bd}.article table th,.article table td{border:1px solid #aeb8bd}.article table th{background:#f0f3f6;color:${theme.ink}}`:''}`;
+  ${o.tableStyle==='grid'?`.article table{border:1px solid #aeb8bd}.article table th,.article table td{border:1px solid #aeb8bd}.article table th{background:#f0f3f6;color:${theme.ink}}`:''}
+  ${elementCSS(o.elements,true)}`;
 }

@@ -19,6 +19,7 @@ import {saveImageFile} from './image-delivery';
 import {openPopover,closePopover,enhanceColors} from './popover';
 import {blockFormat,toggleTextStyle,hasSelectedStyle,codeFormat,insertFootnote} from './formatting';
 import {dividerOptions,dividerSVG} from './dividers';
+import {mountElementPanel} from './element-panel';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const assets=new Map<string,Asset>();const articles=new Map<string,Article>();
@@ -73,7 +74,7 @@ function snapshot(a:Article,force=false){
   const last=a.revisions.at(-1);
   if(last&&last.markdown===a.markdown&&last.title===a.title&&last.titleMode===a.titleMode&&last.theme===a.theme&&JSON.stringify(last.typography)===JSON.stringify(a.typography)&&JSON.stringify(last.stickers||[])===JSON.stringify(a.stickers||[]))return;
   if(!force&&last&&Date.now()-last.at<30000)return;
-  a.revisions.push({at:Date.now(),title:a.title,titleMode:a.titleMode,markdown:a.markdown,theme:a.theme,typography:{...a.typography},assets:assetRefs(a.markdown),stickers:structuredClone(a.stickers||[])});
+  a.revisions.push({at:Date.now(),title:a.title,titleMode:a.titleMode,markdown:a.markdown,theme:a.theme,typography:structuredClone(a.typography),assets:assetRefs(a.markdown),stickers:structuredClone(a.stickers||[])});
   a.revisions=a.revisions.slice(-20);
 }
 async function save(){
@@ -219,7 +220,7 @@ function renderStylePanel(){
   const t=themeById(current.theme),o={...themeDefaults(t),...current.typography};
   const options=(value:string)=>Object.entries(fontNames).map(([key,name])=>`<option value="${key}" ${key===value?'selected':''}>${name}</option>`).join('');
   $('style-panel').innerHTML=`<div class="panel-title"><div><span class="eyebrow">TYPOGRAPHY</span><h2>排版设置</h2></div><button id="style-close" class="icon-button" aria-label="关闭排版设置">×</button></div><p class="help">${esc(t.name)} · 设置随当前文章保存</p><label>正文字体</label><select id="setting-font">${options(o.font||t.font)}</select><label>标题字体</label><select id="setting-headingFont">${options(o.headingFont||t.headingFont||o.font||t.font)}</select>${[['size','正文字号',12,24,.5,o.size??16,'px'],['lineHeight','行高',1.3,2.8,.05,o.lineHeight,''],['paragraphGap','段落间距',0,40,.5,o.paragraphGap??20,'px'],['padding','正文边距',12,48,1,o.padding??24,'px']].map(([key,label,min,max,step,value,unit])=>`<label>${label}<output id="value-${key}">${value}${unit}</output></label><div class="numeric-setting"><input id="setting-${key}" type="range" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}滑块"><input id="number-${key}" type="number" min="${min}" max="${max}" step="${step}" value="${value}" aria-label="${label}数值"></div>`).join('')}<label>强调色</label><input id="setting-accent" type="color" value="${o.accent||t.accent}"><label class="switch-row">段首自动空两格<input id="setting-indent" type="checkbox" ${(o.indent??t.id==='classical')?'checked':''}></label><button id="reset-style" class="button outline full">恢复主题默认设置</button><p class="help">字体按设备可用字体自动回退，公众号读者看到的字形可能有所不同。</p>`;
-  bind('style-close',()=>{$('style-panel').hidden=true;});
+  bind('style-close',()=>{$('style-panel').hidden=true;$('style-button').focus();});
   $('reset-style').insertAdjacentHTML('afterend','<button id="manage-theme-library" class="button outline full">完整主题库 / 导入与恢复</button>');bind('manage-theme-library',()=>showThemeManager(themeHost()));
   $('reset-style').insertAdjacentHTML('beforebegin',`<label class="switch-row">外部链接转文末参考<input id="setting-references" type="checkbox" ${referencesEnabled?'checked':''}></label>`);
   bind('setting-references',()=>{referencesEnabled=$<HTMLInputElement>('setting-references').checked;preference('references-enabled',String(referencesEnabled));render();},'change');
@@ -227,14 +228,15 @@ function renderStylePanel(){
   bind('setting-tableStyle',()=>{current.typography.tableStyle=$<HTMLSelectElement>('setting-tableStyle').value as Typography['tableStyle'];markDirty();render();},'change');
   for(const key of ['font','headingFont','size','lineHeight','paragraphGap','padding','accent','indent'])bind('setting-'+key,()=>{
     const input=$<HTMLInputElement>('setting-'+key);const value=key==='indent'?input.checked:['size','lineHeight','paragraphGap','padding'].includes(key)?Number(input.value):input.value;
-    (current.typography as any)[key]=value;const output=$('value-'+key);if(output)output.textContent=String(value)+(key==='lineHeight'?'':'px');const number=$<HTMLInputElement>('number-'+key);if(number)number.value=String(value);markDirty();render();
+    (current.typography as any)[key]=value;const output=$('value-'+key);if(output)output.textContent=String(value)+(key==='lineHeight'?'':'px');const number=$<HTMLInputElement>('number-'+key);if(number)number.value=String(value);markDirty();render();refreshElements();
   },['font','headingFont','indent'].includes(key)?'change':'input');
   for(const key of ['size','lineHeight','paragraphGap','padding']){
     const input=$<HTMLInputElement>('number-'+key),range=$<HTMLInputElement>('setting-'+key);
     const apply=()=>{if(input.value==='')return;const n=Number(input.value);if(!Number.isFinite(n)||n<Number(input.min)||n>Number(input.max))return;range.value=input.value;range.dispatchEvent(new Event('input'));};
     input.addEventListener('input',apply);input.addEventListener('blur',()=>{input.value=String(Math.max(Number(input.min),Math.min(Number(input.max),Number(input.value)||Number(range.value))));apply();});
   }
-  bind('reset-style',()=>{current.typography={};markDirty();render();renderStylePanel();});
+  bind('reset-style',()=>{snapshot(current,true);current.typography={};markDirty();render();renderStylePanel();});
+  const elementHost=document.createElement('section');elementHost.id='element-panel-host';$('reset-style').before(elementHost);const refreshElements=mountElementPanel(elementHost,{article:()=>current,preview:()=>$('preview'),before:()=>snapshot(current,true),change:()=>{markDirty();render();}});
   enhanceColors($('style-panel'));
 }
 function showBlockMenu(target:HTMLElement){
@@ -518,14 +520,15 @@ async function init(){
   sync=new ScrollSync(editor,$('preview-scroll'),$('preview'));
   previewEditor=new PreviewEditor($('preview'),editor,render,toast);
   stickerController=new StickerController($('preview'),()=>current,assets,()=>{markDirty();requestAnimationFrame(()=>sync.rebuild());},makeSticker,restoreSticker,()=>void showStickerRegions().catch(e=>toast(errorMessage(e),true)));
-  bind('modal-close',closeModal);modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
+  bind('modal-close',closeModal);modal.addEventListener('cancel',e=>{e.preventDefault();closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
   bind('library-toggle',toggleLibrary);bind('library-button',toggleLibrary);bind('library-close',toggleLibrary);
   bind('new-folder',e=>folderEditor(e.currentTarget as HTMLElement));
   $('folder-list').addEventListener('click',e=>{const target=e.target as HTMLElement,edit=target.closest<HTMLElement>('[data-folder-edit]'),folder=target.closest<HTMLElement>('[data-folder]');if(edit)folderEditor(edit,edit.dataset.folderEdit!);else if(folder){libraryFolder=folder.dataset.folder!;saveFolders();renderLibrary();}});
   bind('new-article',()=>addArticle());bind('active-tab',()=>{trash=false;renderLibrary();});bind('trash-tab',()=>{trash=true;renderLibrary();});bind('library-search',renderLibrary,'input');
   const titleMode=document.createElement('button');titleMode.id='title-mode';titleMode.className='title-mode-button';titleMode.setAttribute('aria-label','切换文章名来源');$('document-title').after(titleMode);titleMode.onclick=()=>{current.titleMode=current.titleMode==='manual'?'auto':'manual';markDirty();renderLibrary();};
   bind('document-title',()=>{current.titleMode='manual';current.title=$<HTMLInputElement>('document-title').value;markDirty();renderLibrary();},'input');
-  bind('theme-button',()=>showThemes());bind('samples-button',showSamples);bind('style-button',()=>{const p=$('style-panel');p.hidden=!p.hidden;if(!p.hidden)renderStylePanel();});
+  bind('theme-button',()=>showThemes());bind('samples-button',showSamples);bind('style-button',e=>{const p=$('style-panel');p.hidden=!p.hidden;if(!p.hidden){renderStylePanel();if((e as MouseEvent).detail===0)$('style-close').focus();}});
+  document.addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented||modal.open)return;const target=e.target as Node;if(!$('style-panel').hidden&&($('style-panel').contains(target)||target===$('style-button'))){e.preventDefault();$('style-panel').hidden=true;$('style-button').focus();}else if(!$('library').hidden&&($('library').contains(target)||target===$('library-button'))){e.preventDefault();toggleLibrary();$('library-button').focus();}});
   bind('inline-style-button',showInlineStyle);bind('selection-style-button',showInlineStyle);
   bind('editor-theme',()=>{const value=$<HTMLSelectElement>('editor-theme').value;editor.theme(value);editorChrome(value);preference(night?'editor-theme-night':'editor-theme',value);},'change');
   bind('night-button',()=>{night=!night;preference('appearance',night?'night':'day');const id=readPreference(night?'editor-theme-night':'editor-theme','dark');const value=editorThemes[id]?id:'dark';$<HTMLSelectElement>('editor-theme').value=value;editor.theme(value);editorChrome(value);applyAppearance();});
@@ -570,7 +573,7 @@ async function init(){
     else if(action==='move')moveArticle(target,article);
     else if(action==='history')showHistory(article);
     else if(action==='duplicate'){
-      const copy=freshArticle(article.title+' · 副本',article.markdown);copy.titleMode='manual';copy.folder=article.folder;copy.theme=article.theme;copy.typography={...article.typography};copy.stickers=structuredClone(article.stickers||[]).map(s=>({...s,id:uid()}));
+      const copy=freshArticle(article.title+' · 副本',article.markdown);copy.titleMode='manual';copy.folder=article.folder;copy.theme=article.theme;copy.typography=structuredClone(article.typography);copy.stickers=structuredClone(article.stickers||[]).map(s=>({...s,id:uid()}));
       for(const id of new Set([...assetRefs(copy.markdown),...copy.stickers.map(s=>s.assetId)])){const a=assets.get(id);if(a){const cloned={...a,id:uid()};assets.set(cloned.id,cloned);dirtyAssets.add(cloned.id);copy.markdown=copy.markdown.replaceAll('asset:'+id,'asset:'+cloned.id);for(const s of copy.stickers)if(s.assetId===id)s.assetId=cloned.id;}}
       articles.set(copy.id,copy);markDirty(copy);switchArticle(copy.id);
     }else if(!trash)switchArticle(article.id);

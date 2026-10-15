@@ -1,7 +1,9 @@
+import type {ElementStyle,ElementName} from './theme-types';
 export interface Typography {
   font?: string; headingFont?: string; size?: number; lineHeight?: number;
   paragraphGap?: number; padding?: number; accent?: string; indent?: boolean;
   tableStyle?: 'theme' | 'three-line' | 'striped' | 'grid';
+  elements?:Partial<Record<ElementName,ElementStyle>>;
 }
 export interface Asset {
   id: string; name: string; mime: string; data: string;

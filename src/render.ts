@@ -99,7 +99,7 @@ md.block.ruler.before('fence','divider',(state,start,_end,silent)=>{
   const kind=/^:::divider ([a-z]+)$/.exec(text)?.[1];if(!kind||!dividerOptions.some(([id])=>id===kind))return false;
   if(silent)return true;const t=state.push('decorative_divider','section',0);t.info=kind;t.map=[start,start+1];state.line=start+1;return true;
 },{alt:['paragraph']});
-md.renderer.rules.decorative_divider=(tokens,i)=>`<section class="decorative-divider" data-divider="${tokens[i].info}" data-line="${tokens[i].map![0]}" data-end="${tokens[i].map![1]}" role="separator" aria-label="分割线" style="clear:both;margin:26px 0;text-indent:0">${dividerSVG(tokens[i].info)}</section>`;
+md.renderer.rules.decorative_divider=(tokens,i)=>`<section class="decorative-divider" data-divider="${tokens[i].info}" data-line="${tokens[i].map![0]}" data-end="${tokens[i].map![1]}" role="separator" aria-label="分割线" style="clear:both;text-indent:0">${dividerSVG(tokens[i].info)}</section>`;
 // Parse image rows during the block phase; references, validation and source maps
 // then follow the same path as ordinary Markdown images.
 md.block.ruler.before('fence','gallery',(state,start,end,silent)=>{
@@ -155,7 +155,7 @@ md.renderer.rules.image=(ts,i,_o,env)=>{
     env.missing.push(src);return `<span class="missing-image">请通过「图片」添加本地图片：${escapeHTML(alt||src)}</span>`;
   }
   const description=[figureLabel,caption].filter(Boolean).join(' · ');
-  return `<span class="image-wrap" data-asset="${assetId}" data-source="${escapeHTML(src)}" style="text-align:${align}"><img src="${escapeHTML(url)}" alt="${escapeHTML(alt||env.assets.get(assetId)?.alt||'')}" style="width:${width}%;max-width:100%" loading="eager">${description?`<span class="image-caption" style="display:block;color:#80858b;font-size:12px;line-height:1.7;margin-top:10px;text-indent:0">${escapeHTML(description)}</span>`:''}${source?`<span class="image-source" style="display:block;color:#80858b;font-size:11px;line-height:1.7;margin-top:4px;text-indent:0">来源：${escapeHTML(source)}</span>`:''}</span>`;
+  return `<span class="image-wrap" data-asset="${assetId}" data-source="${escapeHTML(src)}" style="text-align:${align}"><img src="${escapeHTML(url)}" alt="${escapeHTML(alt||env.assets.get(assetId)?.alt||'')}" style="width:${width}%;max-width:100%" loading="eager">${description?`<span class="image-caption" style="display:block;text-indent:0">${escapeHTML(description)}</span>`:''}${source?`<span class="image-source" style="display:block;text-indent:0">来源：${escapeHTML(source)}</span>`:''}</span>`;
 };
 const originalFence=md.renderer.rules.fence!;
 md.renderer.rules.fence=(ts,i,o,env,self)=>originalFence(ts,i,o,env,self).replace('<pre',`<pre data-line="${ts[i].map?.[0]||0}" data-end="${ts[i].map?.[1]||0}"`);

@@ -18,6 +18,21 @@ const font=(v:unknown,p:string)=>typeof v==='string'&&Object.hasOwn(fontStacks,v
 const boolean=(v:unknown,p:string)=>typeof v==='boolean'?v:fail(p,'应为 true 或 false');
 function choice<const T extends string>(v:unknown,p:string,values:readonly T[]):T{return values.includes(v as T)?v as T:fail(p,'可选值：'+values.join('、'));}
 
+export function validateElements(value:unknown,prefix='elements'):ThemeDefinition['elements']{
+  const elements=object(value,prefix,[...elementNames]);const out:NonNullable<ThemeDefinition['elements']>={};
+  for(const name of Object.keys(elements) as (typeof elementNames[number])[]){
+    const path=prefix+'.'+name,s=object(elements[name],path,['font','size','weight','italic','lineHeight','letterSpacing','color','background','align','marginTop','marginBottom','padding','radius','borderWidth','borderColor','borderStyle','borderSide','shadow']);const style:ElementStyle={};
+    for(const [key,min,max] of [['size',10,48],['weight',100,900],['lineHeight',1,3.5],['letterSpacing',-1,8],['marginTop',0,80],['marginBottom',0,80],['padding',0,40],['radius',0,40],['borderWidth',0,8]] as const)if(s[key]!==undefined)style[key]=number(s[key],path+'.'+key,min,max);
+    for(const k of ['color','background','borderColor'] as const)if(s[k]!==undefined)style[k]=color(s[k],path+'.'+k);
+    if(s.font!==undefined)style.font=font(s.font,path+'.font');if(s.italic!==undefined)style.italic=boolean(s.italic,path+'.italic');
+    if(s.align!==undefined)style.align=choice(s.align,path+'.align',['left','center','right','justify']);
+    if(s.borderStyle!==undefined)style.borderStyle=choice(s.borderStyle,path+'.borderStyle',['solid','dashed','dotted','double']);
+    if(s.borderSide!==undefined)style.borderSide=choice(s.borderSide,path+'.borderSide',['all','top','bottom','left','right']);
+    if(s.shadow!==undefined)style.shadow=choice(s.shadow,path+'.shadow',['none','soft','offset']);
+    out[name]=style;
+  }
+  return out;
+}
 export function validateTheme(value:unknown,bases:readonly string[]):ThemeDefinition {
   const t=object(value,'theme',['id','name','group','description','base','palette','fonts','typography','elements','ornaments']);
   let id=text(t.id,'theme.id',60);if(!/^(?:custom-)?[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/.test(id))fail('theme.id','只使用小写字母、数字和单个连字符，以字母开头');
@@ -32,20 +47,7 @@ export function validateTheme(value:unknown,bases:readonly string[]):ThemeDefini
     if(p.indent!==undefined)out.typography.indent=boolean(p.indent,'theme.typography.indent');
     if(p.tableStyle!==undefined)out.typography.tableStyle=choice(p.tableStyle,'theme.typography.tableStyle',['theme','three-line','striped','grid']);
   }
-  if(t.elements!==undefined){
-    const elements=object(t.elements,'theme.elements',[...elementNames]);out.elements={};
-    for(const name of Object.keys(elements) as (typeof elementNames[number])[]){
-      const path='theme.elements.'+name,s=object(elements[name],path,['font','size','weight','italic','lineHeight','letterSpacing','color','background','align','marginTop','marginBottom','padding','radius','borderWidth','borderColor','borderStyle','borderSide','shadow']);const style:ElementStyle={};
-      for(const [key,min,max] of [['size',10,48],['weight',100,900],['lineHeight',1,3.5],['letterSpacing',-1,8],['marginTop',0,80],['marginBottom',0,80],['padding',0,40],['radius',0,40],['borderWidth',0,8]] as const)if(s[key]!==undefined)style[key]=number(s[key],path+'.'+key,min,max);
-      for(const k of ['color','background','borderColor'] as const)if(s[k]!==undefined)style[k]=color(s[k],path+'.'+k);
-      if(s.font!==undefined)style.font=font(s.font,path+'.font');if(s.italic!==undefined)style.italic=boolean(s.italic,path+'.italic');
-      if(s.align!==undefined)style.align=choice(s.align,path+'.align',['left','center','right','justify']);
-      if(s.borderStyle!==undefined)style.borderStyle=choice(s.borderStyle,path+'.borderStyle',['solid','dashed','dotted','double']);
-      if(s.borderSide!==undefined)style.borderSide=choice(s.borderSide,path+'.borderSide',['all','top','bottom','left','right']);
-      if(s.shadow!==undefined)style.shadow=choice(s.shadow,path+'.shadow',['none','soft','offset']);
-      out.elements[name]=style;
-    }
-  }
+  if(t.elements!==undefined)out.elements=validateElements(t.elements,'theme.elements');
   if(t.ornaments!==undefined){const o=object(t.ornaments,'theme.ornaments',['label','mark','numbered','quoteLabel','codeLabel']);out.ornaments={};for(const k of ['label','mark','quoteLabel','codeLabel'] as const)if(o[k]!==undefined)out.ornaments[k]=text(o[k],'theme.ornaments.'+k,k==='mark'?8:60,true);if(o.numbered!==undefined)out.ornaments.numbered=boolean(o.numbered,'theme.ornaments.numbered');}
   return out;
 }

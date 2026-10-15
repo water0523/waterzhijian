@@ -1,7 +1,7 @@
 import {zipSync,unzipSync,strToU8,strFromU8} from 'fflate';
 import {uid,fontStacks,type Article,type Asset,type Typography,type Sticker} from './model';
 import {themes,builtInIds,themesForArticles,themeLibraryDocument} from './themes';
-import {parseThemeFile,libraryDocument} from './theme-schema';
+import {parseThemeFile,libraryDocument,validateElements} from './theme-schema';
 import type {ThemeDefinition} from './theme-types';
 export const safeName=(s:string)=>s.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/,'').slice(0,90)||'未命名文章';
 export function download(data:BlobPart,name:string,type='application/octet-stream'){
@@ -37,6 +37,7 @@ function validTypography(t:any):Typography{
   if(/^#[a-f\d]{6}$/i.test(t.accent))out.accent=t.accent;
   if(typeof t.indent==='boolean')out.indent=t.indent;
   if(['theme','three-line','striped','grid'].includes(t.tableStyle))out.tableStyle=t.tableStyle;
+  if(t.elements!==undefined)out.elements=validateElements(t.elements,'文章元素样式');
   return out;
 }
 export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[];folders:string[];themes:ThemeDefinition[];hiddenThemes:string[]}{
