@@ -15,19 +15,23 @@ export const editorThemes:Record<string,{name:string;bg:string;fg:string;line:st
 };
 function themeExtension(id:string){
   const t=editorThemes[id]||editorThemes.dark;
+  const dark=['dark','dracula','monokai'].includes(id);
   return [EditorView.theme({
     '&':{height:'100%',backgroundColor:t.bg,color:t.fg,fontSize:'14px'},
     '.cm-scroller':{fontFamily:'Consolas, "Cascadia Code", "Microsoft YaHei", monospace',lineHeight:'1.85',overflow:'auto'},
     '.cm-content':{padding:'22px 0 100px',caretColor:t.fg},
     '.cm-line':{padding:'0 22px 0 12px'},
     '.cm-gutters':{backgroundColor:t.bg,color:t.muted,border:'none',paddingLeft:'10px',paddingRight:'8px'},
-    '.cm-activeLine,.cm-activeLineGutter':{backgroundColor:t.line},
+    // Selections are drawn behind the text. An opaque active line hides them.
+    '.cm-activeLine':{backgroundColor:dark?'#ffffff08':'#00000007'},
+    '.cm-activeLineGutter':{backgroundColor:t.line},
     '.cm-cursor':{borderLeftColor:t.fg},
-    '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection':{backgroundColor:id==='dark'?'#264f78':'#668abb50'},
+    '.cm-selectionLayer .cm-selectionBackground':{backgroundColor:dark?'#344e68':'#d1e2f6'},
+    '&.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground':{backgroundColor:dark?'#264f78':'#b7d7ff'},
     '.cm-panels':{backgroundColor:t.line,color:t.fg},
     '.cm-searchMatch':{backgroundColor:'#cfa83050',outline:'1px solid #cfa830'},
     '.cm-foldPlaceholder':{backgroundColor:t.line,color:t.muted},
-  },{dark:['dark','dracula','monokai'].includes(id)}),syntaxHighlighting(HighlightStyle.define([
+  },{dark}),syntaxHighlighting(HighlightStyle.define([
     {tag:tags.heading,color:t.heading,fontWeight:'bold'},
     {tag:tags.processingInstruction,color:t.muted},
     {tag:tags.strong,fontWeight:'bold',color:t.string},

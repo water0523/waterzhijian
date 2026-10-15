@@ -1,0 +1,10 @@
+export const exportOptions=[
+  {id:'backup',title:'文章备份 ZIP',description:'正文、原图、主题、排版与历史版本，一起带走',color:'#467459',paper:'#e8f0e6',icon:'<path d="M4 4h16v5H4zM6 9v12h12V9M10 13h4M12 4v5"/>',recommended:true},
+  {id:'html',title:'独立阅读 HTML',description:'内嵌本地图片与公式，无需工具即可离线阅读',color:'#3975a4',paper:'#e8eff7',icon:'<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 8h18M9 12l-3 3 3 3M15 12l3 3-3 3"/>'},
+  {id:'longimage',title:'整篇长图 PNG',description:'保留排版、公式与贴纸；超长文章自动分段打包',color:'#378578',paper:'#e5f2ee',icon:'<rect x="5" y="2" width="14" height="20" rx="2"/><circle cx="10" cy="8" r="1.5"/><path d="M5 17l4-4 3 3 3-5 4 6M9 19h6"/>'},
+  {id:'pdf',title:'PDF 文档',description:'当前排版或标准文档，通过浏览器另存为 PDF',color:'#a45a4c',paper:'#f6e9e4',icon:'<path d="M14 2H5v20h14V7l-5-5v5h5M8 11h8M8 15h8M8 18h5"/>'},
+  {id:'word',title:'Word 文档 .docx',description:'标准 Markdown 排版；正文可编辑，公式转为高清图片',color:'#416da5',paper:'#e9eef8',icon:'<path d="M14 2H5v20h14V7l-5-5v5h5M7.5 12l1.5 6 3-5 3 5 1.5-6"/>'},
+  {id:'md',title:'Markdown 源文件',description:'无本地图片时导出 .md；含图片时导出正文与图片 ZIP',color:'#79678d',paper:'#efeaf4',icon:'<rect x="2" y="5" width="20" height="14" rx="2"/><path d="M5 15V9l3 3 3-3v6M17 9v6M14.5 12.5L17 15l2.5-2.5"/>'},
+  {id:'all',title:'整个文章库 ZIP',description:'包含全部文章及回收站内容',color:'#8c7446',paper:'#f3eee1',icon:'<path d="M4 8h16v14H4zM6 5h12M8 2h8M9 13h6M9 17h6"/>'}
+];
+export function exportOptionsHTML(){return '<div class="option-list export-options">'+exportOptions.map(o=>`<button id="export-${o.id}" class="option-card export-option"><span class="export-option-icon" style="--export-ink:${o.color};--export-paper:${o.paper}" aria-hidden="true"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" focusable="false">${o.icon}</svg></span><span class="export-option-copy"><strong>${o.title}${o.recommended?' <span class="export-recommended">推荐</span>':''}</strong><small>${o.description}</small></span><span class="export-option-arrow" aria-hidden="true">↗</span></button>`).join('')+'</div>';}
