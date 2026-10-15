@@ -26,7 +26,7 @@ import {appendReferences} from './references';
 import {boldSelection,mathAt} from './math-format';
 import {createLongImage} from './long-image';
 import {saveImageFile} from './image-delivery';
-import {openPopover,closePopover,enhanceColors} from './popover';
+import {openPopover,closePopover,enhanceColors,mountPopoverHover} from './popover';
 import {blockFormat,toggleTextStyle,hasSelectedStyle,codeFormat,insertFootnote} from './formatting';
 import {dividerOptions,dividerSVG} from './dividers';
 import {mountElementPanel} from './element-panel';
@@ -792,6 +792,10 @@ async function init(){
   new ResizeObserver(()=>requestAnimationFrame(()=>{stickerController.reposition();sync.rebuild();})).observe($('preview'));
   window.addEventListener('beforeunload',e=>{if(dirtyGeneration!==savedGeneration){e.preventDefault();e.returnValue='';}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirtyArticles.size)void save();});
+  mountPopoverHover(document.querySelectorAll<HTMLElement>('[data-inline-menu],#selection-block-button,.format-toolbar [data-format="heading"],#table-style-button,#image-layout-button,#divider-button,#math-button,#journal-block-button,#folio-block-button,#edition-block-button,#folio-font-button,#writing-tools-button'),target=>{
+    if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text||text.includes('\n'))return false;const math=mathAt(editor.view.state.doc.toString(),s.from,s.to);return !math||(s.from===math.start&&s.to===math.end);}
+    return target.id!=='image-layout-button'||/^:::gallery /m.test(current.markdown);
+  });
   switchArticle(current.id);
   if(themeLibraryError())toast(themeLibraryError(),true);
   for(const article of recovery.recovered)markDirty(article);

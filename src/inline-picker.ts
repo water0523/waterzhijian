@@ -4,7 +4,7 @@ import {openPopover,standardColors} from './popover';
 
 export type InlineMenu='font'|'size'|'color'|'highlight'|'marker'|'effect'|'role';
 const menus:[InlineMenu,string][]=[['font','字体'],['size','字号'],['color','字色'],['highlight','荧光'],['marker','半高荧光'],['effect','修饰'],['role','文体']];
-const effects=[['bold','加粗'],['italic','斜体'],['underline','下划线'],['wave','波浪线'],['strike','删除线'],['dots','字下着重号'],['gold','泥金金句']] as const;
+const effects=[['dots','字下着重号'],['gold','泥金金句']] as const;
 
 export function mountInlineMenus(handler:(event:Event)=>void){
   for(const id of ['inline-style-button','selection-style-button']){
@@ -53,6 +53,6 @@ export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:Inlin
   const color=panel.querySelector<HTMLInputElement>('input[type=color]');if(color)color.onchange=()=>{const style={...current};if(kind==='marker'){style.marker=true;style.markerColor=color.value;delete style.gold;}else if(kind==='color'||kind==='highlight')style[kind]=color.value;apply(style);};
   const items=[...panel.querySelectorAll<HTMLButtonElement>('[role^=menuitem]')];
   panel.addEventListener('keydown',e=>{if((e.target as HTMLElement).tagName==='INPUT')return;const index=items.indexOf(document.activeElement as HTMLButtonElement),next=e.key==='ArrowDown'?(index+1)%items.length:e.key==='ArrowUp'?(index+items.length-1)%items.length:e.key==='Home'?0:e.key==='End'?items.length-1:-1;if(next<0)return;e.preventDefault();items[next].focus();});
-  items.forEach(item=>item.tabIndex=-1);const checked=items.find(item=>item.getAttribute('aria-checked')==='true')||items[0];checked.tabIndex=0;checked.focus({preventScroll:true});requestAnimationFrame(()=>{if(checked.isConnected)checked.scrollIntoView({block:'nearest'});});
+  items.forEach(item=>item.tabIndex=-1);const checked=items.find(item=>item.getAttribute('aria-checked')==='true')||items[0];checked.tabIndex=0;if(panel.dataset.mode==='pinned'){checked.focus({preventScroll:true});requestAnimationFrame(()=>{if(checked.isConnected)checked.scrollIntoView({block:'nearest'});});}
   return panel;
 }

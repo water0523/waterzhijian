@@ -1,14 +1,33 @@
 import {escapeHTML} from './model';
 let anchor:HTMLElement|null=null;
 let disposeLayout=()=>{};
+let hoverOpening=false,hoverTimer=0,leaveTimer=0;
+let pendingHover:HTMLElement|null=null,suppressedHover:HTMLElement|null=null;
 const toolbarFor=(target:HTMLElement|null)=>target?.closest<HTMLElement>('[role="toolbar"],.format-toolbar');
-export function closePopover(){disposeLayout();disposeLayout=()=>{};const panel=document.getElementById('quick-popover');panel?.remove();anchor?.setAttribute('aria-expanded','false');anchor=null;if(panel)window.dispatchEvent(new Event('paper-popover-close'));}
-function closeAndFocus(){const trigger=anchor;closePopover();trigger?.focus({preventScroll:true});}
+const pinned=()=>document.getElementById('quick-popover')?.dataset.mode==='pinned';
+function pinPopover(){const panel=document.getElementById('quick-popover');if(!panel||!anchor)return;clearTimeout(leaveTimer);panel.dataset.mode='pinned';anchor.dataset.pinned='true';panel.querySelector('.quick-mode')!.textContent='已固定';}
+export function closePopover(){clearTimeout(hoverTimer);pendingHover=null;clearTimeout(leaveTimer);leaveTimer=0;disposeLayout();disposeLayout=()=>{};const panel=document.getElementById('quick-popover');panel?.remove();anchor?.setAttribute('aria-expanded','false');if(anchor)delete anchor.dataset.pinned;anchor=null;if(panel)window.dispatchEvent(new Event('paper-popover-close'));}
+function closeAndFocus(){const trigger=anchor;if(trigger?.matches(':hover'))suppressedHover=trigger;closePopover();trigger?.focus({preventScroll:true});}
+export function mountPopoverHover(targets:Iterable<HTMLElement>,canOpen:(target:HTMLElement)=>boolean=()=>true){
+  for(const target of targets){
+    if(target.dataset.hoverDropdown)return;target.dataset.hoverDropdown='true';target.setAttribute('aria-haspopup','menu');
+    target.addEventListener('pointerenter',e=>{
+      if(e.pointerType!=='mouse'||target===suppressedHover||pinned()||!canOpen(target))return;
+      clearTimeout(hoverTimer);clearTimeout(leaveTimer);pendingHover=target;
+      hoverTimer=window.setTimeout(()=>{
+        pendingHover=null;if(!target.isConnected||!target.matches(':hover')||pinned()||!canOpen(target)||anchor===target)return;
+        hoverOpening=true;try{target.click();}finally{hoverOpening=false;}
+      },100);
+    });
+    target.addEventListener('pointerleave',()=>{if(pendingHover===target){clearTimeout(hoverTimer);pendingHover=null;}if(suppressedHover===target)suppressedHover=null;});
+  }
+}
 export function openPopover(target:HTMLElement,title:string,html:string,options:{width?:number}={}){
   closePopover();anchor=target;target.setAttribute('aria-expanded','true');
   const panel=document.createElement('section');panel.id='quick-popover';panel.className='quick-popover';panel.setAttribute('aria-label',title);panel.dataset.anchor=target.id;
   panel.dataset.toolbar=toolbarFor(target)?.id||'';
-  panel.innerHTML=`<header><strong>${escapeHTML(title)}</strong><button class="icon-button" aria-label="收起菜单" id="quick-close">×</button></header><div class="quick-body"><div class="quick-content">${html}</div></div>`;
+  panel.dataset.mode=hoverOpening?'hover':'pinned';target.dataset.pinned=String(!hoverOpening);
+  panel.innerHTML=`<header><strong>${escapeHTML(title)}</strong><small class="quick-mode">${hoverOpening?'悬停 · 点击固定':'已固定'}</small><button class="icon-button" aria-label="收起菜单" id="quick-close">×</button></header><div class="quick-body"><div class="quick-content">${html}</div></div>`;
   const header=panel.querySelector('header')!,body=panel.querySelector<HTMLElement>('.quick-body')!,content=panel.querySelector<HTMLElement>('.quick-content')!;
   const actions=content.querySelector<HTMLElement>(':scope > .inline-style-actions,:scope > .quick-actions');
   const footer=actions?document.createElement('footer'):null;
@@ -37,18 +56,39 @@ export function openPopover(target:HTMLElement,title:string,html:string,options:
   window.visualViewport?.addEventListener('resize',schedule);window.visualViewport?.addEventListener('scroll',schedule);
   disposeLayout=()=>{observer.disconnect();cancelAnimationFrame(frame);window.removeEventListener('resize',schedule);window.removeEventListener('scroll',scroll,true);window.visualViewport?.removeEventListener('resize',schedule);window.visualViewport?.removeEventListener('scroll',schedule);};
   layout();
+  panel.addEventListener('focusin',pinPopover);
   panel.querySelector('#quick-close')!.addEventListener('click',closeAndFocus);return panel;
 }
+function inHoverPath(x:number,y:number,panel:HTMLElement){
+  if(!anchor)return false;
+  const a=anchor.getBoundingClientRect(),p=panel.getBoundingClientRect();
+  const inside=(r:DOMRect)=>x>=r.left&&x<=r.right&&y>=r.top&&y<=r.bottom;
+  if(inside(a)||inside(p))return true;
+  // Only bridge the actual vertical gap under/above the trigger; unrelated
+  // page space must not keep a temporary menu open.
+  const left=Math.max(a.left,p.left)-2,right=Math.min(a.right,p.right)+2;
+  return x>=left&&x<=right&&((p.top>=a.bottom&&y>=a.bottom&&y<=p.top)||(a.top>=p.bottom&&y>=p.bottom&&y<=a.top));
+}
+document.addEventListener('pointermove',e=>{
+  const panel=document.getElementById('quick-popover');if(!panel||pinned())return;
+  if(inHoverPath(e.clientX,e.clientY,panel)){clearTimeout(leaveTimer);leaveTimer=0;}
+  else if(!leaveTimer)leaveTimer=window.setTimeout(()=>{leaveTimer=0;if(panel===document.getElementById('quick-popover')&&!pinned())closePopover();},120);
+});
+window.addEventListener('blur',()=>{if(!pinned())closePopover();});
+document.addEventListener('pointerout',e=>{if(!e.relatedTarget&&!pinned())closePopover();});
 // Keep the toolbar alive between pointerdown and click. Removing a focused
 // menu here would blur the editor and hide the next trigger before its click.
-document.addEventListener('pointerdown',e=>{const panel=document.getElementById('quick-popover'),target=e.target as Node;if(panel&&!panel.contains(target)&&!anchor?.contains(target)&&!toolbarFor(anchor)?.contains(target))closePopover();});
+document.addEventListener('pointerdown',e=>{const panel=document.getElementById('quick-popover'),target=e.target as Node;if(panel?.contains(target))pinPopover();else if(panel&&!anchor?.contains(target)&&!toolbarFor(anchor)?.contains(target))closePopover();});
 document.addEventListener('click',e=>{
-  if(!document.getElementById('quick-popover')||!anchor)return;
+  if(hoverOpening||!document.getElementById('quick-popover')||!anchor)return;
   const target=e.target as HTMLElement;
-  if(anchor.contains(target)){closeAndFocus();e.preventDefault();e.stopPropagation();}
+  if(anchor.contains(target)){
+    if(pinned())closeAndFocus();else {pinPopover();const panel=document.getElementById('quick-popover')!;(panel.querySelector<HTMLElement>('[role^="menuitem"][aria-checked="true"]')||panel.querySelector<HTMLElement>('.quick-body button,.quick-body input'))?.focus({preventScroll:true});}
+    e.preventDefault();e.stopPropagation();
+  }
   else if(toolbarFor(anchor)?.contains(target)){closePopover();target.closest<HTMLElement>('button')?.focus({preventScroll:true});}
 },true);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('quick-popover')){closeAndFocus();e.preventDefault();}});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('quick-popover')){closeAndFocus();e.preventDefault();e.stopPropagation();}},true);
 export const standardColors=[['墨黑','#202124'],['石灰','#6b7280'],['白色','#ffffff'],['朱红','#dc2626'],['橙色','#ea580c'],['金黄','#eab308'],['草绿','#16a34a'],['青绿','#0d9488'],['天蓝','#0284c7'],['钴蓝','#2563eb'],['紫色','#7c3aed'],['玫红','#db2777'],['浅黄','#fff29b'],['浅绿','#bbf7d0'],['浅蓝','#bfdbfe'],['浅粉','#fbcfe8']];
 export function enhanceColors(root:HTMLElement){
   root.querySelectorAll<HTMLInputElement>('input[type=color]').forEach(input=>{

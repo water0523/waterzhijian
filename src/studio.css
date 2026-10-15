@@ -87,6 +87,8 @@ body[data-appearance=night] .revision-diff{background:#1b2820}body[data-appearan
 .theme-detail-scroll:focus-visible{outline:2px solid var(--accent);outline-offset:-3px}
 
 .inline-menu-popover{animation:none}
+.quick-mode{margin-left:auto;margin-right:10px;font:10px/1.5 "Microsoft YaHei",sans-serif;font-weight:400;color:var(--muted);white-space:nowrap}
+.quick-popover[data-mode=hover]{animation:none}
 .inline-menu-popover .quick-body{padding:4px 0;max-height:100%}
 .inline-menu-list{display:flex;flex-direction:column}
 .inline-menu-list>button{position:relative;display:flex;align-items:center;gap:12px;width:100%;min-height:38px;padding:8px 36px 8px 16px;text-align:left;border:0;border-radius:0;background:transparent;color:inherit;font-size:16px;line-height:1.6}
