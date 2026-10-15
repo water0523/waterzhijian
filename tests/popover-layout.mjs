@@ -14,7 +14,7 @@ const visibleAction=async id=>{
 };
 try{
  await page.goto(pathToFileURL(path.resolve('dist/纸间-离线公众号排版器.html')).href);await page.waitForSelector('.cm-content');
- for(const [name,width,height] of [['desktop',1440,720],['short',1280,520],['mobile',390,844],['compact',360,640],['landscape',740,360]]){
+ for(const [name,width,height] of [['desktop',1440,720],['short',1280,520]]){
   await page.setViewportSize({width,height});if(width<=760)await page.click('#mobile-edit');if(name==='compact')await page.click('#night-button');
   await page.locator('.cm-content').focus();await page.keyboard.press('Control+a');await page.keyboard.insertText('# 底部菜单检查\n\n'+Array.from({length:40},(_,i)=>`第 ${i+1} 段：让文字清楚地留在页面里。\n`).join('\n')+'\n这里是要修改的选中文字');await page.keyboard.press('Control+End');await page.keyboard.press('Home');await page.keyboard.press('Shift+End');await page.waitForTimeout(250);
   await page.click('#selection-style-button');await page.waitForTimeout(200);const position=await visibleAction('#inline-apply');

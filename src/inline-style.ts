@@ -11,10 +11,10 @@ export const inlineFonts:Record<string,{name:string;css:string;word:string}>={
   georgia:{name:'Georgia · 西文阅读',css:'Georgia,SimSun,serif',word:'Georgia'},
   consolas:{name:'Consolas · 等宽',css:'Consolas,"Cascadia Code","Microsoft YaHei",monospace',word:'Consolas'}
 };
-export const literaryRoles={note:'朱砂夹批',aside:'竖排眉批',preface:'词前小序',rhyme:'韵脚微标',painting:'题画文字'};
-export interface InlineStyle {font?:string;size?:number;color?:string;highlight?:string;bold?:boolean;italic?:boolean;underline?:boolean;wave?:boolean;strike?:boolean;dots?:boolean;gold?:boolean;role?:keyof typeof literaryRoles}
+export const literaryRoles={note:'朱砂夹批',aside:'竖排眉批',preface:'词前小序',rhyme:'韵脚微标',painting:'题画文字',date:'年代胶囊',term:'科普术语',redline:'朱红强调'};
+export interface InlineStyle {font?:string;size?:number;color?:string;highlight?:string;bold?:boolean;italic?:boolean;underline?:boolean;wave?:boolean;strike?:boolean;dots?:boolean;gold?:boolean;marker?:boolean;role?:keyof typeof literaryRoles}
 export function styleAttributes(style:InlineStyle){
-  return [style.font&&inlineFonts[style.font]?'font='+style.font:'',style.size&&style.size>=10&&style.size<=64?'size='+style.size:'',style.color&&/^#[\da-f]{6}$/i.test(style.color)?'color='+style.color:'',style.highlight&&/^#[\da-f]{6}$/i.test(style.highlight)?'highlight='+style.highlight:'',style.role&&Object.hasOwn(literaryRoles,style.role)?'role='+style.role:'',...(['bold','italic','underline','wave','strike','dots','gold'] as const).filter(key=>style[key])].filter(Boolean).join(' ');
+  return [style.font&&inlineFonts[style.font]?'font='+style.font:'',style.size&&style.size>=10&&style.size<=64?'size='+style.size:'',style.color&&/^#[\da-f]{6}$/i.test(style.color)?'color='+style.color:'',style.highlight&&/^#[\da-f]{6}$/i.test(style.highlight)?'highlight='+style.highlight:'',style.role&&Object.hasOwn(literaryRoles,style.role)?'role='+style.role:'',...(['bold','italic','underline','wave','strike','dots','gold','marker'] as const).filter(key=>style[key])].filter(Boolean).join(' ');
 }
 export function inlineCSS(style:InlineStyle){
   const rules:string[]=[];
@@ -22,6 +22,7 @@ export function inlineCSS(style:InlineStyle){
   if(style.size)rules.push('font-size:'+style.size+'px');
   if(style.color)rules.push('color:'+style.color);
   if(style.highlight)rules.push('background-color:'+style.highlight,'box-decoration-break:clone');
+  if(style.marker)rules.push('background-image:linear-gradient(transparent 58%,#f5d878a6 58%)','box-decoration-break:clone');
   if(style.gold)rules.push('background-image:linear-gradient(transparent 58%,#c5a16b38 58%)','border-bottom:1px solid #b08a51','box-decoration-break:clone');
   if(style.dots)rules.push('text-emphasis-style:filled dot','text-emphasis-position:under right');
   if(style.bold)rules.push('font-weight:700');
@@ -32,7 +33,7 @@ export function inlineCSS(style:InlineStyle){
 export function parseInlineStyle(source:string):InlineStyle|null {
   const style:InlineStyle={};const entries=source.trim().split(/\s+/);if(!source.trim())return null;
   for(const entry of entries){
-    if(['bold','italic','underline','wave','strike','dots','gold'].includes(entry)){(style as any)[entry]=true;continue;}
+    if(['bold','italic','underline','wave','strike','dots','gold','marker'].includes(entry)){(style as any)[entry]=true;continue;}
     const [key,value,...rest]=entry.split('=');if(rest.length)return null;
     if(key==='font'&&Object.hasOwn(inlineFonts,value))style.font=value;
     else if(key==='role'&&Object.hasOwn(literaryRoles,value))style.role=value as InlineStyle['role'];

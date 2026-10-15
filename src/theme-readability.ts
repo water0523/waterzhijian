@@ -26,7 +26,7 @@ export function readabilityCSS(theme:Theme,o:Typography,accent:string){
   return `.article pre{color:${color||readableColor(ink,background,7)}}${syntax}
     .article pre .theme-code-label{color:${readableColor('#8b9cab',background)}}
     ${color?`.article pre code [class*="hljs-"]{color:inherit}`:''}
-    .article .image-wrap .image-caption{color:${readableColor(caption,theme.paper)}!important}
+    .article .image-wrap${id==='press'?':where(:not(.press-photo .image-wrap,.press-photos .image-wrap))':''} .image-caption{color:${readableColor(caption,theme.paper)}!important}
     .article .image-source{color:${readableColor('#667078',theme.paper)}}
     .article .footnotes{color:${readableColor(footnote,theme.paper)}}${quote}`;
 }

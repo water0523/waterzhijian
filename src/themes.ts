@@ -2,6 +2,7 @@ import {richThemeCSS} from './theme-design';
 import {readabilityCSS} from './theme-readability';
 import {journalCSS} from './journal-design';
 import {folioCSS} from './folio-design';
+import {editionCSS} from './edition-design';
 import {fontStacks, type Typography} from './model';
 import type {Theme,ThemeDefinition,ElementStyle} from './theme-types';
 import {parseThemeFile,libraryDocument,validateTheme} from './theme-schema';
@@ -45,11 +46,15 @@ export const builtInThemes: Theme[] = [
   {id:'journal-indigo',name:'深空靛蓝',group:'科普',description:'人文衬线章节、科学导读与公式释义卡，沉静的科普期刊',accent:'#243b80',paper:'#faf9f6',ink:'#273141',font:'noto-sans',headingFont:'noto-serif',quoteFont:'kai',codeFont:'jetbrains',variant:'journal',defaults:{size:15.5,lineHeight:1.88,paragraphGap:24,padding:24}},
   {id:'journal-jade',name:'松石青翠',group:'科普',description:'松石绿题签、点阵定律与科学图注，清晰温润的科普期刊',accent:'#146b61',paper:'#f8faf7',ink:'#293c39',font:'noto-sans',headingFont:'noto-serif',quoteFont:'kai',codeFont:'jetbrains',variant:'journal',defaults:{size:15.5,lineHeight:1.88,paragraphGap:24,padding:24}},
   {id:'classical',name:'文言课本',group:'文学',description:'宋楷书页、朱红课题与旁批式引用',accent:'#9a5141',paper:'#fffdf6',ink:'#473f33',font:'serif',headingFont:'serif',variant:'classical'},
-  {id:'folio',name:'山窗听雪',group:'文学',description:'鱼尾版心、卷首题记与朱批笺注，古籍诗文与水墨装裱',accent:'#a2382d',paper:'#faf7ef',ink:'#29261f',font:'noto-serif',headingFont:'noto-serif',quoteFont:'wenkai',poemFont:'wenkai',captionFont:'fang',variant:'folio',defaults:{size:16,lineHeight:2.08,paragraphGap:26,padding:26,indent:false}}
+  {id:'folio',name:'山窗听雪',group:'文学',description:'鱼尾版心、卷首题记与朱批笺注，古籍诗文与水墨装裱',accent:'#a2382d',paper:'#faf7ef',ink:'#29261f',font:'noto-serif',headingFont:'noto-serif',quoteFont:'wenkai',poemFont:'wenkai',captionFont:'fang',variant:'folio',defaults:{size:16,lineHeight:2.08,paragraphGap:26,padding:26,indent:false}},
+  {id:'digest',name:'红枫暖刊 · 青年文摘风',group:'文学',description:'枫红与墨绿、胶带手记与拍立得，温暖的青春人文读本',accent:'#d64535',paper:'#fbf8f3',ink:'#29261f',font:'noto-sans',variant:'digest',defaults:{size:15.5,lineHeight:1.96,paragraphGap:25,padding:24}},
+  {id:'press',name:'深度新闻周刊',group:'通用',description:'经典新闻红、黑匣提要、数据看板与调查访谈',accent:'#e3120b',paper:'#f8f9fa',ink:'#111318',font:'noto-sans',variant:'press',defaults:{size:15,lineHeight:1.84,paragraphGap:23,padding:24}},
+  {id:'gewu',name:'格物文史',group:'科普',description:'朱砂方印、古籍史料与现代科学，文学科普专题长文',accent:'#9e2e30',paper:'#faf7f1',ink:'#29261f',font:'noto-sans',variant:'gewu',defaults:{size:16,lineHeight:1.92,paragraphGap:25,padding:25}}
 ];
 // Typography is part of the art direction: small labels use a different voice
 // from the reading text, while explicit article settings remain the last word.
 const pairings:Record<string,[string,string,string?,string?]>={
+  digest:['noto-sans','noto-serif','wenkai','wenkai'],press:['noto-sans','noto-serif','noto-serif','noto-sans'],gewu:['noto-sans','noto-serif','wenkai','noto-serif'],
   folio:['noto-serif','noto-serif','wenkai','fang'],
   rational:['sans','hei','serif','sans'],academic:['serif','sans','kai','mono'],nature:['sans','serif','kai','serif'],cosmos:['sans','sans','serif','mono'],
   math:['serif','times','kai','mono'],lab:['sans','sans','kai','mono'],earth:['serif','kai','serif','kai'],tech:['sans','hei','sans','mono'],qa:['sans','hei','kai','sans'],
@@ -57,7 +62,7 @@ const pairings:Record<string,[string,string,string?,string?]>={
   editorial:['serif','hei','georgia','sans'],weekend:['serif','serif','kai','serif'],mint:['sans','serif','sans','sans'],minimal:['sans','sans','serif','sans'],
   orange:['sans','hei','kai','sans'],blueprint:['sans','mono','sans','mono'],matcha:['serif','kai','kai','serif'],berry:['sans','sans','serif','sans'],gold:['serif','serif','kai','serif'],ocean:['sans','serif','kai','serif'],pixel:['sans','mono','mono','mono'],sunset:['serif','kai','kai','serif'],lavender:['serif','kai','kai','serif'],newspaper:['serif','serif','kai','mono'],cream:['sans','kai','kai','sans'],terracotta:['serif','hei','serif','sans'],cartoon:['sans','sans','kai','sans'],arcade:['sans','mono','mono','mono'],kuromi:['sans','hei','kai','sans'],pop:['sans','hei','hei','sans'],classical:['serif','serif','kai','fang']
 };
-for(const t of builtInThemes){const [body,heading,quote,caption]=pairings[t.id]||['noto-sans','noto-serif','kai','noto-sans'];Object.assign(t,{font:body,headingFont:heading,quoteFont:quote,captionFont:caption,poemFont:t.id==='folio'?'wenkai':['moon','ink','classical'].includes(t.id)?'kai':body,codeFont:t.variant==='journal'?'jetbrains':'mono'});}
+for(const t of builtInThemes){const [body,heading,quote,caption]=pairings[t.id]||['noto-sans','noto-serif','kai','noto-sans'];Object.assign(t,{font:body,headingFont:heading,quoteFont:quote,captionFont:caption,poemFont:t.id==='folio'?'wenkai':['moon','ink','classical'].includes(t.id)?'kai':body,codeFont:['journal','press','gewu'].includes(t.variant)?'jetbrains':'mono'});}
 export const builtInIds=builtInThemes.map(t=>t.id);
 export function materializeTheme(d:ThemeDefinition):Theme{
   const base=builtInThemes.find(t=>t.id===d.base)!;
@@ -190,6 +195,7 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   ${richThemeCSS(theme,a)}
   ${journalCSS(theme,a)}
   ${folioCSS(theme,a)}
+  ${editionCSS(theme,a)}
   .article h1,.article h2,.article h3,.article h4,.article h5,.article h6{font-family:${hf}}
   .article blockquote{font-family:${fontStacks[theme.quoteFont||theme.font]||f}}
   .article .image-caption{font-family:${fontStacks[theme.captionFont||theme.font]||f}}

@@ -18,7 +18,7 @@ try{
   for(const width of ['375','430','wide']){
    await page.selectOption('#preview-width',width);await page.waitForTimeout(35);
    const info=await page.locator('#preview').evaluate(el=>{const get=s=>{const n=el.querySelector(s),c=getComputedStyle(n);return {font:c.fontFamily,size:c.fontSize,lineHeight:c.lineHeight,color:c.color,background:c.backgroundColor};};return {w:el.clientWidth,scroll:el.scrollWidth,h1:get('h1'),h2:get('h2'),body:get('p'),quote:get('blockquote'),code:get('pre'),poem:get('.poem'),table:get('table'),caption:get('.image-caption'),source:get('.image-source'),footnote:get('.footnotes')};});
-   assert.ok(info.scroll<=info.w+2,`${id}/${width}: article overflow`);assert.equal(info.body.size,id.startsWith('journal-')?'15.5px':'16px');assert.ok(parseFloat(info.caption.size)>=11);assert.equal(info.source.size,'11px');assert.equal(await page.locator('#preview .math-error').count(),0);assert.ok(await page.locator('#preview .math-display svg').count());assert.equal(await page.locator('#preview .poem strong').innerText(),'未说完的故事');profiles.push({id,width,...info});
+   assert.ok(info.scroll<=info.w+2,`${id}/${width}: article overflow`);assert.equal(info.body.size,id.startsWith('journal-')||id==='digest'?'15.5px':id==='press'?'15px':'16px');assert.ok(parseFloat(info.caption.size)>=11);assert.equal(info.source.size,'11px');assert.equal(await page.locator('#preview .math-error').count(),0);assert.ok(await page.locator('#preview .math-display svg').count());assert.equal(await page.locator('#preview .poem strong').innerText(),'未说完的故事');profiles.push({id,width,...info});
   }
  }
  assert.ok(new Set(profiles.map(p=>p.h1.font)).size>=4);assert.ok(new Set(profiles.map(p=>p.quote.font)).size>=5);assert.deepEqual(errors,[]);

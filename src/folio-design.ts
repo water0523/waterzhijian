@@ -3,7 +3,7 @@ import type {Theme} from './theme-types';
 export const isFolio=(t:Theme)=>(t.baseId||t.id)==='folio';
 export const fishTail='<svg xmlns="http://www.w3.org/2000/svg" width="180" height="18" viewBox="0 0 180 18"><path d="M0 9h60m60 0h60" stroke="#ad8953" stroke-width="1"/><path d="M67 2h46l-8 7 8 7H67l8-7z" fill="currentColor"/><circle cx="90" cy="9" r="2" fill="#faf7ef"/></svg>';
 const decoration=(cls:string,text='')=>{const span=document.createElement('span');span.className=cls;span.textContent=text;span.setAttribute('aria-hidden','true');return span;};
-function initialLetter(p:HTMLElement){
+export function initialLetter(p:HTMLElement){
   const walker=document.createTreeWalker(p,NodeFilter.SHOW_TEXT);let text:Text|null;
   while((text=walker.nextNode() as Text|null)){
     if(!text.data.trim()||text.parentElement?.closest('.math-inline,code,[aria-hidden=true],.literary-note,.literary-aside,.footnote-ref'))continue;

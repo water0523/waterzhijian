@@ -6,6 +6,7 @@ import {publicationHTML} from './stickers';
 import {inlineFonts} from './inline-style';
 import {flattenJournalBlocks} from './journal-blocks';
 import {flattenFolioBlocks} from './folio-blocks';
+import {flattenEditionBlocks} from './edition-blocks';
 
 export function standardCSS(selector='.article'){
   return `${selector}{box-sizing:border-box;background:#fff;color:#222;font:16px/1.75 "Microsoft YaHei","PingFang SC",sans-serif;padding:24px;overflow-wrap:anywhere;text-align:left;display:flow-root}
@@ -25,6 +26,7 @@ export function standardBody(article:Article,assets:Map<string,Asset>,rendered?:
   const node=document.createElement('div');node.innerHTML=rendered??renderMarkdown(article.markdown,assets).html;
   flattenJournalBlocks(node);
   flattenFolioBlocks(node);
+  flattenEditionBlocks(node);
   node.querySelectorAll('.decorative-divider').forEach(el=>el.replaceWith(document.createElement('hr')));
   node.querySelectorAll('.image-gallery').forEach(group=>{
     const fragment=document.createDocumentFragment();group.querySelectorAll('.image-wrap,.missing-image').forEach(image=>{const p=document.createElement('p');p.append(image);fragment.append(p);});group.replaceWith(fragment);

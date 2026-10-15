@@ -19,6 +19,8 @@ import {dividerOptions,dividerSVG} from './dividers';
 import {installJournalBlocks} from './journal-blocks';
 import {installFolioBlocks} from './folio-blocks';
 import {normalizeFolioPublication} from './folio-design';
+import {installEditionBlocks} from './edition-blocks';
+import {normalizeEditionPublication} from './edition-design';
 
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
@@ -48,6 +50,7 @@ const md = new MarkdownIt({html:false,linkify:true,typographer:true,breaks:false
 const baseValidate=md.validateLink;
 installJournalBlocks(md);
 installFolioBlocks(md);
+installEditionBlocks(md);
 md.validateLink=(url:string)=>/^asset:[a-zA-Z0-9-]+$/.test(url)||baseValidate(url);
 
 md.inline.ruler.before('escape','math_inline',(state,silent)=>{
@@ -221,14 +224,15 @@ export function exportFragment(article:HTMLElement):string{
   });
   // Publication has no fixed-height reading windows: export every derivation,
   // even when its on-screen disclosure was closed.
-  clone.querySelectorAll<HTMLElement>('details.journal-derivation,details.folio-gloss').forEach(el=>{
+  clone.querySelectorAll<HTMLElement>('details.journal-derivation,details.folio-gloss,details.press-dossier').forEach(el=>{
     const section=document.createElement('section');for(const attr of [...el.attributes])if(attr.name!=='open')section.setAttribute(attr.name,attr.value);
     const summary=el.querySelector(':scope > summary');if(summary){const header=document.createElement('header');for(const attr of [...summary.attributes])header.setAttribute(attr.name,attr.value);header.style.display='block';header.style.listStyleType='none';header.append(...summary.childNodes);summary.replaceWith(header);}
     section.append(...el.childNodes);section.style.overflow='visible';section.style.maxHeight='none';
-    const content=section.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content');if(content){content.style.maxHeight='none';content.style.height='auto';content.style.overflow='visible';content.style.display='block';}
+    const content=section.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content,:scope > .edition-content');if(content){content.style.maxHeight='none';content.style.height='auto';content.style.overflow='visible';content.style.display='block';}
     el.replaceWith(section);
   });
   normalizeFolioPublication(clone);
+  normalizeEditionPublication(clone);
   // Inline styles are authoritative, so no dependency on editor CSS remains.
   return clone.outerHTML;
 }

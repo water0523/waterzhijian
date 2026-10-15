@@ -1,0 +1,4 @@
+import {fontNames,fontStacks} from './model';
+import type {Theme} from './theme-types';
+function colors(hex:string){const [r,g,b]=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255),max=Math.max(r,g,b),min=Math.min(r,g,b),d=max-min;if(d<.08)return'黑白 灰色 中性';let h=(max===r?(g-b)/d+(g<b?6:0):max===g?(b-r)/d+2:(r-g)/d+4)*60;return h<20||h>=345?'红色 朱红':h<48?'橙色 暖色':h<75?'黄色 金色':h<165?'绿色 翠绿':h<200?'青色 松石':h<265?'蓝色 靛蓝':'紫色';}
+export function themeMatches(t:Theme,query:string,tags:string[]=[]){const fonts=[t.font,t.headingFont,t.quoteFont,t.captionFont,t.codeFont,t.poemFont].filter(Boolean) as string[],haystack=[t.id,t.name,t.description,t.group,...tags,...fonts.flatMap(f=>[f,fontNames[f],fontStacks[f]]),t.accent,t.paper,colors(t.accent)].join(' ').normalize('NFKC').toLowerCase();return query.normalize('NFKC').toLowerCase().trim().split(/\s+/).every(term=>haystack.includes(term));}

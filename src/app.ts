@@ -13,6 +13,10 @@ import {journalSample,journalFigure,journalPreviewSample} from './journal-sample
 import {folioSample,folioAssets} from './folio-sample';
 import {folioNames,type FolioKind} from './folio-blocks';
 import {isFolio} from './folio-design';
+import {editionAssets,editionSamples} from './edition-samples';
+import {editionCatalog,editionTitles,type Edition} from './edition-blocks';
+import {themeMatches} from './theme-search';
+import {showRewrite,cancelRewrite} from './rewrite';
 import {inspectFonts} from './font-inspection';
 import {StickerController,updateStickerLines,flattenStickers,publicationHTML} from './stickers';
 import {PreviewEditor} from './preview-editor';
@@ -68,8 +72,8 @@ const themeGalleryResize=new ResizeObserver(entries=>{for(const entry of entries
 function toast(text:string,error=false){$('toast').textContent=text;$('toast').className='visible'+(error?' error':'');clearTimeout(toastTimer);toastTimer=window.setTimeout(()=>$('toast').className='',error?6500:3500);}
 function errorMessage(e:unknown){return e instanceof Error?e.message:String(e);}
 function bind(id:string,handler:(e:Event)=>unknown,type='click'){$(id).addEventListener(type,e=>{try{Promise.resolve(handler(e)).catch(err=>toast(errorMessage(err),true));}catch(err){toast(errorMessage(err),true);}});}
-function openModal(title:string,html:string,eyebrow='PAPER STUDIO'){closePopover();$('modal-title').textContent=title;$('modal-eyebrow').textContent=eyebrow;$('modal-body').innerHTML=html;enhanceColors($('modal-body'));if(!modal.open)modal.showModal();}
-function closeModal(){themeGalleryResize.disconnect();modal.close();$('modal-body').replaceChildren();}
+function openModal(title:string,html:string,eyebrow='PAPER STUDIO'){cancelRewrite();closePopover();$('modal-title').textContent=title;$('modal-eyebrow').textContent=eyebrow;$('modal-body').innerHTML=html;enhanceColors($('modal-body'));if(!modal.open)modal.showModal();}
+function closeModal(){cancelRewrite();themeGalleryResize.disconnect();modal.close();$('modal-body').replaceChildren();}
 function markDirty(article=current){
   syncArticleTitle(article);
   article.updated=Date.now();article.assets=[...new Set([...assetRefs(article.markdown),...(article.stickers||[]).map(s=>s.assetId)])];article.assetSettings=captureAssets(article,assetStore);trackArticle(article.id);
@@ -153,7 +157,7 @@ function render(){
   clearTimeout(renderTimer);const start=performance.now();const reading=sync?.capture()||0;
   try{
     const disclosureKey=(node:HTMLElement)=>node.className+'|'+node.dataset.line+'|'+node.querySelector(':scope > summary')?.textContent;
-    const disclosures=new Map(renderedArticleId===current.id?[...$('preview').querySelectorAll<HTMLDetailsElement>('details')].map(n=>[disclosureKey(n),{open:n.open,scroll:n.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content')?.scrollTop||0}] as const):[]);
+    const disclosures=new Map(renderedArticleId===current.id?[...$('preview').querySelectorAll<HTMLDetailsElement>('details')].map(n=>[disclosureKey(n),{open:n.open,scroll:n.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content,:scope > .edition-content')?.scrollTop||0}] as const):[]);
     renderResult=renderMarkdown(current.markdown,assets,previewEditor?.enabled);
     const theme=themeById(current.theme);$('article-style').textContent=publisher==='zhihu'?standardCSS():themeCSS(theme,current.typography);
     const indentButton=document.getElementById('indent-toggle') as HTMLButtonElement|null;
@@ -161,7 +165,7 @@ function render(){
     $('preview').innerHTML=(publisher==='zhihu'?standardBody(current,assets,renderResult.html):renderResult.html)||'<p style="color:#a1aa9c;text-align:center;padding-top:70px;text-indent:0">从左侧写下第一句话。</p>';
     if(publisher==='wechat')decorateTheme($('preview'),theme);
     for(const node of $('preview').querySelectorAll<HTMLDetailsElement>('details')){
-      const previous=disclosures.get(disclosureKey(node));if(previous){node.open=previous.open;const content=node.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content');if(content)content.scrollTop=previous.scroll;}
+      const previous=disclosures.get(disclosureKey(node));if(previous){node.open=previous.open;const content=node.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content,:scope > .edition-content');if(content)content.scrollTop=previous.scroll;}
       node.addEventListener('toggle',()=>{if(node.isConnected)requestAnimationFrame(()=>sync?.rebuild());});
     }
     renderedArticleId=current.id;
@@ -234,17 +238,19 @@ function themeThumbnail(id:string){
 function applyArticleTheme(id:string){snapshot(current,true);current.theme=id;current.typography={};markDirty();render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast('已切换为「'+themeById(id).name+'」');}
 function themeHost(){return {open:openModal,close:closeModal,notify:toast,current:()=>current.theme,apply:applyArticleTheme,changed:()=>{themePreviews.clear();render();if(!$('style-panel').hidden)renderStylePanel();}};}
 function showThemes(filter='全部'){
+  let selectedDetail='';
   openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时恢复主题默认设置。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 置顶常用主题，最多 5 个 · 知乎模式使用无主题排版</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
   const applyTheme=applyArticleTheme;
   bind('theme-import-button',()=>chooseThemeFile(themeHost()));bind('theme-manage-button',()=>showThemeManager(themeHost()));
   const showDetail=(id:string,keyboard=false)=>{
+    selectedDetail=id;
     const t=themeById(id),sample=document.createElement('article');sample.className='theme-detail-article';
     const sampleText=t.group==='文学'?'# 在平凡里，收集微光\n\n## 写在日常的页边\n\n风从窗边经过，留下一页值得珍藏的文字。\n\n### 片刻的停留\n\n> 让文字留下温柔的回声。\n\n:::poem center\n光落在纸上\n也落在**未说完的故事**里\n\n愿你记得\n每一次出发\n:::\n\n## 留住那些瞬间\n\n- 一段散步的时光\n- 一封写给自己的信': '# 一束光，读懂宇宙\n\n## 从一个好问题开始\n\n科学始于好奇，也来自一次次**认真观察**。好的排版让推理更清晰。\n\n### 观察与证据\n\n> 我们用可重复的观察，检验关于世界的猜想。\n\n## 把现象写成规律\n\n$$E=mc^2$$\n\n| 观测对象 | 特征 |\n| --- | --- |\n| 光 | 传播与能量 |\n| 物质 | 质量与运动 |\n\n- 提出可检验的问题\n- 记录证据，比较结果\n\n---\n\n继续探索，让知识成为自己的理解。';
-    sample.innerHTML=renderMarkdown(isFolio(t)?folioSample:t.variant==='journal'?journalPreviewSample:sampleText,new Map(isFolio(t)?folioAssets().map(a=>[a.id,a]):[])).html;decorateTheme(sample,t);
+    sample.innerHTML=renderMarkdown(editionSamples[t.baseId||t.id]||(isFolio(t)?folioSample:t.variant==='journal'?journalPreviewSample:sampleText),new Map((editionSamples[t.baseId||t.id]?editionAssets():isFolio(t)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(sample,t);
     const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div id="theme-detail-scroll" class="theme-detail-scroll" tabindex="0" aria-label="主题完整排版示例"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>375px 手机阅读效果</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
     document.querySelector('.theme-browser')!.classList.add('has-detail');
     $('theme-results').querySelectorAll<HTMLElement>('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themePreview===id)));
-    bind('theme-detail-close',()=>{detail.hidden=true;detail.replaceChildren();document.querySelector('.theme-browser')!.classList.remove('has-detail');$('theme-results').querySelectorAll('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed','false'));($('theme-results').querySelector<HTMLElement>(`[data-theme-preview="${id}"]`)||$('theme-search')).focus();});
+    bind('theme-detail-close',()=>{selectedDetail='';detail.hidden=true;detail.replaceChildren();document.querySelector('.theme-browser')!.classList.remove('has-detail');$('theme-results').querySelectorAll('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed','false'));($('theme-results').querySelector<HTMLElement>(`[data-theme-preview="${id}"]`)||$('theme-search')).focus();});
     bind('theme-detail-apply',()=>applyTheme(id));
     if(keyboard)$('theme-detail-close').focus({preventScroll:true});
   };
@@ -253,17 +259,19 @@ function showThemes(filter='全部'){
     const query=$<HTMLInputElement>('theme-search').value.trim().toLowerCase();
     const pinRank=(id:string)=>pinnedThemes.includes(id)?pinnedThemes.indexOf(id):99;
     $('theme-pin-count').textContent=`置顶 ${pinnedThemes.length} / 5 · 优先显示`;
-    const visible=visibleThemes().filter(t=>(filter==='全部'||(filter==='已置顶'?pinnedThemes.includes(t.id):filter==='自定义'?!!t.definition:filter==='装饰精选'?!['plain','minimal','academic','wild'].includes(t.id):t.group===filter))&&(!query||[t.name,t.description,...themeDesign(t).tags].join(' ').toLowerCase().includes(query))).sort((a,b)=>pinRank(a.id)-pinRank(b.id));
+    const visible=visibleThemes().filter(t=>(filter==='全部'||(filter==='已置顶'?pinnedThemes.includes(t.id):filter==='自定义'?!!t.definition:filter==='装饰精选'?!['plain','minimal','academic','wild'].includes(t.id):t.group===filter))&&themeMatches(t,query,themeDesign(t).tags)).sort((a,b)=>pinRank(a.id)-pinRank(b.id));
+    if(selectedDetail&&!visible.some(t=>t.id===selectedDetail)){selectedDetail='';$('theme-detail').hidden=true;$('theme-detail').replaceChildren();document.querySelector('.theme-browser')!.classList.remove('has-detail');}
     $('theme-result-count').textContent=`${visible.length} 个主题`;
-    $('theme-results').innerHTML=visible.map(t=>`<div class="theme-card ${current.theme===t.id?'selected':''} ${pinnedThemes.includes(t.id)?'pinned':''}"><button class="theme-preview-button" data-theme-preview="${t.id}" aria-label="查看${esc(t.name)}完整预览" aria-pressed="false"><div class="theme-card-topline"><span>${t.group}</span><span>${current.theme===t.id?'使用中':'点击放大'}</span></div>${themeThumbnail(t.id)}</button><div class="theme-card-info"><strong title="${esc(t.description)}">${esc(t.name)}</strong><button class="theme-apply" data-theme="${t.id}" aria-label="使用${esc(t.name)}主题">使用</button><small>${esc(themeDesign(t).tags.join(' · '))}</small></div><button class="theme-pin ${pinnedThemes.includes(t.id)?'active':''}" data-pin="${t.id}" aria-label="${pinnedThemes.includes(t.id)?'取消置顶':'置顶'}${esc(t.name)}" aria-pressed="${pinnedThemes.includes(t.id)}" title="${pinnedThemes.includes(t.id)?'取消置顶':'置顶主题（最多5个）'}">${pinnedThemes.includes(t.id)?'★':'☆'}</button></div>`).join('')||'<div class="empty-state">没有匹配的主题，试试搜索名称或装饰特点。</div>';
+    $('theme-results').innerHTML=visible.map(t=>`<div class="theme-card ${current.theme===t.id?'selected':''} ${pinnedThemes.includes(t.id)?'pinned':''}"><button class="theme-preview-button" data-theme-preview="${t.id}" aria-label="查看${esc(t.name)}完整预览" aria-pressed="${String(selectedDetail===t.id)}"><div class="theme-card-topline"><span>${t.group}</span><span>${current.theme===t.id?'使用中':'点击放大'}</span></div>${themeThumbnail(t.id)}</button><div class="theme-card-info"><strong title="${esc(t.description)}">${esc(t.name)}</strong><button class="theme-apply" data-theme="${t.id}" aria-label="使用${esc(t.name)}主题">使用</button><small>${esc(themeDesign(t).tags.join(' · '))}</small></div><button class="theme-pin ${pinnedThemes.includes(t.id)?'active':''}" data-pin="${t.id}" aria-label="${pinnedThemes.includes(t.id)?'取消置顶':'置顶'}${esc(t.name)}" aria-pressed="${pinnedThemes.includes(t.id)}" title="${pinnedThemes.includes(t.id)?'取消置顶':'置顶主题（最多5个）'}">${pinnedThemes.includes(t.id)?'★':'☆'}</button></div>`).join('')||'<div class="empty-state">没有匹配的主题。<p><button data-clear-theme-search>清空搜索</button> <button data-all-theme-groups>搜索全部分类</button></p></div>';
     $('theme-results').querySelectorAll<HTMLElement>('.theme-live-window').forEach(el=>themeGalleryResize.observe(el));
   };
   renderCards();bind('theme-search',renderCards,'input');
-  $('modal-body').querySelectorAll<HTMLElement>('[data-group]').forEach(el=>el.onclick=()=>showThemes(el.dataset.group));
+  $('theme-results').addEventListener('click',event=>{const target=event.target as HTMLElement;if(target.closest('[data-clear-theme-search]')){$<HTMLInputElement>('theme-search').value='';renderCards();$('theme-search').focus();}if(target.closest('[data-all-theme-groups]')){filter='全部';$('modal-body').querySelectorAll<HTMLElement>('[data-group]').forEach(b=>b.classList.toggle('active',b.dataset.group===filter));renderCards();$('theme-search').focus();}});
+  $('modal-body').querySelectorAll<HTMLElement>('[data-group]').forEach(el=>el.onclick=()=>{filter=el.dataset.group!;$('modal-body').querySelectorAll<HTMLElement>('[data-group]').forEach(b=>b.classList.toggle('active',b===el));renderCards();});
   $('theme-results').addEventListener('click',event=>{
     const pin=(event.target as HTMLElement).closest<HTMLElement>('[data-pin]');if(pin){
       const id=pin.dataset.pin!;if(pinnedThemes.includes(id))pinnedThemes=pinnedThemes.filter(v=>v!==id);else if(pinnedThemes.length<5)pinnedThemes.push(id);else{toast('最多置顶 5 个主题，请先取消一个置顶。',true);return;}
-      preference('pinned-themes',JSON.stringify(pinnedThemes));renderCards();return;
+      preference('pinned-themes',JSON.stringify(pinnedThemes));renderCards();($('theme-results').querySelector<HTMLElement>('[data-pin="'+id+'"]')||$('theme-search')).focus();return;
     }
     const preview=(event.target as HTMLElement).closest<HTMLElement>('[data-theme-preview]');if(preview){showDetail(preview.dataset.themePreview!,(event as MouseEvent).detail===0);return;}
     const el=(event.target as HTMLElement).closest<HTMLElement>('[data-theme]');if(el)applyTheme(el.dataset.theme!);
@@ -313,11 +321,11 @@ function showInlineStyle(event?:Event){
   if(math&&(selection.from!==math.start||selection.to!==math.end)){toast('公式加粗可直接使用 B 按钮；设置颜色或荧光时，请连同两侧 $ 完整选中行内公式。');return;}
   const suffix=before.slice(selection.to).match(/^\]\{([^}]+)\}/);
   const existing=before[selection.from-1]==='['&&suffix?parseInlineStyle(suffix[1]):null;
-  const panel=openPopover((event?.currentTarget as HTMLElement)||$('inline-style-button'),'选中文字的样式',`<p class="modal-subtitle">只作用于当前选区，可叠加多种样式。预览区仍只允许修改文字。</p><div class="inline-style-form"><label>字体<select id="inline-font"><option value="">跟随正文</option>${Object.entries(inlineFonts).map(([id,font])=>`<option value="${id}">${font.name}</option>`).join('')}</select></label><label>文体标记<select id="inline-role"><option value="">普通文字</option>${Object.entries(literaryRoles).map(([role,name])=>`<option value="${role}">${name}</option>`).join('')}</select></label><label>字号（px）<input id="inline-size" type="number" min="10" max="64" step=".5" placeholder="跟随正文"></label><label class="inline-color-label"><span><input id="inline-use-color" type="checkbox"> 自定文字颜色</span><input id="inline-color" type="color" value="#315e53"></label><label class="inline-color-label"><span><input id="inline-use-highlight" type="checkbox"> 荧光标记</span><input id="inline-highlight" type="color" value="#fff29b"></label><div class="inline-style-toggles">${[['bold','加粗'],['italic','斜体'],['underline','下划线'],['wave','波浪线'],['strike','删除线'],['dots','字下着重号'],['gold','泥金金句']].map(([id,name])=>`<label><input id="inline-${id}" type="checkbox"> ${name}</label>`).join('')}</div></div><div id="inline-style-sample">${esc(selected)}</div><p class="help">使用设备已有字体；缺少字体时自动回退。西文字体遇到中文会回退到对应中文字体。没有嵌入或下载字体文件。</p><div class="inline-style-actions"><button id="inline-cancel" class="button outline">取消</button><button id="inline-apply" class="button primary">应用到选中文字</button></div>`);
+  const panel=openPopover((event?.currentTarget as HTMLElement)||$('inline-style-button'),'选中文字的样式',`<p class="modal-subtitle">只作用于当前选区，可叠加多种样式。预览区仍只允许修改文字。</p><div class="inline-style-form"><label>字体<select id="inline-font"><option value="">跟随正文</option>${Object.entries(inlineFonts).map(([id,font])=>`<option value="${id}">${font.name}</option>`).join('')}</select></label><label>文体标记<select id="inline-role"><option value="">普通文字</option>${Object.entries(literaryRoles).map(([role,name])=>`<option value="${role}">${name}</option>`).join('')}</select></label><label>字号（px）<input id="inline-size" type="number" min="10" max="64" step=".5" placeholder="跟随正文"></label><label class="inline-color-label"><span><input id="inline-use-color" type="checkbox"> 自定文字颜色</span><input id="inline-color" type="color" value="#315e53"></label><label class="inline-color-label"><span><input id="inline-use-highlight" type="checkbox"> 荧光标记</span><input id="inline-highlight" type="color" value="#fff29b"></label><div class="inline-style-toggles">${[['bold','加粗'],['italic','斜体'],['underline','下划线'],['wave','波浪线'],['strike','删除线'],['dots','字下着重号'],['gold','泥金金句'],['marker','半高荧光']].map(([id,name])=>`<label><input id="inline-${id}" type="checkbox"> ${name}</label>`).join('')}</div></div><div id="inline-style-sample">${esc(selected)}</div><p class="help">使用设备已有字体；缺少字体时自动回退。西文字体遇到中文会回退到对应中文字体。没有嵌入或下载字体文件。</p><div class="inline-style-actions"><button id="inline-cancel" class="button outline">取消</button><button id="inline-apply" class="button primary">应用到选中文字</button></div>`);
   enhanceColors(panel);
-  const read=():InlineStyle=>({role:($<HTMLSelectElement>('inline-role').value||undefined) as InlineStyle['role'],highlight:$<HTMLInputElement>('inline-use-highlight').checked?$<HTMLInputElement>('inline-highlight').value:undefined,font:$<HTMLSelectElement>('inline-font').value||undefined,size:Number($<HTMLInputElement>('inline-size').value)||undefined,color:$<HTMLInputElement>('inline-use-color').checked?$<HTMLInputElement>('inline-color').value:undefined,...Object.fromEntries(['bold','italic','underline','wave','strike','dots','gold'].map(key=>[key,$<HTMLInputElement>('inline-'+key).checked]))});
+  const read=():InlineStyle=>({role:($<HTMLSelectElement>('inline-role').value||undefined) as InlineStyle['role'],highlight:$<HTMLInputElement>('inline-use-highlight').checked?$<HTMLInputElement>('inline-highlight').value:undefined,font:$<HTMLSelectElement>('inline-font').value||undefined,size:Number($<HTMLInputElement>('inline-size').value)||undefined,color:$<HTMLInputElement>('inline-use-color').checked?$<HTMLInputElement>('inline-color').value:undefined,...Object.fromEntries(['bold','italic','underline','wave','strike','dots','gold','marker'].map(key=>[key,$<HTMLInputElement>('inline-'+key).checked]))});
   const update=()=>{$('inline-style-sample').style.cssText=inlineCSS(read());};
-  if(existing){$<HTMLSelectElement>('inline-role').value=existing.role||'';$<HTMLInputElement>('inline-use-highlight').checked=!!existing.highlight;$<HTMLInputElement>('inline-highlight').value=existing.highlight||'#fff29b';$<HTMLSelectElement>('inline-font').value=existing.font||'';$<HTMLInputElement>('inline-size').value=existing.size?String(existing.size):'';$<HTMLInputElement>('inline-use-color').checked=!!existing.color;$<HTMLInputElement>('inline-color').value=existing.color||'#315e53';for(const key of ['bold','italic','underline','wave','strike','dots','gold'] as const)$<HTMLInputElement>('inline-'+key).checked=!!existing[key];update();}
+  if(existing){$<HTMLSelectElement>('inline-role').value=existing.role||'';$<HTMLInputElement>('inline-use-highlight').checked=!!existing.highlight;$<HTMLInputElement>('inline-highlight').value=existing.highlight||'#fff29b';$<HTMLSelectElement>('inline-font').value=existing.font||'';$<HTMLInputElement>('inline-size').value=existing.size?String(existing.size):'';$<HTMLInputElement>('inline-use-color').checked=!!existing.color;$<HTMLInputElement>('inline-color').value=existing.color||'#315e53';for(const key of ['bold','italic','underline','wave','strike','dots','gold','marker'] as const)$<HTMLInputElement>('inline-'+key).checked=!!existing[key];update();}
   panel.querySelectorAll('input,select').forEach(el=>el.addEventListener('input',update));
   bind('inline-color',()=>{$<HTMLInputElement>('inline-use-color').checked=true;update();},'input');
   bind('inline-highlight',()=>{$<HTMLInputElement>('inline-use-highlight').checked=true;update();},'input');bind('inline-cancel',closePopover);bind('inline-apply',()=>{
@@ -414,8 +422,10 @@ function showFormulas(event?:Event){const panel=openPopover((event?.currentTarge
 function showSamples(){
   openModal('从一个小小的示例开始','<p class="modal-subtitle">示例将作为新文章打开，保留你正在编辑的草稿。</p><div class="option-list"><button class="option-card" data-sample="science"><strong>01 / 一束光，如何告诉我们宇宙的故事？</strong><small>科普文章 · 公式 · 表格 · 脚注</small></button><button class="option-card" data-sample="math"><strong>02 / 在符号之间，理解变化</strong><small>数学公式 · 矩阵 · 多行推导 · 编号</small></button><button class="option-card" data-sample="poetry"><strong>03 / 风经过的地方</strong><small>诗歌 · 散文 · 保留诗行与空行</small></button><button class="option-card" data-sample="journal-indigo"><strong>04 / 深空靛蓝 · 信息与热的期刊长读</strong><small>导读首字下沉 · 双语章节 · 定律 / 公式释义 / 推导 · 科学插图</small></button><button class="option-card" data-sample="journal-jade"><strong>05 / 松石青翠 · 同一篇文章，另一种气质</strong><small>松石绿配色 · 多字体层次 · 三线表 · 要点与参考文献</small></button></div>');
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<button class="option-card" data-sample="folio"><strong>06 / 山窗听雪 · 一纸山水清欢</strong><small>古籍题记 · 三种正文气质 · 横排诗笺 / 阶梯新诗 · 朱批笺注 · 水墨装裱</small></button>');
+  $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend',Object.entries(editionSamples).map(([id])=>`<button class="option-card" data-sample="${id}"><strong>${editionTitles[id as Edition]}</strong><small>完整组件示例 · 可改文字、数据、插图与来源</small></button>`).join(''));
   $('modal-body').querySelectorAll<HTMLButtonElement>('[data-sample]').forEach(el=>el.onclick=async()=>{
     try{
+      if(el.dataset.sample&&editionSamples[el.dataset.sample]){const id=el.dataset.sample;el.disabled=true;const incoming=editionAssets().filter(a=>editionSamples[id].includes('asset:'+a.id)&&!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle(editionTitles[id as Edition],editionSamples[id],id);return;}
       if(el.dataset.sample==='folio'){el.disabled=true;const incoming=folioAssets().filter(a=>!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle('山窗听雪录',folioSample,'folio');return;}
       if(el.dataset.sample?.startsWith('journal-')){el.disabled=true;const asset=journalFigure();assetStore.set(asset.id,asset);trackAsset(asset.id);await stageAssets([asset]);if(!el.isConnected)return;closeModal();addArticle('信息为什么也有物理的重量',journalSample.replace('JOURNAL_FIGURE','asset:'+asset.id),el.dataset.sample);return;}
       closeModal();if(el.dataset.sample==='math')addArticle('在符号之间，理解变化',equations,'math');else if(el.dataset.sample==='poetry')addArticle('风经过的地方',poetry,'moon');else addArticle('一束光，如何告诉我们宇宙的故事？',science);
@@ -428,9 +438,10 @@ function showFolioElements(anchor:HTMLElement){
   panel.querySelectorAll<HTMLElement>('[data-folio-block]').forEach(button=>button.onclick=()=>{
     const kind=button.dataset.folioBlock as FolioKind,s=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(s.from,s.to);
     const bodies:Partial<Record<FolioKind,string>>={masthead:'岁次 / 季节 · 节气 · 物候',byline:'撰文 / 作者 · 图像 / 来源',ci:'[这里写下词前小序。]{role=preface}\n\n:::poem center\n第一行诗\n第二行诗\n:::',scroll:':::poem left\n第一行诗\n第二行诗\n:::',modern:':::poem left\n把一句话，轻轻放下\n    让下一行留一点空白\n      再向前一步\n:::',classical:'这里写下文言原文。[朱批：这里写下评点。]{role=note}',hanging:'在这里粘贴一张插图，再在素材面板填写图注。\n\n[这里写下题画诗。]{role=painting}',handscroll:'在这里粘贴横向长卷。\n\n> **第一景**\n> 这里写下题跋。\n\n> **第二景**\n> 这里写下题跋。',album:'在这里一次粘贴两张图片，选择「双列」排版。',colophon:'撰文 / 作者 · 图像 / 来源 · 校勘 / 编辑\n\n这里写下本辑信息与出处。'};
-    closePopover();editor.insert('\n\n:::folio-'+kind+'\n'+(selected||bodies[kind]||'这里写下正文，可包含加粗、脚注、公式和图片。')+'\n:::\n\n');
+    const content=selected&&['ci','modern'].includes(kind)&&!/^:::poem/m.test(selected)?':::poem '+(kind==='ci'?'center':'left')+'\n'+selected+'\n:::':selected;closePopover();editor.insert('\n\n:::folio-'+kind+'\n'+(content||bodies[kind]||'这里写下正文，可包含加粗、脚注、公式和图片。')+'\n:::\n\n');
   });
   panel.querySelectorAll<HTMLElement>('[data-folio-role],[data-folio-inline]').forEach(button=>button.onclick=()=>{const attrs=button.dataset.folioRole?'role='+button.dataset.folioRole:button.dataset.folioInline!;closePopover();editor.wrap('[',']{'+attrs+'}');});
+  enhanceComponentPreviews(panel,'folio-block',folioSample,()=>showFolioElements(anchor));
 }
 function showFolioFonts(anchor:HTMLElement){
   const fonts=[['noto-serif','书卷宋体','人文衬线，温厚的书卷气'],['wenkai','温润楷体','楷体回退，手书般的叙事'],['noto-sans','现代人文黑','无衬线，更利落的长文阅读']];
@@ -449,6 +460,32 @@ function showJournalBlocks(anchor:HTMLElement){
   ];
   const panel=openPopover(anchor,'期刊排版元素',`<p class="help">深空靛蓝 / 松石青翠配套样式；其他主题也可使用。点击插入后在 Markdown 中改字。公式继续使用离线 SVG 渲染。</p><div class="journal-insert-choices">${examples.map(([id,name,description])=>`<button data-journal-block="${id}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div>`);
   panel.querySelectorAll<HTMLElement>('[data-journal-block]').forEach(button=>button.onclick=()=>{const sample=examples.find(e=>e[0]===button.dataset.journalBlock)!;closePopover();editor.insert('\n\n'+sample[3]+'\n\n');});
+  enhanceComponentPreviews(panel,'journal-block',journalPreviewSample,()=>showJournalBlocks(anchor));
+}
+
+function enhanceComponentPreviews(panel:HTMLElement,attribute:string,source:string,back:()=>void){
+ const theme=themeById(current.theme),resource=new Map([...assets,...folioAssets().map(a=>[a.id,a] as const),...editionAssets().map(a=>[a.id,a] as const)]),article=document.createElement('article');article.innerHTML=renderMarkdown(source,resource).html;decorateTheme(article,theme);
+ const style=document.createElement('style');style.textContent=themeCSS(theme,current.typography).replaceAll('.article','.component-preview-article');panel.prepend(style);
+ for(const button of panel.querySelectorAll<HTMLButtonElement>('[data-'+attribute+']')){
+  const key=button.getAttribute('data-'+attribute)!,cls=attribute==='journal-block'?'journal-'+key:attribute==='folio-block'?'folio-'+key:key;
+  const node=article.querySelector('.'+cls)||article.querySelector('.journal-subtitle');if(!node)continue;
+  const wrapper=document.createElement('div');wrapper.className='component-choice';button.replaceWith(wrapper);
+  const preview=document.createElement('button');preview.className='component-preview-button';preview.dataset.componentPreview=cls;preview.setAttribute('aria-label','预览'+button.textContent);
+  preview.innerHTML='<span class="component-mini-window" aria-hidden="true"><article class="component-preview-article">'+node.outerHTML+'</article></span><small>放大预览 ↗</small>';wrapper.append(preview,button);
+  preview.onclick=()=>{openModal('组件效果预览',`<p class="modal-subtitle">跟随当前文章的主题色与排版设置。这里展示示例内容，插入后可继续修改。</p><div class="component-full-scroll" tabindex="0"><style>${style.textContent}</style><article class="component-preview-article component-full-article">${node.outerHTML}</article></div><div class="component-preview-actions"><button id="component-back" class="button outline">返回选择</button><button id="component-insert" class="button primary">插入当前文章</button></div>`);bind('component-back',()=>{closeModal();back();document.querySelector<HTMLElement>('[data-component-preview="'+cls+'"]')?.focus();});bind('component-insert',()=>{closeModal();button.click();});};
+ }
+}
+function showEditionElements(anchor:HTMLElement,group:Edition=(['digest','press','gewu'].includes(themeById(current.theme).baseId||current.theme)?(themeById(current.theme).baseId||current.theme):'digest') as Edition){
+ const options=editionCatalog[group],panel=openPopover(anchor,'模板专属元素',`<div class="theme-tabs">${Object.entries(editionTitles).filter(([id])=>editionSamples[id]).map(([id,name])=>`<button data-edition-group="${id}" class="${group===id?'active':''}">${name}</button>`).join('')}</div><p class="help">先预览再插入；示例文字、数据、图片与署名可自行替换。</p><div class="journal-insert-choices">${Object.entries(options).map(([kind,title])=>`<button data-edition-block="${group+'-'+kind}"><strong>${title||({byline:'署名栏',deck:'文章导语',photo:'摄影框',polaroid:'拍立得',tags:'学科标签',figure:'插图框',caption:'表格图注',pullquote:'破版大引文'} as Record<string,string>)[kind]||kind}</strong><small>点击插入 · 可编辑 Markdown</small></button>`).join('')}</div>`);
+ panel.querySelectorAll<HTMLElement>('[data-edition-group]').forEach(b=>b.onclick=()=>showEditionElements(anchor,b.dataset.editionGroup as Edition));
+ const sample=editionSamples[group];
+ panel.querySelectorAll<HTMLElement>('[data-edition-block]').forEach(b=>b.onclick=async()=>{const key=b.dataset.editionBlock!,text=editionComponentSource(sample,key),s=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(s.from,s.to),before=editor.view.state.doc.toString(),articleId=current.id;const incoming=editionAssets().filter(a=>text.includes('asset:'+a.id)&&!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(current.id!==articleId||before!==editor.view.state.doc.toString()){toast('文章已变化，请重新选择插入位置。',true);return;}closePopover();editor.insert('\n\n'+(selected?':::'+key+'\n'+selected+'\n:::':text)+'\n\n');});
+ enhanceComponentPreviews(panel,'edition-block',sample,()=>showEditionElements(anchor,group));
+}
+function editionComponentSource(sample:string,key:string){
+ const lines=sample.split('\n'),start=lines.findIndex(line=>line===':::'+key||line.startsWith(':::'+key+' '));if(start<0)return':::'+key+'\n这里写下正文。\n:::';let depth=0;
+ for(let i=start;i<lines.length;i++){if(/^:::[a-z]/.test(lines[i]))depth++;else if(lines[i]===':::'&&!--depth)return lines.slice(start,i+1).join('\n');}
+ return':::'+key+'\n这里写下正文。\n:::';
 }
 
 
@@ -591,7 +628,9 @@ function showWritingTools(anchor:HTMLElement){
   bind('writing-check',()=>{closePopover();showWritingCheck();});bind('writing-tidy',()=>{closePopover();showWritingTidy();});bind('writing-history',()=>{closePopover();showHistory(current);});
   bind('writing-checkpoint',async()=>{closePopover();const added=snapshot(current,true);if(added)markDirty();const ok=await save();toast(ok?(added?'已保存此时的恢复点':'此时内容已有恢复点'):'恢复点尚未保存到浏览器，请保留页面并导出备份。',!ok);});
   panel.querySelectorAll<HTMLElement>('[data-writing-outline]').forEach(button=>button.onclick=()=>{const outline=writingOutlines[Number(button.dataset.writingOutline)];closePopover();addArticle(outline.name,outline.text,outline.theme);toast('已在新文章中打开写作骨架，原稿保留在文章库。');});
+  const ai=document.createElement('button');ai.id='writing-rewrite';ai.innerHTML='<strong>DeepSeek 选区改写</strong><small>仅发送选区与少量上下文，先比较再应用</small>';panel.querySelector('.writing-tool-list')!.append(ai);ai.onclick=startRewrite;
 }
+function startRewrite(){const selection=editor.view.state.selection.main,article=current,before=editor.view.state.doc.toString();showRewrite({open:openModal,close:closeModal,notify:toast,unchanged:()=>current===article&&editor.view.state.doc.toString()===before,apply:text=>{snapshot(article,true);editor.replaceText(selection.from,selection.to,text);editor.view.focus();}},before,selection.from,selection.to);}
 function showWritingCheck(){
   render();const article=current,issues=inspectWriting(article.markdown);
   for(const error of renderResult.errors)issues.push({line:error.line,title:'公式需要检查',detail:error.message});
@@ -692,7 +731,7 @@ async function init(){
   const journalButton=document.createElement('button');journalButton.id='journal-block-button';journalButton.textContent='期刊元素 ▾';journalButton.title='导读、定律、公式释义、推导、要点和参考文献';$('math-button').after(journalButton);journalButton.onclick=()=>showJournalBlocks(journalButton);
   bind('theme-button',()=>showThemes());bind('samples-button',showSamples);bind('style-button',e=>{const p=$('style-panel');p.hidden=!p.hidden;if(!p.hidden){renderStylePanel();if((e as MouseEvent).detail===0)$('style-close').focus();}});
   document.addEventListener('keydown',e=>{if(e.key!=='Escape'||e.defaultPrevented||modal.open)return;const target=e.target as Node;if(!$('style-panel').hidden&&($('style-panel').contains(target)||target===$('style-button'))){e.preventDefault();$('style-panel').hidden=true;$('style-button').focus();}else if(!$('library').hidden&&($('library').contains(target)||target===$('library-button'))){e.preventDefault();toggleLibrary();$('library-button').focus();}});
-  bind('inline-style-button',showInlineStyle);bind('selection-style-button',showInlineStyle);
+  bind('inline-style-button',showInlineStyle);bind('selection-style-button',showInlineStyle);const rewriteButton=document.createElement('button');rewriteButton.id='selection-rewrite';rewriteButton.textContent='改写';$('selection-style-button').after(rewriteButton);rewriteButton.onclick=startRewrite;modal.addEventListener('close',cancelRewrite);
   bind('editor-theme',()=>{const value=$<HTMLSelectElement>('editor-theme').value;editor.theme(value);editorChrome(value);preference(night?'editor-theme-night':'editor-theme',value);},'change');
   bind('night-button',()=>{night=!night;preference('appearance',night?'night':'day');const id=readPreference(night?'editor-theme-night':'editor-theme','dark');const value=editorThemes[id]?id:'dark';$<HTMLSelectElement>('editor-theme').value=value;editor.theme(value);editorChrome(value);applyAppearance();});
   bind('preview-brightness',()=>{brightness=Number($<HTMLInputElement>('preview-brightness').value);preference('preview-brightness',String(brightness));applyAppearance();},'input');
@@ -711,6 +750,7 @@ async function init(){
   const indentButton=document.createElement('button');indentButton.id='indent-toggle';indentButton.textContent='段首空两格';indentButton.title='自动缩进正文首行；不改变 Markdown 内容';$('inline-style-button').before(indentButton);indentButton.onclick=()=>{current.typography.indent=!(current.typography.indent??themeDefaults(themeById(current.theme)).indent);markDirty();render();if(!$('style-panel').hidden)renderStylePanel();};
   bind('math-button',showFormulas);bind('assets-button',showAssets);bind('toc-button',showTOC);bind('undo-button',()=>editor.undo());bind('redo-button',()=>editor.redo());bind('search-button',()=>editor.search());
   const writingButton=document.createElement('button');writingButton.id='writing-tools-button';writingButton.className='tool-button';writingButton.setAttribute('aria-label','写作工具');writingButton.title='写作检查、文字整理、恢复点与写作骨架';writingButton.innerHTML='✎ <span>写作工具</span> ▾';$('assets-button').before(writingButton);writingButton.onclick=()=>showWritingTools(writingButton);
+  const editionButton=document.createElement('button');editionButton.id='edition-block-button';editionButton.textContent='模板组件 ▾';editionButton.title='预览与插入杂志、新闻和文学科普组件';$('folio-block-button').after(editionButton);editionButton.onclick=()=>showEditionElements(editionButton);
   bind('publisher',()=>{publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
   bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>$('import-input').click());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
   document.querySelectorAll<HTMLElement>('[data-format]').forEach(el=>el.onclick=()=>{

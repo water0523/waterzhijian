@@ -7,6 +7,10 @@ const add=async name=>files['纸间/'+name]=new Uint8Array(await readFile(name))
 for(const name of ['README.md','开发说明.md','CHANGELOG.md','RELEASE-v1.0.md','RELEASE-v1.0.1.md','使用说明.md','验收报告.md','主题升级说明.md','本轮更新说明.md','待续功能.md','主题格式规范-v1.md','主题示例/杉影札记.纸间主题.json','plans/product-polish.md','plans/journal-themes.md','plans/literary-folio.md','plans/digest-news-templates.md','期刊主题使用说明.md','package.json','package-lock.json','tsconfig.json','index.template.html','build.mjs','package-release.mjs','.gitignore'])await add(name);
 for(const name of await readdir('src'))await add('src/'+name);
 for(const name of ['山窗听雪使用说明.md','plans/literary-science-theme.md'])await add(name);
+await add('新增模板与组件使用说明.md');
+for(const name of ['edition-themes.mjs','component-workflow.mjs','rewrite.mjs','theme-browsing.mjs'])await add('tests/'+name);
+for(const name of ['edition-themes-chrome.json','edition-themes-msedge.json','component-workflow-chrome.json','component-workflow-msedge.json','rewrite-chrome.json','rewrite-msedge.json','theme-browsing-chrome.json','theme-browsing-msedge.json'])await add('test-results/'+name);
+await add('dist/三套新主题预览.png');
 async function addTree(dir){for(const item of await readdir(dir,{withFileTypes:true})){const name=dir+'/'+item.name;if(item.isDirectory())await addTree(name);else await add(name);}}
 await addTree('assets');
 for(const name of ['folio-themes.mjs','folio-workflow.mjs'])await add('tests/'+name);

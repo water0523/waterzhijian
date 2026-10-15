@@ -8,6 +8,8 @@ import {download,safeName} from './files';
 import {journalPreviewSample} from './journal-sample';
 import {folioSample,folioAssets} from './folio-sample';
 import {isFolio} from './folio-design';
+import {editionSamples,editionAssets} from './edition-samples';
+import {themeMatches} from './theme-search';
 
 type Host={open:(title:string,html:string,eyebrow?:string)=>void;close:()=>void;notify:(message:string,error?:boolean)=>void;changed:()=>void;apply:(id:string)=>void;current:()=>string};
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -55,7 +57,7 @@ ornaments 可选：label（刊头小字）、mark（章节符号，最多 8 字�
 
 export function themeGuide(){return guide+'\n## 内置基础主题标识\n\n'+themes.filter(t=>!t.definition).map(t=>`- ${t.id}：${t.name}`).join('\n')+'\n';}
 function preview(theme:Theme){
-  const node=document.createElement('article');node.className='theme-import-article';node.innerHTML=renderMarkdown(isFolio(theme)?folioSample:theme.variant==='journal'?journalPreviewSample:sample,new Map(isFolio(theme)?folioAssets().map(a=>[a.id,a]):[])).html;decorateTheme(node,theme);
+  const key=theme.baseId||theme.id,node=document.createElement('article');node.className='theme-import-article';node.innerHTML=renderMarkdown(editionSamples[key]|| (isFolio(theme)?folioSample:theme.variant==='journal'?journalPreviewSample:sample),new Map((editionSamples[key]?editionAssets():isFolio(theme)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(node,theme);
   return `<style>${themeCSS(theme).replaceAll('.article','.theme-import-article')}</style>${node.outerHTML}`;
 }
 const guarded=(host:Host,fn:()=>void)=>()=>{try{fn();}catch(e){host.notify(e instanceof Error?e.message:String(e),true);}};
@@ -63,7 +65,7 @@ function exportJSON(data:unknown,name:string){download(JSON.stringify(data,null,
 
 export function showThemeManager(host:Host,filter='全部',view={query:'',scroll:0}){
   const removed=themes.filter(t=>isThemeHidden(t.id)).length;
-  host.open('自己的主题书架',`<div class="theme-management-intro"><div><p class="modal-subtitle">挑选常用的主题，收藏适合你的字体与版式。</p><p class="help">移除后仍保留在完整主题库，旧文章继续使用原样式。${removed?`已有 ${removed} 个主题移出选择器。`:''}</p></div><button id="manager-import" class="button primary">导入主题</button></div><div class="theme-manager-tools"><input id="manager-search" class="field" placeholder="搜索名称或主题标识" aria-label="搜索完整主题库"><div class="theme-tabs">${['全部','内置','自定义','已移除'].map(v=>`<button data-library-filter="${v}" class="${v===filter?'active':''}">${v}</button>`).join('')}</div></div><p id="manager-error" class="notice" ${themeLibraryError()?'':'hidden'}>${esc(themeLibraryError())}</p><div id="manager-list" class="theme-manager-list"></div><div class="theme-manager-footer"><span id="manager-count" class="help"></span><div><button id="manager-guide" class="button outline">格式规范 / 示例</button><button id="manager-export" class="button outline">导出主题库</button><button id="manager-restore-all" class="button outline">全部恢复</button></div></div>`,'THE PERSONAL COLLECTION');
+  host.open('自己的主题书架',`<div class="theme-management-intro"><div><p class="modal-subtitle">挑选常用的主题，收藏适合你的字体与版式。</p><p id="manager-removed-summary" class="help">移除后仍保留在完整主题库，旧文章继续使用原样式。${removed?`已有 ${removed} 个主题移出选择器。`:''}</p></div><button id="manager-import" class="button primary">导入主题</button></div><div class="theme-manager-tools"><input id="manager-search" class="field" placeholder="搜索名称或主题标识" aria-label="搜索完整主题库"><div class="theme-tabs">${['全部','内置','自定义','已移除'].map(v=>`<button data-library-filter="${v}" class="${v===filter?'active':''}">${v}</button>`).join('')}</div></div><p id="manager-error" class="notice" ${themeLibraryError()?'':'hidden'}>${esc(themeLibraryError())}</p><div id="manager-list" class="theme-manager-list"></div><div class="theme-manager-footer"><span id="manager-count" class="help"></span><div><button id="manager-guide" class="button outline">格式规范 / 示例</button><button id="manager-export" class="button outline">导出主题库</button><button id="manager-restore-all" class="button outline">全部恢复</button></div></div>`,'THE PERSONAL COLLECTION');
   if(themeLibraryError()){
     $('manager-error').insertAdjacentHTML('beforeend','<p>先导出原始记录，再恢复内置库。文章文字不会丢失；自定义样式需重新导入有效的主题备份。</p><div class="theme-guide-actions"><button id="theme-export-broken" class="button outline">导出原始记录</button><button id="theme-reset-broken" class="button outline" disabled>恢复内置主题库</button></div>');
     $('theme-export-broken').onclick=guarded(host,()=>{download(rawThemeLibrary(),'纸间-主题库原始记录.json','application/json');$<HTMLButtonElement>('theme-reset-broken').disabled=false;});
@@ -71,20 +73,21 @@ export function showThemeManager(host:Host,filter='全部',view={query:'',scroll
   }
   $<HTMLInputElement>('manager-search').value=view.query;
   const render=()=>{
-    const query=$<HTMLInputElement>('manager-search').value.trim().toLowerCase();const list=themes.filter(t=>(filter==='全部'||filter==='内置'&&!t.definition||filter==='自定义'&&t.definition||filter==='已移除'&&isThemeHidden(t.id))&&[t.name,t.id,t.description].join(' ').toLowerCase().includes(query));
+    const query=$<HTMLInputElement>('manager-search').value.trim().toLowerCase();const list=themes.filter(t=>(filter==='全部'||filter==='内置'&&!t.definition||filter==='自定义'&&t.definition||filter==='已移除'&&isThemeHidden(t.id))&&themeMatches(t,query));
+    const summary=$('manager-removed-summary');if(summary)summary.textContent=themes.filter(t=>isThemeHidden(t.id)).length+' 个主题已移出选择器，可随时恢复。';
     $('manager-count').textContent=`${list.length} 个主题 · 内置 ${builtInIds.length} / 自定义 ${themes.length-builtInIds.length}`;
     $('manager-list').innerHTML=list.map(t=>`<div class="theme-manager-row ${isThemeHidden(t.id)?'is-hidden':''}"><span class="theme-manager-swatch" style="background:${t.paper};border-color:${t.accent};color:${t.accent}" aria-hidden="true">${t.group==='文学'?'文':'Aa'}</span><div class="theme-manager-meta"><strong>${esc(t.name)} <small>${t.definition?'自定义':'内置'}${host.current()===t.id?' · 使用中':''}</small></strong><p>${esc(t.description)}</p><code>${t.id}</code></div><div class="theme-manager-actions"><button data-manager-preview="${t.id}">预览</button>${t.definition?`<button data-manager-export="${t.id}">导出</button>`:''}<button data-manager-toggle="${t.id}" class="${isThemeHidden(t.id)?'restore-action':''}">${isThemeHidden(t.id)?'恢复':'移除'}</button></div></div>`).join('')||'<p class="empty-state">没有匹配的主题。可以导入自己的主题，或切换分类。</p>';
   };render();$('manager-list').scrollTop=view.scroll;$('manager-search').oninput=()=>{view.query=$<HTMLInputElement>('manager-search').value;render();};$('manager-list').onscroll=event=>{view.scroll=(event.currentTarget as HTMLElement).scrollTop;};
-  document.querySelectorAll<HTMLElement>('[data-library-filter]').forEach(b=>b.onclick=()=>showThemeManager(host,b.dataset.libraryFilter));
+  document.querySelectorAll<HTMLElement>('[data-library-filter]').forEach(b=>b.onclick=()=>{filter=b.dataset.libraryFilter!;document.querySelectorAll<HTMLElement>('[data-library-filter]').forEach(el=>el.classList.toggle('active',el===b));render();});
   $('manager-list').onclick=e=>{
     const target=(e.target as HTMLElement).closest<HTMLElement>('button');if(!target)return;
-    if(target.dataset.managerToggle)guarded(host,()=>{setThemeHidden(target.dataset.managerToggle!,!isThemeHidden(target.dataset.managerToggle!));host.changed();render();host.notify(isThemeHidden(target.dataset.managerToggle!)?'已从选择器移除，可在此恢复。':'主题已恢复到选择器。');})();
+    if(target.dataset.managerToggle)guarded(host,()=>{const id=target.dataset.managerToggle!;setThemeHidden(id,!isThemeHidden(id));host.changed();render();($('manager-list').querySelector<HTMLElement>('[data-manager-toggle="'+id+'"]')||$('manager-search')).focus();host.notify(isThemeHidden(id)?'已从选择器移除，可在此恢复。':'主题已恢复到选择器。');})();
     if(target.dataset.managerExport)exportJSON(themeDocument(themeById(target.dataset.managerExport).definition!),themeById(target.dataset.managerExport).name+'.纸间主题');
     if(target.dataset.managerPreview)showManagedPreview(host,themeById(target.dataset.managerPreview),filter,view);
   };
   $('manager-import').onclick=()=>chooseThemeFile(host);$('manager-guide').onclick=()=>showThemeGuide(host);
   $('manager-export').onclick=()=>{exportJSON(themeLibraryDocument(),'纸间-完整主题库');host.notify('主题库已导出，不包含文章正文。');};
-  $('manager-restore-all').onclick=guarded(host,()=>{restoreThemes();host.changed();showThemeManager(host,filter);host.notify('完整主题库已恢复到选择器。');});
+  $('manager-restore-all').onclick=guarded(host,()=>{restoreThemes();host.changed();render();host.notify('完整主题库已恢复到选择器。');});
 }
 function showManagedPreview(host:Host,t:Theme,filter:string,view:{query:string;scroll:number}){
   host.open(t.name,`<div class="theme-import-layout"><aside><p class="modal-subtitle">${esc(t.description)}</p><dl class="theme-font-summary"><dt>正文</dt><dd>${esc(fontNames[t.font])}</dd>${(['h1','h2','h3'] as const).map(k=>'<dt>'+k.toUpperCase()+'</dt><dd>'+esc(fontNames[t.definition?.elements?.[k]?.font||t.headingFont||t.font])+'</dd>').join('')}<dt>引用</dt><dd>${esc(fontNames[t.definition?.elements?.quote?.font||t.quoteFont||t.font])}</dd></dl><p class="help">${themeDefaults(t).size}px · 行高 ${themeDefaults(t).lineHeight} · ${esc(themeById(t.baseId||t.id).name)}基础版式</p><button id="manager-apply-preview" class="button primary full">${isThemeHidden(t.id)?'恢复并使用':'使用此主题'}</button><button id="manager-preview-back" class="button outline full">返回完整主题库</button></aside><div class="theme-import-preview">${preview(t)}</div></div>`,'TYPE / COMPOSITION');
