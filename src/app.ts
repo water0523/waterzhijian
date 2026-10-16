@@ -40,6 +40,7 @@ import {mountThemeSidebar} from './theme-sidebar';
 import {exportOptionsHTML} from './export-options';
 import {showFormatRewrite} from './format-rewrite';
 import {uiIcon} from './ui-icons';
+import {mountDownloadLocation,showDownloadLocation,openDownloadFolder} from './download-location';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const assetStore=new Map<string,Asset>();const articles=new Map<string,Article>();
@@ -604,7 +605,7 @@ async function exportHTML(){
   const readingWidth=current.stickers?.some(s=>!s.layout||s.layout==='free')?$('preview').clientWidth:720;
   download(`<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(current.title)}</title><style>body{margin:0;background:#f2f3ef}.reading-page{max-width:${readingWidth}px;margin:24px auto}@media(max-width:${readingWidth}px){.reading-page{margin:0}}</style></head><body><main class="reading-page">${html}</main></body></html>`,safeName(current.title)+'.html','text/html;charset=utf-8');closeModal();toast('独立 HTML 已导出，可离线阅读');
 }
-function showExport(){openModal('把文章，好好保存',`<p class="modal-subtitle">浏览器草稿方便继续写作，文件备份适合长期保存与换电脑恢复。</p>${exportOptionsHTML()}`,'SAVE & EXPORT');bind('export-backup',()=>{exportBackup();closeModal();});bind('export-html',exportHTML);bind('export-longimage',showLongImage);bind('export-pdf',showPDF);bind('export-word',exportWord);bind('export-md',()=>{if(assetRefs(current.markdown).length||current.stickers?.length)exportBackup();else{download(current.markdown,safeName(current.title)+'.md','text/markdown;charset=utf-8');toast('Markdown 已导出');}closeModal();});bind('export-all',()=>{exportBackup(true);closeModal();});}
+function showExport(){openModal('把文章，好好保存',`<div class="export-location-heading"><p class="modal-subtitle">浏览器草稿方便继续写作，文件备份适合长期保存与换电脑恢复。</p><button id="export-download-location" class="button outline">${uiIcon('folder')}下载位置</button></div>${exportOptionsHTML()}`,'SAVE & EXPORT');bind('export-download-location',()=>showDownloadLocation());bind('export-backup',()=>{exportBackup();closeModal();});bind('export-html',exportHTML);bind('export-longimage',showLongImage);bind('export-pdf',showPDF);bind('export-word',exportWord);bind('export-md',()=>{if(assetRefs(current.markdown).length||current.stickers?.length)exportBackup();else{download(current.markdown,safeName(current.title)+'.md','text/markdown;charset=utf-8');toast('Markdown 已导出');}closeModal();});bind('export-all',()=>{exportBackup(true);closeModal();});}
 
 function documentReady(){
   render();if(renderResult.errors.length||renderResult.missing.length||renderResult.external.length){toast('请先修正公式错误，并在素材面板补齐本地图片。',true);return false;}return true;
@@ -654,11 +655,12 @@ async function exportWord(){
 }
 function showPDF(){
   if(!documentReady())return;
-  openModal('导出 PDF','<p class="modal-subtitle">打开打印预览后，点击「打印 / 另存为 PDF」，目标选择「另存为 PDF」。建议关闭页眉页脚。</p><div class="option-list"><button id="pdf-theme" class="option-card"><strong>当前预览排版</strong><small>保留配色与版式，贴纸局部区域合成为图片</small></button><button id="pdf-standard" class="option-card"><strong>标准 Markdown 文档</strong><small>适合 A4 阅读与打印，贴纸作为普通图片</small></button></div>');
+  openModal('导出 PDF','<p class="modal-subtitle">打开打印预览后，点击「打印 / 另存为 PDF」，目标选择「另存为 PDF」。建议关闭页眉页脚。</p><div class="option-list"><button id="pdf-theme" class="option-card"><strong>当前预览排版</strong><small>保留配色与版式，贴纸局部区域合成为图片</small></button><button id="pdf-standard" class="option-card"><strong>标准 Markdown 文档</strong><small>适合 A4 阅读与打印，贴纸作为普通图片</small></button></div><div class="pdf-folder-help"><button id="pdf-download-folder" class="button outline">打开默认下载文件夹</button><p class="help">需连接下载定位助手。打印另存的 PDF 无法读取实际路径；若选了其他目录，请使用保存时选择的目录。</p></div>');
+  bind('pdf-download-folder',()=>void openDownloadFolder());
   for(const mode of ['theme','standard'] as const)bind('pdf-'+mode,async()=>{
     const popup=window.open('','_blank');if(!popup){toast('浏览器拦截了打印窗口，请允许此文件打开弹窗。',true);return;}
     popup.document.body.textContent='正在准备打印文档…';
-    try{await preparePrintWindow(popup,structuredClone(current),assets,$('preview'),publisher==='zhihu'?'standard':mode);closeModal();toast('打印文档已打开，可另存为 PDF');}catch(e){popup.close();throw e;}
+    try{await preparePrintWindow(popup,structuredClone(current),assets,$('preview'),publisher==='zhihu'?'standard':mode,()=>showDownloadLocation());closeModal();toast('打印文档已打开，可另存为 PDF');}catch(e){popup.close();throw e;}
   });
 }
 
@@ -784,6 +786,7 @@ async function showStickerRegions(){
 }
 
 async function init(){
+  mountDownloadLocation((title,html)=>openModal(title,html,'DOWNLOAD LOCATION'));
   let storageError='';
   try{await openStore();const stored=await loadStore();for(const a of stored.articles){if(!a.titleMode)a.titleMode='manual';articles.set(a.id,a);}for(const a of stored.assets)assets.set(a.id,a);}catch(e){storageError=errorMessage(e);}
   const recovery=await recoverDrafts(articles);

@@ -2,8 +2,13 @@ import {build} from 'esbuild';
 import {readFile,writeFile,mkdir,readdir} from 'node:fs/promises';
 import {createHash} from 'node:crypto';
 import path from 'node:path';
-import {gzipSync,strToU8} from 'fflate';
+import {gzipSync,strToU8,zipSync} from 'fflate';
 const options={bundle:true,write:false,metafile:true,format:'iife',platform:'browser',target:['chrome110','edge110'],minify:true,legalComments:'inline',define:{'process.env.NODE_ENV':'"production"'}};
+const helperFiles={};
+for(const name of ['manifest.json','background.js','content.js','使用说明.txt'])helperFiles['非水成章-下载定位助手/'+name]=new Uint8Array(await readFile('folder-helper/'+name));
+const helperZIP=zipSync(helperFiles,{level:9});
+await mkdir('dist',{recursive:true});await writeFile('dist/非水成章-下载定位助手.zip',helperZIP);
+options.define.__FOLDER_HELPER_ZIP__=JSON.stringify(Buffer.from(helperZIP).toString('base64'));
 const images=new Map();
 const result=await build({...options,entryPoints:['src/app.ts'],plugins:[{name:'offline-example-images',setup(builder){builder.onLoad({filter:/\.webp$/},async({path:filename})=>{
  const key='embedded-image-'+createHash('sha256').update(path.relative(process.cwd(),filename).replaceAll('\\','/')).digest('hex').slice(0,16);

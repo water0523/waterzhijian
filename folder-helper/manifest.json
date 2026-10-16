@@ -1,0 +1,14 @@
+{
+  "manifest_version": 3,
+  "name": "非水·成章 · 下载定位助手",
+  "version": "1.0.0",
+  "description": "为非水·成章导出的文件打开所在文件夹，保留浏览器原有下载方式。",
+  "permissions": ["downloads"],
+  "background": {"service_worker": "background.js"},
+  "content_scripts": [{
+    "matches": ["file:///*", "https://water0523.github.io/waterzhijian/*"],
+    "js": ["content.js"],
+    "run_at": "document_idle"
+  }],
+  "action": {"default_title": "打开默认下载文件夹"}
+}

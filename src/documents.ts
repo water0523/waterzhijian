@@ -128,10 +128,11 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
   }finally{host.remove();}
 }
 
-export async function preparePrintWindow(popup:Window,article:Article,assets:Map<string,Asset>,preview:HTMLElement,mode:'standard'|'theme'){
+export async function preparePrintWindow(popup:Window,article:Article,assets:Map<string,Asset>,preview:HTMLElement,mode:'standard'|'theme',openFolder?:()=>void){
   const html=mode==='standard'?await standardFragment(article,assets):await publicationHTML(preview,'image');
   const width=mode==='theme'&&article.stickers?.length?`${preview.clientWidth}px`:'100%';
   popup.document.open();popup.document.write(`<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>${esc(article.title)}</title><style>@page{size:A4;margin:18mm}body{margin:0;background:white;color:#222}.print-controls{position:sticky;top:0;background:#f0f3ed;padding:14px;font:13px/1.7 sans-serif;border-bottom:1px solid #d7dfd1}.print-controls button{padding:7px 14px;margin-right:12px;cursor:pointer}.print-content{width:${width};max-width:100%;margin:20px auto}h1,h2,h3,h4{break-after:avoid}p{orphans:3;widows:3}img,svg{max-width:100%;height:auto}img,table tr,.math-display,.poem{break-inside:avoid}pre{white-space:pre-wrap;overflow-wrap:anywhere}thead{display:table-header-group}@media print{.print-controls{display:none}.print-content{margin:0 auto}*{-webkit-print-color-adjust:exact;print-color-adjust:exact}}</style></head><body><div class="print-controls"><button id="print-now">打印 / 另存为 PDF</button>目标选择“另存为 PDF”。建议 A4，关闭页眉页脚${mode==='theme'?'，开启背景图形':''}。</div><main class="print-content">${html}</main></body></html>`);popup.document.close();
   await Promise.all([...popup.document.images].map(img=>img.decode().catch(()=>{})));
   popup.document.getElementById('print-now')!.addEventListener('click',()=>popup.print());
+  if(openFolder){const controls=popup.document.querySelector('.print-controls')!,button=popup.document.createElement('button');button.id='print-download-folder';button.textContent='下载位置 / 打开文件夹';button.addEventListener('click',()=>{popup.opener?.focus();openFolder();});const help=popup.document.createElement('small');help.style.display='block';help.textContent='在编辑器中打开文件夹；需连接下载定位助手。这里只打开默认下载文件夹，PDF 若另存到其他目录，请使用保存时选择的目录。';controls.append(popup.document.createElement('br'),button,help);}
 }

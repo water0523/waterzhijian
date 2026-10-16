@@ -82,11 +82,15 @@ for(const channel of ['chrome','msedge']){
   await add('test-results/script-tags-'+channel+'.json');
   for(const mode of ['day','night'])await add('test-results/script-tags-'+mode+'-'+channel+'.png');
 }
+await addTree('folder-helper');
+for(const name of ['docs/plans/2026-10-16-download-location.md','tests/download-location.mjs','test-results/download-location.json','test-results/download-location-connected-edge.png','dist/非水成章-下载定位助手.zip'])await add(name);
+for(const channel of ['chrome','msedge'])for(const mode of ['day','night'])await add('test-results/download-location-'+mode+'-'+channel+'.png');
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);
 await writeFile('dist/纸间-源码与使用说明.zip',data);
 const html=await readFile('dist/纸间-离线公众号排版器.html');
 const htmlHash=createHash('sha256').update(html).digest('hex'),zipHash=createHash('sha256').update(data).digest('hex');
-await writeFile('dist/SHA256.txt',[[htmlHash,'非水·成章-离线公众号排版器.html'],[zipHash,'非水·成章-源码与使用说明.zip'],[htmlHash,'纸间-离线公众号排版器.html'],[zipHash,'纸间-源码与使用说明.zip']].map(([hash,name])=>hash+'  '+name+'\n').join(''));
+const helperHash=createHash('sha256').update(await readFile('dist/非水成章-下载定位助手.zip')).digest('hex');
+await writeFile('dist/SHA256.txt',[[htmlHash,'非水·成章-离线公众号排版器.html'],[zipHash,'非水·成章-源码与使用说明.zip'],[htmlHash,'纸间-离线公众号排版器.html'],[zipHash,'纸间-源码与使用说明.zip'],[helperHash,'非水成章-下载定位助手.zip']].map(([hash,name])=>hash+'  '+name+'\n').join(''));
 console.log(`Packaged ${Object.keys(files).length} files, verified ZIP contents (${(data.length/1024/1024).toFixed(2)} MB)`);

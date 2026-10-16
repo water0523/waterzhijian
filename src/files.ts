@@ -3,9 +3,10 @@ import {uid,fontStacks,type Article,type Asset,type AssetSettings,type Typograph
 import {themes,builtInIds,themesForArticles,themeLibraryDocument} from './themes';
 import {parseThemeFile,libraryDocument,validateElements} from './theme-schema';
 import type {ThemeDefinition} from './theme-types';
+import {trackDownload} from './download-location';
 export const safeName=(s:string)=>s.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/,'').slice(0,90)||'未命名文章';
 export function download(data:BlobPart,name:string,type='application/octet-stream'){
-  const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
+  const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;trackDownload(url,name);a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
 }
 export const extension=(mime:string)=>({'image/png':'png','image/jpeg':'jpg','image/webp':'webp','image/gif':'gif'}[mime]||'png');
 export function bytesFromData(data:string){const raw=atob(data.split(',')[1]);return Uint8Array.from(raw,c=>c.charCodeAt(0));}
