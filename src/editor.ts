@@ -96,6 +96,10 @@ export class MarkdownEditor {
     // quick consecutive menu choices, including a directive wrapping formulas.
     this.view.dispatch({changes:[{from:outerFrom,to:from,insert:prefix},{from:to,to:outerTo,insert:suffix}],selection:{anchor,head:anchor+to-from},userEvent:'input.format',annotations:isolateHistory.of('full')});
   }
+  formatMathSelection(from:number,to:number,outerFrom:number,outerTo:number,prefix:string,suffix:string){
+    const anchor=outerFrom+prefix.length;
+    this.view.dispatch({changes:[{from:outerFrom,to:from,insert:prefix},{from:to,to:outerTo,insert:suffix}],selection:{anchor,head:anchor+to-from},userEvent:'input.format',annotations:isolateHistory.of('full')});
+  }
   insert(text:string,at?:number){const sel=this.view.state.selection.main;const from=at??sel.from;this.view.dispatch({changes:{from,to:at===undefined?sel.to:from,insert:text},selection:{anchor:from+text.length},scrollIntoView:true});this.view.focus();}
   wrap(before:string,after=before){
     const s=this.view.state.selection.main,selected=this.view.state.sliceDoc(s.from,s.to)||'文字';

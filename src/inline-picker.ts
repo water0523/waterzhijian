@@ -16,13 +16,13 @@ export function mountInlineMenus(handler:(event:Event)=>void){
   }
 }
 
-export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:InlineStyle|null,renderSample:(root:HTMLElement,markdown:string)=>void,apply:(style:InlineStyle)=>boolean){
+export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:InlineStyle|null,renderSample:(root:HTMLElement,markdown:string)=>void,apply:(style:InlineStyle)=>boolean,math=false){
   const current:InlineStyle={...existing},label=menus.find(([id])=>id===kind)![1];
   const row=(value:string,content:string,checked:boolean,extra='')=>`<button type="button" role="menuitemradio" aria-checked="${checked}" data-inline-choice="${esc(value)}" ${extra}>${content}<span class="inline-menu-check" aria-hidden="true">${checked?'✓':''}</span></button>`;
   let html='';
   if(kind==='font')html=row('','<span>跟随正文</span>',!current.font)+Object.entries(inlineFonts).map(([id,font])=>row(id,`<span style="font-family:${esc(font.css)}">${esc(font.name.split(' · ')[0])}</span><small>${esc(font.name.split(' · ')[1])}</small>`,current.font===id,`data-picker-font="${id}"`)).join('');
   if(kind==='role')html=row('','<span>普通文字</span>',!current.role)+Object.entries(literaryRoles).map(([id,name])=>row(id,`<span class="inline-role-row article" data-role-demo="${id}"></span>`,current.role===id,`data-picker-role="${id}" aria-label="${name}"`)).join('');
-  if(kind==='effect')html=effects.map(([id,name])=>row(id,`<span style="${esc(inlineCSS({[id]:true}))}">${name}</span>`,!!current[id],`data-inline-effect="${id}"`).replace('role="menuitemradio"','role="menuitemcheckbox"')).join('')+'<button type="button" role="menuitem" class="inline-menu-clear" data-inline-choice="clear">清除选区全部样式</button>';
+  if(kind==='effect')html=(math?'':effects.map(([id,name])=>row(id,`<span style="${esc(inlineCSS({[id]:true}))}">${name}</span>`,!!current[id],`data-inline-effect="${id}"`).replace('role="menuitemradio"','role="menuitemcheckbox"')).join(''))+'<button type="button" role="menuitem" class="inline-menu-clear" data-inline-choice="clear">清除选区全部样式</button>';
   if(kind==='size')html=row('','<span>跟随正文</span>',current.size===undefined)+[12,14,15,15.5,16,18,20,24,28,32].map(size=>row(String(size),`<span style="font-size:${size}px">${size}<small> px</small></span>`,current.size===size)).join('');
   const isColor=kind==='color'||kind==='highlight'||kind==='marker';
   const chosen=kind==='marker'?(current.marker?markerInk(current):undefined):kind==='highlight'?current.highlight:current.color;
@@ -36,7 +36,7 @@ export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:Inlin
     else html+=palette.map(([name,color])=>row(color,`<span class="inline-menu-color-swatch" style="background:${color}"></span><span>${name}</span><span class="inline-menu-color-demo" style="${kind==='color'?'color:'+color+(color==='#ffffff'?';background:#34463b':''):'background-color:'+color}">文字 Aa</span>`,chosen===color,`data-color="${color}"`)).join('');
   }
   const custom=kind==='size'?`<label class="inline-menu-custom" for="inline-size">自定字号 <input id="inline-size" type="number" min="10" max="64" step=".5" value="${current.size||''}" placeholder="10–64"> px <small>回车应用</small></label>`:isColor?`<label class="inline-menu-custom">自定${label}<input type="color" id="inline-${kind}" value="${chosen||(kind==='color'?'#315e53':kind==='marker'?'#f5d878':'#fff29b')}" aria-label="自定${label}"></label>`:'';
-  const panel=openPopover(target,label,`<div class="inline-menu-list" role="menu" aria-label="${label}">${html}</div>${custom}`,{width:kind==='font'?330:kind==='size'?270:kind==='marker'?252:300});panel.classList.add('inline-menu-popover');
+  const panel=openPopover(target,label,`${math?'<p class="help">作用于选中的公式表达式，保留公式结构。'+(kind==='effect'?'加粗、斜体、下划线和删除线可直接使用工具栏按钮。':'')+'</p>':''}<div class="inline-menu-list" role="menu" aria-label="${label}">${html}</div>${custom}`,{width:kind==='font'?330:kind==='size'?270:kind==='marker'?252:300});panel.classList.add('inline-menu-popover');
   if(kind==='role')for(const [role,name] of Object.entries(literaryRoles))renderSample(panel.querySelector<HTMLElement>(`[data-role-demo="${role}"]`)!,`[${name}]{role=${role}}`);
   if(kind==='font')panel.querySelector<HTMLElement>('[data-inline-choice=""]>span')!.style.fontFamily=getComputedStyle(document.getElementById('preview')!).fontFamily;
   panel.querySelectorAll<HTMLElement>('[data-inline-choice]').forEach(button=>button.onclick=()=>{

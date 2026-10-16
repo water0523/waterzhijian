@@ -23,7 +23,7 @@ import {PreviewEditor} from './preview-editor';
 import {styleAttributes,parseInlineStyle,literaryRoles} from './inline-style';
 import {showInlineMenu,mountInlineMenus,type InlineMenu} from './inline-picker';
 import {appendReferences} from './references';
-import {boldSelection,mathAt} from './math-format';
+import {boldSelection,selectedMath,applyMathStyle} from './math-format';
 import {createLongImage} from './long-image';
 import {saveImageFile} from './image-delivery';
 import {openPopover,closePopover,enhanceColors,mountPopoverHover} from './popover';
@@ -363,14 +363,22 @@ function showTableMenu(target:HTMLElement){
 function showInlineStyle(event?:Event){
   const selection=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(selection.from,selection.to);
   if(!selected){toast('先在 Markdown 栏选中需要设置样式的文字。');return;}
+  const math=selectedMath(editor);
+  const target=(event?.currentTarget as HTMLElement)||$('inline-style-button'),kind=(target.dataset.inlineMenu||'font') as InlineMenu;
+  if(math){
+    if(math.error){toast(math.error);return;}
+    if(!['color','size','highlight','effect'].includes(kind)){toast('公式支持字色、字号、荧光、加粗、斜体、下划线和删除线；字体、文体和半高荧光用于普通文字。');return;}
+    showInlineMenu(target,kind,math.style,()=>{},style=>{
+      if(style.size!==undefined&&(!Number.isFinite(style.size)||style.size<10||style.size>64||Math.round(style.size*10)!==style.size*10)){toast('选区字号范围是 10–64 px，最多一位小数。');return false;}
+      if(!applyMathStyle(editor,math,style,toast,(tex,display)=>renderMath(tex,display).error))return false;
+      closePopover();return true;
+    },true);return;
+  }
   if(selected.includes('\n')){toast('请选中同一行 Markdown 中的文字；跨段落样式请在排版设置中调整。');return;}
   const before=editor.view.state.doc.toString();
-  const math=mathAt(before,selection.from,selection.to);
-  if(math&&(selection.from!==math.start||selection.to!==math.end)){toast('公式加粗可直接使用 B 按钮；设置颜色或荧光时，请连同两侧 $ 完整选中行内公式。');return;}
   const suffix=before.slice(selection.to).match(/^\]\{([^}]+)\}/);
   const existing=before[selection.from-1]==='['&&suffix?parseInlineStyle(suffix[1]):null;
-  const target=(event?.currentTarget as HTMLElement)||$('inline-style-button');
-  showInlineMenu(target,(target.dataset.inlineMenu||'font') as InlineMenu,existing,(root,markdown)=>{
+  showInlineMenu(target,kind,existing,(root,markdown)=>{
     root.innerHTML=renderMarkdown(markdown,assets).html;
     if(publisher==='wechat')decorateTheme(root,themeById(current.theme));
   },style=>{
@@ -844,6 +852,12 @@ async function init(){
   bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>$('import-input').click());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
   document.querySelectorAll<HTMLElement>('[data-format]').forEach(el=>el.onclick=()=>{
     const type=el.dataset.format;
+    if(['bold','italic','underline','strike','wave'].includes(type||''))closePopover();
+    const math=selectedMath(editor);
+    if(math&&['bold','italic','underline','strike','wave'].includes(type||'')){
+      if(type==='wave'){toast('公式可使用普通下划线；波浪线用于普通文字。');return;}
+      const key=type as 'bold'|'italic'|'underline'|'strike';applyMathStyle(editor,math,{...math.style,[key]:!math.style[key]},toast,(tex,display)=>renderMath(tex,display).error);return;
+    }
     if(type==='bold')boldSelection(editor,toast);
     else if(type==='italic'){if(hasSelectedStyle(editor))toggleTextStyle(editor,'italic');else editor.wrap('*');}
     else if(type==='strike'||type==='underline'||type==='wave'){
@@ -882,7 +896,7 @@ async function init(){
   window.addEventListener('beforeunload',e=>{if(dirtyGeneration!==savedGeneration){e.preventDefault();e.returnValue='';}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirtyArticles.size)void save();});
   mountPopoverHover(document.querySelectorAll<HTMLElement>('[data-inline-menu],#selection-block-button,.format-toolbar [data-format="heading"],#table-style-button,#image-layout-button,#divider-button,#math-button,#journal-block-button,#folio-block-button,#edition-block-button,#folio-font-button,#writing-tools-button'),target=>{
-    if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text||text.includes('\n'))return false;const math=mathAt(editor.view.state.doc.toString(),s.from,s.to);return !math||(s.from===math.start&&s.to===math.end);}
+    if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text)return false;const math=selectedMath(editor);return math?!math.error&&['color','size','highlight','effect'].includes(target.dataset.inlineMenu):!text.includes('\n');}
     return target.id!=='image-layout-button'||/^:::gallery /m.test(current.markdown);
   });
   // The constructor already contains the restored document and its settings.

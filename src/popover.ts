@@ -3,23 +3,30 @@ let anchor:HTMLElement|null=null;
 let disposeLayout=()=>{};
 let hoverOpening=false,hoverTimer=0,leaveTimer=0;
 let pendingHover:HTMLElement|null=null,suppressedHover:HTMLElement|null=null;
+let pointer={x:-1,y:-1},dismissedAt:typeof pointer|null=null,blockedHover:HTMLElement|null=null;
+document.addEventListener('pointermove',e=>{pointer={x:e.clientX,y:e.clientY};if(dismissedAt&&(dismissedAt.x!==pointer.x||dismissedAt.y!==pointer.y))dismissedAt=null;},true);
 const toolbarFor=(target:HTMLElement|null)=>target?.closest<HTMLElement>('[role="toolbar"],.format-toolbar');
 const pinned=()=>document.getElementById('quick-popover')?.dataset.mode==='pinned';
 function pinPopover(){const panel=document.getElementById('quick-popover');if(!panel||!anchor)return;clearTimeout(leaveTimer);panel.dataset.mode='pinned';anchor.dataset.pinned='true';panel.querySelector('.quick-mode')!.textContent='已固定';}
-export function closePopover(){clearTimeout(hoverTimer);pendingHover=null;clearTimeout(leaveTimer);leaveTimer=0;disposeLayout();disposeLayout=()=>{};const panel=document.getElementById('quick-popover');panel?.remove();anchor?.setAttribute('aria-expanded','false');if(anchor)delete anchor.dataset.pinned;anchor=null;if(panel)window.dispatchEvent(new Event('paper-popover-close'));}
+export function closePopover(){clearTimeout(hoverTimer);pendingHover=null;clearTimeout(leaveTimer);leaveTimer=0;disposeLayout();disposeLayout=()=>{};const panel=document.getElementById('quick-popover');if(panel){dismissedAt={...pointer};blockedHover=null;}panel?.remove();anchor?.setAttribute('aria-expanded','false');if(anchor)delete anchor.dataset.pinned;anchor=null;if(panel)window.dispatchEvent(new Event('paper-popover-close'));}
 function closeAndFocus(){const trigger=anchor;if(trigger?.matches(':hover'))suppressedHover=trigger;closePopover();trigger?.focus({preventScroll:true});}
 export function mountPopoverHover(targets:Iterable<HTMLElement>,canOpen:(target:HTMLElement)=>boolean=()=>true){
   for(const target of targets){
     if(target.dataset.hoverDropdown)return;target.dataset.hoverDropdown='true';target.setAttribute('aria-haspopup','menu');
-    target.addEventListener('pointerenter',e=>{
+    const enter=(e:PointerEvent)=>{
       if(e.pointerType!=='mouse'||target===suppressedHover||pinned()||!canOpen(target))return;
+      // Closing a menu can move the floating toolbar under a stationary mouse.
+      // Wait for an actual move before opening a different menu in that spot.
+      if(dismissedAt?.x===e.clientX&&dismissedAt.y===e.clientY){blockedHover=target;return;}
       clearTimeout(hoverTimer);clearTimeout(leaveTimer);pendingHover=target;
       hoverTimer=window.setTimeout(()=>{
         pendingHover=null;if(!target.isConnected||!target.matches(':hover')||pinned()||!canOpen(target)||anchor===target)return;
         hoverOpening=true;try{target.click();}finally{hoverOpening=false;}
       },100);
-    });
-    target.addEventListener('pointerleave',()=>{if(pendingHover===target){clearTimeout(hoverTimer);pendingHover=null;}if(suppressedHover===target)suppressedHover=null;});
+    };
+    target.addEventListener('pointerenter',enter);
+    target.addEventListener('pointermove',e=>{if(blockedHover===target&&(dismissedAt?.x!==e.clientX||dismissedAt.y!==e.clientY)){blockedHover=null;enter(e);}});
+    target.addEventListener('pointerleave',()=>{if(pendingHover===target){clearTimeout(hoverTimer);pendingHover=null;}if(suppressedHover===target)suppressedHover=null;if(blockedHover===target)blockedHover=null;});
   }
 }
 export function openPopover(target:HTMLElement,title:string,html:string,options:{width?:number}={}){

@@ -8,9 +8,24 @@ import 'mathjax-full/js/input/tex/newcommand/NewcommandConfiguration.js';
 import 'mathjax-full/js/input/tex/noundefined/NoUndefinedConfiguration.js';
 import 'mathjax-full/js/input/tex/color/ColorConfiguration.js';
 import 'mathjax-full/js/input/tex/boldsymbol/BoldsymbolConfiguration.js';
+import 'mathjax-full/js/input/tex/enclose/EncloseConfiguration.js';
+import {Configuration} from 'mathjax-full/js/input/tex/Configuration.js';
+import {CommandMap} from 'mathjax-full/js/input/tex/SymbolMap.js';
+import TexError from 'mathjax-full/js/input/tex/TexError.js';
+// The editor emits the standard bbox syntax, but accepts no arbitrary CSS,
+// URLs or attributes from article source. Geometry is computed by MathJax.
+new CommandMap('editor-bbox',{bbox:'BBox'},{BBox(parser,name){
+  const option=parser.GetBrackets(String(name),'').trim(),size=/^font-size:(\d+(?:\.\d)?)px$/.exec(option);
+  const attributes:Record<string,string>={};
+  if(/^#[\da-f]{6}$/i.test(option))attributes.mathbackground=option;
+  else if(size&&Number(size[1])>=10&&Number(size[1])<=64)attributes.mathsize=size[1]+'px';
+  else throw new TexError('InvalidEditorBox','公式荧光只接受六位颜色值，字号范围是 10–64 px');
+  parser.Push(parser.create('node','mstyle',[parser.ParseArg(String(name))],attributes));
+}});
+Configuration.create('editor-bbox',{handler:{macro:['editor-bbox']}});
 const adaptor = liteAdaptor();
 RegisterHTMLHandler(adaptor);
-const tex = new TeX({packages:['base','ams','newcommand','noundefined','color','boldsymbol'],tags:'ams',maxBuffer:20000});
+const tex = new TeX({packages:['base','ams','newcommand','noundefined','color','boldsymbol','enclose','editor-bbox'],tags:'ams',maxBuffer:20000});
 const mathDocument = mathjax.document('',{InputJax:tex,OutputJax:new SVG({fontCache:'none'})});
 const cache = new Map<string,{html:string; error?:string; nextNumber?:number}>();
 export function renderMath(source:string,display:boolean,startNumber=0): {html:string;error?:string;nextNumber?:number} {
