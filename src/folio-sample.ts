@@ -1,10 +1,11 @@
+import {embeddedImage} from './offline-modules';
 import type {Asset} from './model';
 import river from '../assets/folio/river.webp';
 import handscroll from '../assets/folio/handscroll.webp';
 import bamboo from '../assets/folio/bamboo.webp';
 import lotus from '../assets/folio/lotus.webp';
 export function folioAssets():Asset[]{
-  return [[river,'river','寒江独钓','一叶扁舟，停在江水与留白之间。'],[handscroll,'handscroll','潇湘烟雨四景','烟雨、山岚、亭影、芦汀，连成一纸长卷。'],[bamboo,'bamboo','竹影窗棂','竹影与窗棂，留住一室清凉。'],[lotus,'lotus','残荷听雨','荷叶与雨痕，写下秋水的声音。']].map(([data,id,title,caption])=>({id:'folio-demo-'+id+'-v1',name:title+'.webp',mime:'image/webp',data,width:100,align:'center',alt:title+' · 原创水墨示例',caption,source:'非水·成章 · AI 生成水墨示例（imagegen）'}));
+  return [[river,'river','寒江独钓','一叶扁舟，停在江水与留白之间。'],[handscroll,'handscroll','潇湘烟雨四景','烟雨、山岚、亭影、芦汀，连成一纸长卷。'],[bamboo,'bamboo','竹影窗棂','竹影与窗棂，留住一室清凉。'],[lotus,'lotus','残荷听雨','荷叶与雨痕，写下秋水的声音。']].map(([data,id,title,caption])=>({id:'folio-demo-'+id+'-v1',name:title+'.webp',mime:'image/webp',data:embeddedImage(data),width:100,align:'center',alt:title+' · 原创水墨示例',caption,source:'非水·成章 · AI 生成水墨示例（imagegen）'}));
 }
 export const folioSample=`:::folio-masthead 总第拾捌辑
 岁次丙午 · 暮春谷雨 · 初候萍始生

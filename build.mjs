@@ -1,7 +1,22 @@
 import {build} from 'esbuild';
 import {readFile,writeFile,mkdir,readdir} from 'node:fs/promises';
-const result=await build({entryPoints:['src/app.ts'],loader:{'.webp':'dataurl'},bundle:true,write:false,metafile:true,format:'iife',platform:'browser',target:['chrome110','edge110'],minify:true,legalComments:'inline',define:{'process.env.NODE_ENV':'"production"'}});
-const packages=new Set(Object.keys(result.metafile.inputs).filter(p=>p.startsWith('node_modules/')).map(p=>{const parts=p.split('/');return parts.slice(0,parts[1].startsWith('@')?3:2).join('/');}));
+import {createHash} from 'node:crypto';
+import path from 'node:path';
+import {gzipSync,strToU8} from 'fflate';
+const options={bundle:true,write:false,metafile:true,format:'iife',platform:'browser',target:['chrome110','edge110'],minify:true,legalComments:'inline',define:{'process.env.NODE_ENV':'"production"'}};
+const images=new Map();
+const result=await build({...options,entryPoints:['src/app.ts'],plugins:[{name:'offline-example-images',setup(builder){builder.onLoad({filter:/\.webp$/},async({path:filename})=>{
+ const key='embedded-image-'+createHash('sha256').update(path.relative(process.cwd(),filename).replaceAll('\\','/')).digest('hex').slice(0,16);
+ images.set(key,'data:image/webp;base64,'+(await readFile(filename)).toString('base64'));
+ return {contents:'export default '+JSON.stringify(key)+';',loader:'js'};
+});}}]});
+const vendors=[];
+for(const name of ['math','word','highlight']){
+ const output=await build({...options,entryPoints:['src/'+name+'-engine.ts'],globalName:'__offlineExports'});
+ const script='globalThis.__feishuiOfflineModules['+JSON.stringify(name)+']=(()=>{'+output.outputFiles[0].text+';return __offlineExports;})();';
+ vendors.push({name,script,metafile:output.metafile});
+}
+const packages=new Set([result.metafile,...vendors.map(v=>v.metafile)].flatMap(meta=>Object.keys(meta.inputs)).filter(p=>p.startsWith('node_modules/')).map(p=>{const parts=p.split('/');return parts.slice(0,parts[1].startsWith('@')?3:2).join('/');}));
 let notices='非水·成章 · Third-party software notices\nLibraries are embedded for offline use. Their respective licenses apply.\n';
 for(const dir of [...packages].sort()){
  const pkg=JSON.parse(await readFile(dir+'/package.json','utf8'));
@@ -13,7 +28,8 @@ const logo='data:image/jpeg;base64,'+(await readFile('assets/brand-logo.jpg')).t
 const template=(await readFile('index.template.html','utf8')).replaceAll('/*BRAND_LOGO*/',logo);
 const css=await readFile('src/app.css','utf8')+'\n'+await readFile('src/workspace.css','utf8')+'\n'+await readFile('src/studio.css','utf8')+'\n'+await readFile('src/workbench.css','utf8');
 const script=result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
-const html=template.replace('</body>',()=>'<script type="text/plain" id="third-party-notices">'+notices.replace(/<\/script/gi,'<\\/script')+'</script></body>').replace('/*APP_CSS*/',()=>css).replace('/*APP_JS*/',()=>script);
+const payloads=vendors.map(v=>'<script type="application/x-feishui-module" data-encoding="gzip-base64" id="offline-module-'+v.name+'">'+Buffer.from(gzipSync(strToU8(v.script),{level:9,mtime:0})).toString('base64')+'</script>').join('\n')+'\n'+[...images].sort(([a],[b])=>a.localeCompare(b)).map(([key,data])=>'<script type="application/x-feishui-image" id="'+key+'">'+data+'</script>').join('\n');
+const html=template.replace('</body>',()=>'<script type="text/plain" id="third-party-notices">'+notices.replace(/<\/script/gi,'<\\/script')+'</script></body>').replace('/*APP_CSS*/',()=>css).replace('<script>/*APP_JS*/</script>',()=>payloads+'\n<script>'+script+'</script>');
 await mkdir('dist',{recursive:true});
 await writeFile('dist/非水·成章-离线公众号排版器.html',html,'utf8');
 // Keep the original entry point so existing file-origin drafts remain accessible.
@@ -24,3 +40,4 @@ await mkdir('docs',{recursive:true});
 await writeFile('docs/index.html',html,'utf8');
 await writeFile('docs/.nojekyll','','utf8');
 console.log(`Built dist/非水·成章-离线公众号排版器.html (${(Buffer.byteLength(html)/1024/1024).toFixed(2)} MB)`);
+console.log(`Startup script ${(Buffer.byteLength(script)/1024/1024).toFixed(2)} MB; optional engines and ${images.size} example images stay embedded and load on use.`);

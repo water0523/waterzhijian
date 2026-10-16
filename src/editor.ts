@@ -54,13 +54,13 @@ function themeExtension(id:string){
 }
 export class MarkdownEditor {
   view:EditorView; themeSlot=new Compartment(); private completionSlot=new Compartment(); latexCompletionEnabled=true; private suppress=false; private extensions:Extension[]; private themeId:string;
-  constructor(parent:HTMLElement,text:string,theme:string,onChange:(text:string)=>void,onImages:(files:File[],position:number)=>void,onSave:()=>void){
-    this.themeId=theme;
+  constructor(parent:HTMLElement,text:string,theme:string,onChange:(text:string)=>void,onImages:(files:File[],position:number)=>void,onSave:()=>void,latexCompletion=true){
+    this.themeId=theme;this.latexCompletionEnabled=latexCompletion;
     this.extensions=[
       lineNumbers(),history(),drawSelection(),dropCursor(),rectangularSelection(),indentOnInput(),bracketMatching(),highlightActiveLine(),highlightActiveLineGutter(),markdown(),highlightSelectionMatches(),EditorView.lineWrapping,
       EditorState.phrases.of({'Find':'查找','Replace':'替换','next':'下一个','previous':'上一个','all':'全部','match case':'区分大小写','regexp':'正则表达式','by word':'全词匹配','replace':'替换','replace all':'全部替换','close':'关闭','Go to line':'跳转到行'}),
       this.themeSlot.of(themeExtension(theme)),
-      this.completionSlot.of(latexCompletionExtension()),
+      this.completionSlot.of(latexCompletion?latexCompletionExtension():[]),
       keymap.of([{key:'Mod-s',run:()=>{onSave();return true;}},...defaultKeymap,...historyKeymap,...searchKeymap,indentWithTab]),
       EditorView.updateListener.of(update=>{if(update.docChanged&&!this.suppress)onChange(update.state.doc.toString());}),
       EditorView.updateListener.of(update=>{if(update.selectionSet||update.docChanged||update.focusChanged||update.viewportChanged)requestAnimationFrame(()=>this.selectionTools());}),

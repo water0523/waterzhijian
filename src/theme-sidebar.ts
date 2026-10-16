@@ -11,22 +11,29 @@ function inGroup(t:Theme,group:string,pins:string[]){
   return group==='全部'||(group==='收藏'?pins.includes(t.id):group==='简约'?['plain','minimal','academic','wild','swiss'].includes(base):group==='书卷'?t.group==='文学':group==='杂志'?['digest','press','gewu','magazine','editorial','weekend','gold','journal-indigo','journal-jade'].includes(base):t.group===group);
 }
 export function mountThemeSidebar(root:HTMLElement,host:Host){
-  let group='全部',dragged='';
+  let group='全部',dragged='',needsRender=true;
   root.innerHTML=`<header class="catalog-heading"><h2>主题库 <small id="sidebar-theme-total"></small></h2><button id="theme-sidebar-close" class="icon-button" aria-label="关闭主题库">×</button></header><div class="catalog-search"><span aria-hidden="true">⌕</span><input id="sidebar-theme-search" placeholder="搜索主题 / 关键词" aria-label="搜索侧栏主题"></div><div class="sidebar-theme-tabs" role="group" aria-label="主题分类">${filters.map(label=>`<button data-sidebar-group="${label}" aria-pressed="${label===group}">${label}</button>`).join('')}</div><p class="sidebar-theme-hint">悬停试看，移开恢复 · 点击应用</p><div id="sidebar-theme-results" class="sidebar-theme-results"></div><footer class="theme-sidebar-footer"><span id="sidebar-theme-count"></span><button id="sidebar-theme-details">完整预览 / 管理 ↗</button></footer>`;
   const results=root.querySelector<HTMLElement>('#sidebar-theme-results')!;
   const observer=new ResizeObserver(entries=>{for(const {target} of entries){const window=target as HTMLElement,sample=window.querySelector<HTMLElement>('.theme-sample');if(sample)sample.style.transform=`scale(${window.clientWidth/375})`;}});
+  const hydrate=(thumbnail:HTMLElement)=>{
+    const id=thumbnail.dataset.pendingTheme;if(!id||root.hidden||!results.contains(thumbnail))return;
+    thumbnail.innerHTML=host.thumbnail(id);delete thumbnail.dataset.pendingTheme;thumbnail.removeAttribute('aria-busy');
+    const window=thumbnail.querySelector<HTMLElement>('.theme-live-window');if(window)observer.observe(window);
+  };
+  const previews=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){const thumbnail=entry.target as HTMLElement;hydrate(thumbnail);if(!thumbnail.dataset.pendingTheme)previews.unobserve(thumbnail);}},{root:results,rootMargin:'120px 0px'});
   const updateCurrent=()=>{const id=host.current();root.querySelector('.sidebar-theme-hint')!.textContent=host.enabled()?'悬停试看，移开恢复 · 点击应用':'知乎使用标准排版 · 切回公众号可应用主题';results.querySelectorAll<HTMLElement>('[data-sidebar-card]').forEach(card=>{const chosen=card.dataset.sidebarCard===id;card.classList.toggle('is-current',chosen);const choice=card.querySelector<HTMLButtonElement>('[data-sidebar-theme]')!;choice.setAttribute('aria-pressed',String(chosen));choice.disabled=!host.enabled();const badge=card.querySelector<HTMLElement>('.sidebar-theme-current')!;badge.hidden=!chosen;});};
   const render=()=>{
-    host.cancel();observer.disconnect();
+    needsRender=true;if(root.hidden)return;
+    needsRender=false;host.cancel();observer.disconnect();previews.disconnect();
     const all=visibleThemes(),pins=host.pins(),query=(root.querySelector('#sidebar-theme-search') as HTMLInputElement).value;
     const rank=(id:string)=>pins.includes(id)?pins.indexOf(id):Infinity;
     const visible=all.filter(t=>inGroup(t,group,pins)&&themeMatches(t,query,themeDesign(t).tags)).sort((a,b)=>rank(a.id)-rank(b.id));
     root.querySelector('#sidebar-theme-total')!.textContent=all.length+' 套';root.querySelector('#sidebar-theme-count')!.textContent=visible.length+' 套主题';
     root.querySelectorAll<HTMLElement>('[data-sidebar-group]').forEach(button=>button.setAttribute('aria-pressed',String(button.dataset.sidebarGroup===group)));
     const scroll=results.scrollTop;
-    results.innerHTML=visible.map((t,index)=>`<section class="sidebar-theme-card" data-sidebar-card="${t.id}"><button class="sidebar-theme-choice" data-sidebar-theme="${t.id}" aria-label="试看并应用${esc(t.name)}主题" aria-pressed="false"><div class="sidebar-theme-thumbnail" aria-hidden="true">${host.thumbnail(t.id)}</div><span class="sidebar-theme-info"><strong>${esc(t.name)}</strong><small>${esc(t.group+' · '+themeDesign(t).tags.slice(0,2).join(' / '))}</small></span><span class="sidebar-theme-current" hidden>使用中</span></button><button class="sidebar-theme-star" data-sidebar-pin="${t.id}" title="${pins.includes(t.id)?'取消收藏':'收藏主题'}" aria-label="${pins.includes(t.id)?'取消收藏':'收藏'}${esc(t.name)}" aria-pressed="${pins.includes(t.id)}">${pins.includes(t.id)?'★':'☆'}</button>${group==='收藏'?`<div class="sidebar-theme-order"><button draggable="true" data-theme-drag="${t.id}" aria-label="拖动排序${esc(t.name)}" title="按住拖动排序">⠿ <span>拖动排序</span></button><button data-theme-move="${t.id}" data-direction="-1" ${index===0?'disabled':''} aria-label="上移${esc(t.name)}" title="上移">↑</button><button data-theme-move="${t.id}" data-direction="1" ${index===visible.length-1?'disabled':''} aria-label="下移${esc(t.name)}" title="下移">↓</button></div>`:''}</section>`).join('')||'<div class="sidebar-theme-empty">没有匹配的主题<button id="sidebar-theme-reset">查看全部主题</button></div>';
+    results.innerHTML=visible.map((t,index)=>`<section class="sidebar-theme-card" data-sidebar-card="${t.id}"><button class="sidebar-theme-choice" data-sidebar-theme="${t.id}" aria-label="试看并应用${esc(t.name)}主题" aria-pressed="false"><div class="sidebar-theme-thumbnail" data-pending-theme="${t.id}" aria-hidden="true" aria-busy="true"><div class="theme-thumbnail-placeholder"></div></div><span class="sidebar-theme-info"><strong>${esc(t.name)}</strong><small>${esc(t.group+' · '+themeDesign(t).tags.slice(0,2).join(' / '))}</small></span><span class="sidebar-theme-current" hidden>使用中</span></button><button class="sidebar-theme-star" data-sidebar-pin="${t.id}" title="${pins.includes(t.id)?'取消收藏':'收藏主题'}" aria-label="${pins.includes(t.id)?'取消收藏':'收藏'}${esc(t.name)}" aria-pressed="${pins.includes(t.id)}">${pins.includes(t.id)?'★':'☆'}</button>${group==='收藏'?`<div class="sidebar-theme-order"><button draggable="true" data-theme-drag="${t.id}" aria-label="拖动排序${esc(t.name)}" title="按住拖动排序">⠿ <span>拖动排序</span></button><button data-theme-move="${t.id}" data-direction="-1" ${index===0?'disabled':''} aria-label="上移${esc(t.name)}" title="上移">↑</button><button data-theme-move="${t.id}" data-direction="1" ${index===visible.length-1?'disabled':''} aria-label="下移${esc(t.name)}" title="下移">↓</button></div>`:''}</section>`).join('')||'<div class="sidebar-theme-empty">没有匹配的主题<button id="sidebar-theme-reset">查看全部主题</button></div>';
     results.scrollTop=scroll;
-    for(const window of results.querySelectorAll<HTMLElement>('.theme-live-window'))observer.observe(window);
+    for(const thumbnail of results.querySelectorAll<HTMLElement>('[data-pending-theme]'))previews.observe(thumbnail);
     results.querySelectorAll<HTMLElement>('[data-sidebar-card]').forEach(card=>{
       const id=card.dataset.sidebarCard!;
       card.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse'&&!dragged)host.preview(id);});
@@ -58,5 +65,5 @@ export function mountThemeSidebar(root:HTMLElement,host:Host){
   root.addEventListener('pointerleave',host.cancel);
   root.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();host.cancel();host.close();}});
   render();
-  return {refresh:render,updateCurrent};
+  return {refresh:render,reveal:()=>{if(needsRender)render();else{previews.disconnect();for(const thumbnail of results.querySelectorAll<HTMLElement>('[data-pending-theme]'))previews.observe(thumbnail);}},updateCurrent};
 }

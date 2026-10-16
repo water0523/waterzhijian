@@ -1,4 +1,5 @@
-import {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,HeadingLevel,WidthType,AlignmentType,BorderStyle,ExternalHyperlink,LevelFormat,VerticalAlign,UnderlineType,type ParagraphChild,type IRunOptions,type INumberingOptions} from 'docx';
+import type {ImageRun as WordImageRun,Paragraph as WordParagraph,Table as WordTable,TableRow as WordTableRow,TableCell as WordTableCell,ParagraphChild,IRunOptions,INumberingOptions} from 'docx';
+import {offlineModule} from './offline-modules';
 import {renderMarkdown,exportFragment} from './render';
 import {bytesFromData,svgToPNG} from './files';
 import {escapeHTML as esc,type Article,type Asset} from './model';
@@ -47,7 +48,8 @@ function mountStandard(article:Article,assets:Map<string,Asset>){
 }
 export async function standardFragment(article:Article,assets:Map<string,Asset>){const {host,content}=mountStandard(article,assets);try{await Promise.all([...content.querySelectorAll('img')].map(img=>img.decode().catch(()=>{})));return exportFragment(content);}finally{host.remove();}}
 
-async function rasterImage(img:HTMLImageElement,maxWidth=570):Promise<ImageRun>{
+async function rasterImage(img:HTMLImageElement,maxWidth=570):Promise<WordImageRun>{
+  const {ImageRun}=offlineModule<typeof import('./word-engine')>('word');
   if(!img.src.startsWith('data:image/'))throw new Error('请先将网络图片导入本地，再导出 Word');
   await img.decode();const width=Math.min(maxWidth,img.naturalWidth),height=width*img.naturalHeight/img.naturalWidth;
   const maxHeight=720,scale=Math.min(1,maxHeight/height);
@@ -58,6 +60,7 @@ async function rasterImage(img:HTMLImageElement,maxWidth=570):Promise<ImageRun>{
   return new ImageRun({type,data,transformation:{width:Math.round(width*scale),height:Math.round(height*scale)},altText:{title:img.alt||'插图',description:img.alt||'文章插图',name:'图片'}});
 }
 export async function createWord(article:Article,assets:Map<string,Asset>):Promise<Blob>{
+  const {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,HeadingLevel,WidthType,AlignmentType,BorderStyle,ExternalHyperlink,LevelFormat,VerticalAlign,UnderlineType}=offlineModule<typeof import('./word-engine')>('word');
   const {host,content}=mountStandard(article,assets);
   const numbering:INumberingOptions['config'][number][]=[];let listSequence=0;
   try{
@@ -90,15 +93,15 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
       if(node.tagName==='A'&&/^https?:\/\//.test(node.getAttribute('href')||''))return [new ExternalHyperlink({link:node.getAttribute('href')!,children})];
       return children;
     };
-    const blocks=async(nodes:Iterable<Element>,quote=false,depth=0):Promise<(Paragraph|Table)[]>=>{
-      const output:(Paragraph|Table)[]=[];
+    const blocks=async(nodes:Iterable<Element>,quote=false,depth=0):Promise<(WordParagraph|WordTable)[]>=>{
+      const output:(WordParagraph|WordTable)[]=[];
       for(const node of nodes){
         if(!(node instanceof HTMLElement))continue;
         const tag=node.tagName;
         if(/^H[1-6]$/.test(tag)){const headings=[HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3,HeadingLevel.HEADING_4,HeadingLevel.HEADING_5,HeadingLevel.HEADING_6];output.push(new Paragraph({children:await inline(node),heading:headings[Number(tag[1])-1],keepNext:true,spacing:{before:260,after:160}}));}
         else if(tag==='TABLE'){
-          const rows:TableRow[]=[];
-          for(const row of node.querySelectorAll('tr')){const cells:TableCell[]=[];for(const cell of row.children)cells.push(new TableCell({children:[new Paragraph({children:await inline(cell),spacing:{after:60,before:60}})],verticalAlign:VerticalAlign.CENTER,shading:cell.tagName==='TH'?{fill:'EFEFEF'}:undefined,margins:{top:90,bottom:90,left:110,right:110}}));rows.push(new TableRow({children:cells,tableHeader:!!row.querySelector('th')}));}
+          const rows:WordTableRow[]=[];
+          for(const row of node.querySelectorAll('tr')){const cells:WordTableCell[]=[];for(const cell of row.children)cells.push(new TableCell({children:[new Paragraph({children:await inline(cell),spacing:{after:60,before:60}})],verticalAlign:VerticalAlign.CENTER,shading:cell.tagName==='TH'?{fill:'EFEFEF'}:undefined,margins:{top:90,bottom:90,left:110,right:110}}));rows.push(new TableRow({children:cells,tableHeader:!!row.querySelector('th')}));}
           const border={style:BorderStyle.SINGLE,size:4,color:'D9D9D9'};output.push(new Table({rows,width:{size:100,type:WidthType.PERCENTAGE},borders:{top:border,bottom:border,left:border,right:border,insideHorizontal:border,insideVertical:border}}));output.push(new Paragraph({spacing:{after:100}}));
         }else if(tag==='UL'||tag==='OL'){
           const reference='list-'+(++listSequence);if(tag==='OL')numbering.push({reference,levels:Array.from({length:9},(_,i)=>({level:i,format:LevelFormat.DECIMAL,text:`%${i+1}.`,alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:720*(i+1),hanging:360}}}}))});

@@ -3,6 +3,7 @@
 body[data-appearance=night]{--ui-paper:#152232;--ui-surface:#1b2c40;--ui-wash:#1e324a;--ui-border:#30465e;--ui-ink:#dce9f7;--ui-muted:#a5b8cf;--ui-blue:#93c7ff;--ui-active:#264666;--ui-shadow:0 3px 16px #0002}
 .ui-icon{display:inline-block;width:18px;height:18px;flex-shrink:0;fill:none;stroke:currentColor;stroke-width:1.65;stroke-linecap:round;stroke-linejoin:round;vertical-align:middle}
 .ui-icon-filled{fill:currentColor;stroke:none}
+.theme-thumbnail-placeholder{height:100%;margin:0 20px;background:linear-gradient(var(--ui-border),var(--ui-border)) left 28px/56% 7px no-repeat,linear-gradient(var(--ui-border),var(--ui-border)) left 54px/85% 2px no-repeat,linear-gradient(var(--ui-border),var(--ui-border)) left 72px/75% 2px no-repeat,linear-gradient(var(--ui-border),var(--ui-border)) left 90px/80% 2px no-repeat;opacity:.55}
 #app .header-social-links{display:flex;align-items:center;gap:3px;flex-shrink:0;padding-left:8px;margin-left:2px;border-left:1px solid var(--ui-border)}
 #app .header-social-link{display:grid;place-items:center;width:32px;height:34px;border-radius:8px;color:var(--ui-muted);text-decoration:none;transition:color .15s,background-color .15s}
 #app .header-social-link .ui-icon{width:20px;height:20px}

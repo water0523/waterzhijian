@@ -186,7 +186,7 @@ function syncCatalogLayout(){
   $('rail-documents').setAttribute('aria-pressed',String(libraryOpen&&!trash));$('rail-trash').setAttribute('aria-pressed',String(libraryOpen&&trash));$('theme-sidebar-toggle').setAttribute('aria-pressed',String(themeOpen));
   requestAnimationFrame(()=>{editor?.view.requestMeasure();sync?.rebuild();});
 }
-function toggleThemeSidebar(){const panel=$('theme-sidebar');clearThemePreview();panel.hidden=!panel.hidden;preference('theme-sidebar-open',String(!panel.hidden));syncCatalogLayout();}
+function toggleThemeSidebar(){const panel=$('theme-sidebar');clearThemePreview();panel.hidden=!panel.hidden;if(!panel.hidden)themeSidebar?.reveal();preference('theme-sidebar-open',String(!panel.hidden));syncCatalogLayout();}
 function render(){
   syncArticleTitle(current);
   clearTimeout(renderTimer);const start=performance.now();const reading=sync?.capture()||0;
@@ -222,14 +222,14 @@ function render(){
     lastRenderMS=performance.now()-start;$('render-state').dataset.duration=lastRenderMS.toFixed(1);
   }catch(e){$('render-state').textContent='渲染失败，正文已保留';toast(errorMessage(e),true);}
 }
-function switchArticle(id:string){
+function switchArticle(id:string,resetEditor=true){
   clearThemePreview(false);
   closePopover();
   const next=articles.get(id);if(!next||next.deleted)return;
   if(current.id!==id&&snapshot(current,true))markDirty(current);
   current=next;preference('current',id);syncArticleTitle(current);
   publishRecoverySidecar(current);
-  editor.setText(current.markdown,true);$('preview-scroll').scrollTop=0;render();renderLibrary();if(!$('style-panel').hidden)renderStylePanel();
+  if(resetEditor)editor.setText(current.markdown,true);$('preview-scroll').scrollTop=0;render();renderLibrary();if(!$('style-panel').hidden)renderStylePanel();
   if(window.matchMedia('(max-width:760px)').matches)$('library').hidden=true;
   requestAnimationFrame(()=>$('preview-scroll').scrollTop=0);
 }
@@ -763,16 +763,15 @@ async function init(){
   const first=!articles.has(current.id);if(first)articles.set(current.id,current);
   const requestedEditorTheme=readPreference(night?'editor-theme-night':'editor-theme',night?'dark':'light'),editorTheme=editorThemes[requestedEditorTheme]?requestedEditorTheme:(night?'dark':'light');
   $<HTMLSelectElement>('editor-theme').innerHTML=Object.entries(editorThemes).map(([id,t])=>`<option value="${id}">${t.name}</option>`).join('');$<HTMLSelectElement>('editor-theme').value=editorThemes[editorTheme]?editorTheme:'dark';
-  editor=new MarkdownEditor($('editor'),current.markdown,editorTheme,text=>{updateStickerLines(current.stickers,current.markdown,text);current.markdown=text;markDirty();queueRender();},(files,pos)=>void addImages(files,pos).catch(e=>toast(errorMessage(e),true)),()=>exportBackup());
-  editor.setLatexCompletion(readPreference('latex-completion','true')==='true');
+  editor=new MarkdownEditor($('editor'),current.markdown,editorTheme,text=>{updateStickerLines(current.stickers,current.markdown,text);current.markdown=text;markDirty();queueRender();},(files,pos)=>void addImages(files,pos).catch(e=>toast(errorMessage(e),true)),()=>exportBackup(),readPreference('latex-completion','true')==='true');
   editorChrome(editorTheme);applyAppearance();
   sync=new ScrollSync(editor,$('preview-scroll'),$('preview'));
   previewEditor=new PreviewEditor($('preview'),editor,render,toast);
   stickerController=new StickerController($('preview'),()=>current,assets,()=>{markDirty();requestAnimationFrame(()=>sync.rebuild());},makeSticker,restoreSticker,()=>void showStickerRegions().catch(e=>toast(errorMessage(e),true)));
   bind('modal-close',closeModal);modal.addEventListener('cancel',e=>{e.preventDefault();const detail=document.getElementById('theme-detail');if(detail&&!detail.hidden)$('theme-detail-close').click();else closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
-  themeSidebar=mountThemeSidebar($('theme-sidebar'),{current:()=>current.theme,enabled:()=>publisher==='wechat',pins:()=>pinnedThemes,thumbnail:themeThumbnail,preview:previewArticleTheme,cancel:()=>clearThemePreview(),apply:applyArticleTheme,pin:id=>{if(pinnedThemes.includes(id))pinnedThemes=pinnedThemes.filter(v=>v!==id);else pinnedThemes.push(id);preference('pinned-themes',JSON.stringify(pinnedThemes));},order:ids=>{pinnedThemes=ids;preference('pinned-themes',JSON.stringify(pinnedThemes));},details:()=>showThemes(),close:toggleThemeSidebar});
   $('library').hidden=readPreference('library-open','true')!=='true';
   $('theme-sidebar').hidden=readPreference('theme-sidebar-open','false')!=='true';
+  themeSidebar=mountThemeSidebar($('theme-sidebar'),{current:()=>current.theme,enabled:()=>publisher==='wechat',pins:()=>pinnedThemes,thumbnail:themeThumbnail,preview:previewArticleTheme,cancel:()=>clearThemePreview(),apply:applyArticleTheme,pin:id=>{if(pinnedThemes.includes(id))pinnedThemes=pinnedThemes.filter(v=>v!==id);else pinnedThemes.push(id);preference('pinned-themes',JSON.stringify(pinnedThemes));},order:ids=>{pinnedThemes=ids;preference('pinned-themes',JSON.stringify(pinnedThemes));},details:()=>showThemes(),close:toggleThemeSidebar});
   bind('theme-sidebar-toggle',toggleThemeSidebar);
   for(const [id,recycle] of [['rail-documents',false],['rail-trash',true]] as const)bind(id,()=>{const same=!$('library').hidden&&trash===recycle;trash=recycle;libraryRecent=false;$('library').hidden=same;renderLibrary();});
   for(const mode of ['compare','preview'] as const)bind('view-'+mode,()=>setWorkspaceView(mode));
@@ -886,7 +885,8 @@ async function init(){
     if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text||text.includes('\n'))return false;const math=mathAt(editor.view.state.doc.toString(),s.from,s.to);return !math||(s.from===math.start&&s.to===math.end);}
     return target.id!=='image-layout-button'||/^:::gallery /m.test(current.markdown);
   });
-  switchArticle(current.id);
+  // The constructor already contains the restored document and its settings.
+  switchArticle(current.id,false);
   if(themeLibraryError())toast(themeLibraryError(),true);
   for(const article of recovery.recovered)markDirty(article);
   if(first)markDirty();

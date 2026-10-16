@@ -1,17 +1,7 @@
 import MarkdownIt from 'markdown-it';
 import footnote from 'markdown-it-footnote';
 import DOMPurify from 'dompurify';
-import hljs from 'highlight.js/lib/common';
-import {mathjax} from 'mathjax-full/js/mathjax.js';
-import {TeX} from 'mathjax-full/js/input/tex.js';
-import {SVG} from 'mathjax-full/js/output/svg.js';
-import {liteAdaptor} from 'mathjax-full/js/adaptors/liteAdaptor.js';
-import {RegisterHTMLHandler} from 'mathjax-full/js/handlers/html.js';
-import 'mathjax-full/js/input/tex/ams/AmsConfiguration.js';
-import 'mathjax-full/js/input/tex/newcommand/NewcommandConfiguration.js';
-import 'mathjax-full/js/input/tex/noundefined/NoUndefinedConfiguration.js';
-import 'mathjax-full/js/input/tex/color/ColorConfiguration.js';
-import 'mathjax-full/js/input/tex/boldsymbol/BoldsymbolConfiguration.js';
+import {offlineModule} from './offline-modules';
 import {escapeHTML, type Asset} from './model';
 import {installTextMapping} from './text-mapping';
 import {installInlineStyles} from './inline-style';
@@ -22,30 +12,11 @@ import {normalizeFolioPublication} from './folio-design';
 import {installEditionBlocks} from './edition-blocks';
 import {normalizeEditionPublication} from './edition-design';
 
-const adaptor = liteAdaptor();
-RegisterHTMLHandler(adaptor);
-const tex = new TeX({packages:['base','ams','newcommand','noundefined','color','boldsymbol'],tags:'ams',maxBuffer:20000});
-const mathDocument = mathjax.document('',{InputJax:tex,OutputJax:new SVG({fontCache:'none'})});
-const cache = new Map<string,{html:string; error?:string; nextNumber?:number}>();
 export interface RenderResult {html:string; errors:{line:number;message:string}[]; external:string[]; missing:string[]}
-export function renderMath(source:string,display:boolean,startNumber=0): {html:string;error?:string;nextNumber?:number} {
-  const key=(display?'D':'I')+startNumber+':'+source;
-  const cached=cache.get(key); if(cached) return cached;
-  let result: {html:string;error?:string;nextNumber?:number};
-  try {
-    tex.reset(startNumber);
-    const node=mathDocument.convert(source,{display,em:16,ex:8,containerWidth:327});
-    const html=adaptor.outerHTML(node);
-    const match=html.match(/data-mjx-error="([^"]*)"/);
-    const unknown=/data-mml-node="mtext"[^>]*fill="red"/.test(html)||html.includes('data-mjx-error');
-    result=match||unknown?{html:'',error:match?.[1]||'无法识别的公式命令'}:{html,nextNumber:(tex.parseOptions.tags as unknown as {counter:number}).counter};
-  } catch(e) { result={html:'',error:e instanceof Error?e.message:'公式语法错误'}; }
-  if(cache.size>1000) cache.delete(cache.keys().next().value!);
-  cache.set(key,result); return result;
-}
+export function renderMath(source:string,display:boolean,startNumber=0){return offlineModule<typeof import('./math-engine')>('math').renderMath(source,display,startNumber);}
 
 const md = new MarkdownIt({html:false,linkify:true,typographer:true,breaks:false,
-  highlight:(s,lang)=>lang&&hljs.getLanguage(lang)?hljs.highlight(s,{language:lang,ignoreIllegals:true}).value:escapeHTML(s)
+  highlight:(s,lang)=>{if(!lang)return escapeHTML(s);const hljs=offlineModule<typeof import('./highlight-engine')>('highlight').default;return hljs.getLanguage(lang)?hljs.highlight(s,{language:lang,ignoreIllegals:true}).value:escapeHTML(s);}
 }).use(footnote as unknown as (instance:MarkdownIt)=>void);
 const baseValidate=md.validateLink;
 installJournalBlocks(md);

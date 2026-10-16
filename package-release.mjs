@@ -55,6 +55,13 @@ await add('test-results/latex-completion-day-chrome.png');
 await add('test-results/latex-completion-night-chrome.png');
 for(const channel of ['chrome','msedge'])await add('test-results/header-links-'+channel+'.json');
 for(const appearance of ['day','night'])await add('test-results/header-links-'+appearance+'-chrome.png');
+for(const name of ['docs/plans/2026-10-16-startup-performance.md','tests/startup-performance.mjs'])await add(name);
+await add('tests/startup-modules.mjs');
+for(const channel of ['chrome','msedge']){
+  await add('test-results/startup-performance-'+channel+'.json');
+  await add('test-results/startup-sidebar-'+channel+'.png');
+  await add('test-results/startup-modules-'+channel+'.json');
+}
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);

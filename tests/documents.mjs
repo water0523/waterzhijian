@@ -36,7 +36,7 @@ for(const channel of ['chrome','msedge']){
    assert.match(await popup.locator('.print-content').innerText(),/科学与生活/);if(mode==='standard')assert.equal(await popup.locator('.sticker-item').count(),0);
    const pdf=path.resolve(`test-results/${channel}-${mode}.pdf`);await popup.pdf({path:pdf,printBackground:true,preferCSSPageSize:true});pdfs.push(pdf);await popup.close();
   }
-  await page.selectOption('#publisher','zhihu');await page.waitForTimeout(1300);await page.reload();await page.waitForSelector('.cm-content');assert.equal(await page.locator('#publisher').inputValue(),'zhihu');assert.equal(await page.locator('#preview-target').textContent(),'知乎预览');
+  await page.selectOption('#publisher','zhihu');await page.waitForTimeout(1300);await page.reload();await page.waitForSelector('.cm-content');assert.equal(await page.locator('#publisher').inputValue(),'zhihu');assert.equal(await page.locator('#preview-target').textContent(),'知乎样式');
   assert.deepEqual(errors,[]);assert.deepEqual(network,[]);reports.push({channel,version:browser.version(),pass:true,checks:['知乎无主题预览','实际 HTML 与纯文本剪贴板','切换保留主题与贴纸','Word 原生段落标题列表表格及内嵌图片公式','两种 PDF 打印布局','发布目标持久化','完全离线'],word,pdfs});console.log(channel+': document and Zhihu checks passed');
  }finally{await browser.close();}
 }

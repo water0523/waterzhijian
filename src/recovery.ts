@@ -49,6 +49,13 @@ async function aliveWriters(){
   return live;
 }
 export async function recoverDrafts(articles:Map<string,Article>){
+  // With no checkpoint or legacy draft there is no other writer to probe.
+  // Keep the full liveness check below whenever any recovery record exists.
+  try{
+    const pending=Object.keys(localStorage).some(key=>key.startsWith(prefix));
+    const legacy=JSON.parse(localStorage.getItem('paper-recovery')||'null');
+    if(!pending&&(!legacy||legacy.recoveryWriter))return {recovered:[] as Article[],invalid:0,unavailable:false};
+  }catch{/* Unreadable records still go through the existing recovery report. */}
   const live=await aliveWriters(),drafts:{key:string;draft:Draft}[]=[],recovered:Article[]=[];
   let invalid=0;
   try{
