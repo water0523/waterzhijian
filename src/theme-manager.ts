@@ -15,7 +15,7 @@ type Host={open:(title:string,html:string,eyebrow?:string)=>void;close:()=>void;
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const sample='# 把日常，读成一页风景\n\n文字既是记录，也是观察世界的方式。以清楚的层次，留下值得回味的内容。\n\n## 从一个好问题开始\n\n排版的意义，是让**值得读的文字**更容易被读懂。每一个标题、注释和停顿，都有自己的位置。\n\n### 观察与思考\n\n> 风经过书页，留下微小而明亮的回声。好的问题，也会为我们打开新的窗。\n\n$$E=mc^2$$\n\n| 记录 | 观察 |\n| --- | --- |\n| 清晨 | 光与影 |\n| 黄昏 | 风与云 |\n\n- 认真观察\n- 留下记录\n\n:::poem center\n光落在纸上\n故事仍在继续\n:::\n\n---\n\n继续写下属于自己的文字。';
 export const exampleTheme:ThemeDefinition={id:'custom-cedar-journal',name:'杉影札记',group:'文学',description:'宋楷书页、杉绿色题签与温润的档案式引文',base:'plain',palette:{accent:'#3f6254',paper:'#fffdf7',ink:'#373f39'},fonts:{body:'serif',heading:'kai',quote:'fang',caption:'sans',code:'mono',poem:'kai'},typography:{size:16,lineHeight:2,paragraphGap:24,padding:26,indent:false,tableStyle:'three-line'},elements:{h1:{font:'serif',size:30,weight:600,letterSpacing:2,borderSide:'top',borderWidth:3,borderColor:'#3f6254',padding:18,marginBottom:34},h2:{font:'kai',size:22,weight:700,borderSide:'bottom',borderWidth:1,borderColor:'#c8d4c7',padding:8,marginTop:34},quote:{font:'fang',size:17,background:'#f1f4ec',borderSide:'left',borderWidth:2,borderColor:'#3f6254',padding:20,radius:0},caption:{font:'sans',size:12,color:'#6f7c70',letterSpacing:.5},formula:{background:'#f4f6ef',borderWidth:0,padding:20}},ornaments:{label:'CEDAR / FIELD JOURNAL',mark:'',numbered:false,quoteLabel:'页边札记',codeLabel:'NOTES / CODE'}};
-const guide=`# 纸间主题文件规范 · v1
+const guide=`# 非水·成章主题文件规范 · v1
 
 主题是 UTF-8 JSON 文件，可直接离线导入。先下载示例，保留结构再改数值。主题预览不更改文章，确认导入后才写入当前浏览器。
 
@@ -68,7 +68,7 @@ export function showThemeManager(host:Host,filter='全部',view={query:'',scroll
   host.open('自己的主题书架',`<div class="theme-management-intro"><div><p class="modal-subtitle">挑选常用的主题，收藏适合你的字体与版式。</p><p id="manager-removed-summary" class="help">移除后仍保留在完整主题库，旧文章继续使用原样式。${removed?`已有 ${removed} 个主题移出选择器。`:''}</p></div><button id="manager-import" class="button primary">导入主题</button></div><div class="theme-manager-tools"><input id="manager-search" class="field" placeholder="搜索名称或主题标识" aria-label="搜索完整主题库"><div class="theme-tabs">${['全部','内置','自定义','已移除'].map(v=>`<button data-library-filter="${v}" class="${v===filter?'active':''}">${v}</button>`).join('')}</div></div><p id="manager-error" class="notice" ${themeLibraryError()?'':'hidden'}>${esc(themeLibraryError())}</p><div id="manager-list" class="theme-manager-list"></div><div class="theme-manager-footer"><span id="manager-count" class="help"></span><div><button id="manager-guide" class="button outline">格式规范 / 示例</button><button id="manager-export" class="button outline">导出主题库</button><button id="manager-restore-all" class="button outline">全部恢复</button></div></div>`,'THE PERSONAL COLLECTION');
   if(themeLibraryError()){
     $('manager-error').insertAdjacentHTML('beforeend','<p>先导出原始记录，再恢复内置库。文章文字不会丢失；自定义样式需重新导入有效的主题备份。</p><div class="theme-guide-actions"><button id="theme-export-broken" class="button outline">导出原始记录</button><button id="theme-reset-broken" class="button outline" disabled>恢复内置主题库</button></div>');
-    $('theme-export-broken').onclick=guarded(host,()=>{download(rawThemeLibrary(),'纸间-主题库原始记录.json','application/json');$<HTMLButtonElement>('theme-reset-broken').disabled=false;});
+    $('theme-export-broken').onclick=guarded(host,()=>{download(rawThemeLibrary(),'非水·成章-主题库原始记录.json','application/json');$<HTMLButtonElement>('theme-reset-broken').disabled=false;});
     $('theme-reset-broken').onclick=guarded(host,()=>{resetBrokenThemeLibrary();host.changed();showThemeManager(host);host.notify('已恢复内置主题库。可重新导入有效的自定义主题。');});
   }
   $<HTMLInputElement>('manager-search').value=view.query;
@@ -82,11 +82,11 @@ export function showThemeManager(host:Host,filter='全部',view={query:'',scroll
   $('manager-list').onclick=e=>{
     const target=(e.target as HTMLElement).closest<HTMLElement>('button');if(!target)return;
     if(target.dataset.managerToggle)guarded(host,()=>{const id=target.dataset.managerToggle!;setThemeHidden(id,!isThemeHidden(id));host.changed();render();($('manager-list').querySelector<HTMLElement>('[data-manager-toggle="'+id+'"]')||$('manager-search')).focus();host.notify(isThemeHidden(id)?'已从选择器移除，可在此恢复。':'主题已恢复到选择器。');})();
-    if(target.dataset.managerExport)exportJSON(themeDocument(themeById(target.dataset.managerExport).definition!),themeById(target.dataset.managerExport).name+'.纸间主题');
+    if(target.dataset.managerExport)exportJSON(themeDocument(themeById(target.dataset.managerExport).definition!),themeById(target.dataset.managerExport).name+'.非水·成章主题');
     if(target.dataset.managerPreview)showManagedPreview(host,themeById(target.dataset.managerPreview),filter,view);
   };
   $('manager-import').onclick=()=>chooseThemeFile(host);$('manager-guide').onclick=()=>showThemeGuide(host);
-  $('manager-export').onclick=()=>{exportJSON(themeLibraryDocument(),'纸间-完整主题库');host.notify('主题库已导出，不包含文章正文。');};
+  $('manager-export').onclick=()=>{exportJSON(themeLibraryDocument(),'非水·成章-完整主题库');host.notify('主题库已导出，不包含文章正文。');};
   $('manager-restore-all').onclick=guarded(host,()=>{restoreThemes();host.changed();render();host.notify('完整主题库已恢复到选择器。');});
 }
 function showManagedPreview(host:Host,t:Theme,filter:string,view:{query:string;scroll:number}){
@@ -96,7 +96,7 @@ function showManagedPreview(host:Host,t:Theme,filter:string,view:{query:string;s
 }
 export function showThemeGuide(host:Host){
   host.open('从一份主题文件开始',`<p class="modal-subtitle">用示例修改出自己的字体组合与版式。纯文本 JSON，可离线导入，确认前可以完整预览。</p><div class="theme-guide-actions"><button id="theme-download-example" class="button primary">下载示例主题</button><button id="theme-download-guide" class="button outline">下载完整规范</button><button id="theme-guide-back" class="button outline">返回主题库</button></div><pre class="theme-format-guide">${esc(guide)}</pre>`,'THEME FORMAT / v1');
-  $('theme-download-example').onclick=()=>exportJSON(themeDocument(exampleTheme),'杉影札记.纸间主题');$('theme-download-guide').onclick=()=>download(themeGuide(),'纸间-主题格式规范-v1.md','text/markdown;charset=utf-8');$('theme-guide-back').onclick=()=>showThemeManager(host);
+  $('theme-download-example').onclick=()=>exportJSON(themeDocument(exampleTheme),'杉影札记.非水·成章主题');$('theme-download-guide').onclick=()=>download(themeGuide(),'非水·成章-主题格式规范-v1.md','text/markdown;charset=utf-8');$('theme-guide-back').onclick=()=>showThemeManager(host);
 }
 export function chooseThemeFile(host:Host){
   const input=document.createElement('input');input.type='file';input.accept='.json,application/json';input.hidden=true;document.body.append(input);

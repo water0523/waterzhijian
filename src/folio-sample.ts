@@ -4,7 +4,7 @@ import handscroll from '../assets/folio/handscroll.webp';
 import bamboo from '../assets/folio/bamboo.webp';
 import lotus from '../assets/folio/lotus.webp';
 export function folioAssets():Asset[]{
-  return [[river,'river','寒江独钓','一叶扁舟，停在江水与留白之间。'],[handscroll,'handscroll','潇湘烟雨四景','烟雨、山岚、亭影、芦汀，连成一纸长卷。'],[bamboo,'bamboo','竹影窗棂','竹影与窗棂，留住一室清凉。'],[lotus,'lotus','残荷听雨','荷叶与雨痕，写下秋水的声音。']].map(([data,id,title,caption])=>({id:'folio-demo-'+id+'-v1',name:title+'.webp',mime:'image/webp',data,width:100,align:'center',alt:title+' · 原创水墨示例',caption,source:'纸间 · AI 生成水墨示例（imagegen）'}));
+  return [[river,'river','寒江独钓','一叶扁舟，停在江水与留白之间。'],[handscroll,'handscroll','潇湘烟雨四景','烟雨、山岚、亭影、芦汀，连成一纸长卷。'],[bamboo,'bamboo','竹影窗棂','竹影与窗棂，留住一室清凉。'],[lotus,'lotus','残荷听雨','荷叶与雨痕，写下秋水的声音。']].map(([data,id,title,caption])=>({id:'folio-demo-'+id+'-v1',name:title+'.webp',mime:'image/webp',data,width:100,align:'center',alt:title+' · 原创水墨示例',caption,source:'非水·成章 · AI 生成水墨示例（imagegen）'}));
 }
 export const folioSample=`:::folio-masthead 总第拾捌辑
 岁次丙午 · 暮春谷雨 · 初候萍始生
@@ -13,7 +13,7 @@ export const folioSample=`:::folio-masthead 总第拾捌辑
 # 山窗听雪录：在岁月的褶皱里，读一纸山水清欢
 
 :::folio-byline
-原创示例 / 纸间 · 水墨插图 / AI 生成 · [清欢]{font=kai color=#a2382d}
+原创示例 / 非水·成章 · 水墨插图 / AI 生成 · [清欢]{font=kai color=#a2382d}
 :::
 
 :::folio-preface 卷首题记
@@ -55,7 +55,7 @@ export const folioSample=`:::folio-masthead 总第拾捌辑
 
 春雨连绵，窗前新竹又添一节。今晨重读旧信，忽觉人与人的相遇，也像书页间偶然落下的一片叶子。愿你在忙碌之中，仍有一盏茶的闲暇。
 
-纸间 敬上
+非水·成章 敬上
 :::
 
 ## 叁 · 雪夜旧文与朱砂评点
@@ -140,7 +140,7 @@ export const folioSample=`:::folio-masthead 总第拾捌辑
 :::
 
 :::folio-colophon 山窗听雪录 · 本辑牌记
-示例撰文 / 纸间　·　图像 / AI 生成水墨示例
+示例撰文 / 非水·成章　·　图像 / AI 生成水墨示例
 
 诗文示例与编排信息均可在 Markdown 中修改。古籍节选请标明采用版本；插图可替换为自己的作品，并在素材中填写图注与来源。
 

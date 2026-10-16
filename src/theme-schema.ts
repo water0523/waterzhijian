@@ -59,7 +59,7 @@ export function parseThemeFile(input:string,bases:readonly string[]):{themes:The
   if(format==='zhijian-theme'){
     const f=object(raw,'文件',['format','version','theme']);if(f.version!==1)throw new Error('暂不支持此主题版本');return {themes:[validateTheme(f.theme,bases)],hidden:[]};
   }
-  const f=object(raw,'文件',['format','version','themes','hidden']);if(f.format!=='zhijian-theme-library'||f.version!==1||!Array.isArray(f.themes)||f.themes.length>100)throw new Error('请导入纸间主题 JSON，主题库最多包含 100 个自定义主题');
+  const f=object(raw,'文件',['format','version','themes','hidden']);if(f.format!=='zhijian-theme-library'||f.version!==1||!Array.isArray(f.themes)||f.themes.length>100)throw new Error('请导入非水·成章主题 JSON，主题库最多包含 100 个自定义主题');
   const themes=f.themes.map((t:unknown)=>validateTheme(t,bases));if(new Set(themes.map((t:ThemeDefinition)=>t.id)).size!==themes.length)throw new Error('同一文件内的主题标识重复');
   const hidden=f.hidden??[];if(!Array.isArray(hidden)||hidden.length>bases.length+100||!hidden.every(id=>typeof id==='string'&&(bases.includes(id)||themes.some((t:ThemeDefinition)=>t.id===id))))throw new Error('主题库的移除记录无效');
   return {themes,hidden:[...new Set<string>(hidden)]};

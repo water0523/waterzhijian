@@ -16,6 +16,44 @@ function protectedLines(text:string){
   }
   return {lines,protectedSet};
 }
+// Return source edits, rather than reserializing Markdown, so every other byte
+// (including line endings and closing heading markers) stays untouched.
+export function stripHeadingNumbers(text:string){
+  const {lines,protectedSet}=protectedLines(text),starts:number[]=[];
+  let offset=0;for(const line of lines){starts.push(offset);offset+=line.length+1;}
+  const changes:{from:number;to:number;insert:string}[]=[];
+  const cn='零〇一二三四五六七八九十百千万两壹贰叁肆伍陆柒捌玖拾佰仟';
+  const number=`(?:[0-9]{1,3}|[${cn}]+|[IVXLCDM]+|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+)`;
+  const chapter=new RegExp(`^第${number}(?:部分|章节|章|节|篇|卷|讲|回|部)[ \\t]*(?:[、.．:：·—-][ \\t]*)?`);
+  const wrapped=new RegExp(`^(?:（${number}）|\\(${number}\\)|\\[${number}\\](?!\\())[ \\t]*(?:[、.．:：·—-][ \\t]*)?`);
+  const chinese=new RegExp(`^[${cn}]+[ \\t]*[、.．:：·）)—-][ \\t]*`);
+  const roman=/^(?:[IVXLCDM]+|[ⅠⅡⅢⅣⅤⅥⅦⅧⅨⅩⅪⅫ]+|[A-Z])[ \t]*[、.．:：·）)—-][ \t]*/;
+  const circled=/^[①-⑳⑴-⒇][ \t]*(?:[、.．:：·][ \t]*)?/;
+  const arabic=/^[0-9]{1,3}(?:[.．][0-9]{1,3})*(?:[ \t]*[、.．:：·）)—-][ \t]*|[ \t]+)/;
+  for(const token of parser.parse(text,{})){
+    if(token.type!=='heading_open'||!token.map||protectedSet.has(token.map[0]))continue;
+    const row=token.map[0],line=lines[row];
+    const heading=/^([ \t]*(?:(?:>[ \t]*)|(?:[-+*]|[0-9]{1,9}[.)])[ \t]+)*#{1,6}[ \t]+)(.*)\r?$/.exec(line);
+    if(!heading)continue;
+    let rest=heading[2],removed=0;
+    for(let i=0;i<6;i++){
+      let prefix=[chapter,wrapped,chinese,roman,circled].map(re=>re.exec(rest)?.[0]).find(Boolean);
+      if(!prefix){
+        prefix=arabic.exec(rest)?.[0];
+        if(prefix){
+          const after=rest.slice(prefix.length),bare=/^[0-9]{1,3}(?:[.．][0-9]{1,3})*[ \t]+$/.test(prefix);
+          // A year, quantity, decimal definition or date is part of the title.
+          if(/[0-9０-９.．]/.test(after[0]||'')||(bare&&(/^(?:年|月|日|岁|个|种|条|次|项|位|本|篇|章|节|米|千米|公里|厘米|毫米|克|千克|吨|秒|分钟|小时|元|万|亿|%|％|℃|°|m\/s|kg\b|Hz\b|K\b)/i.test(after)||/^\d{3}/.test(prefix)||(/[.．]/.test(prefix)&&/^(?:是|为|等于)/.test(after)))))prefix=undefined;
+        }
+      }
+      if(!prefix||!rest.slice(prefix.length).replace(/#+[ \t]*\r?$/,'').trim())break;
+      removed+=prefix.length;rest=rest.slice(prefix.length);
+    }
+    if(removed){const from=starts[row]+heading[1].length;changes.push({from,to:from+removed,insert:''});}
+  }
+  let result=text;for(const change of [...changes].reverse())result=result.slice(0,change.from)+result.slice(change.to);
+  return {text:result,changes,count:changes.length};
+}
 export function tidyMarkdown(text:string){
   const normalized=text.replace(/\r\n?/g,'\n'),{lines,protectedSet}=protectedLines(normalized),out:string[]=[];
   let blanks=0,singleSpaces=0,extraBlankLines=0;

@@ -145,7 +145,7 @@ $$\vec{a}_p=-\frac{1}{\rho}\nabla p$$
 };
 export function buildFormatPrompt(theme:Theme){
  const profile=formatProfile(theme),tags=formatTags(profile);
- return `你是一名“纸间”公众号排版器的格式整理员。目标主题名称为 ${JSON.stringify(theme.name)}（仅为样式标识）。你的唯一任务：把我随后提供的文章转换成这个主题支持的完整 Markdown 排版稿。
+ return `你是一名“非水·成章”公众号排版器的格式整理员。目标主题名称为 ${JSON.stringify(theme.name)}（仅为样式标识）。你的唯一任务：把我随后提供的文章转换成这个主题支持的完整 Markdown 排版稿。
 
 【最高优先级：严格保留原文，只改格式】
 1. 逐字保留原文全部可见文字、标点、数字、单位、专名、引文和出处，不增、不删、不换字；不润色、纠错、翻译、摘要、续写或扩写。即使你认为原文有错也不得修改。
@@ -181,6 +181,6 @@ ${formatExamples[profile]}
 下面是我的原文：`;
 }
 export function formatRequest(prompt:string,article:string){
- let n=1;while(article.includes(`<<<纸间原文_${n}`))n++;
- return `${prompt}\n\n<<<纸间原文_${n}_开始>>>\n${article}\n<<<纸间原文_${n}_结束>>>`;
+ let n=1;while(article.includes(`<<<非水·成章原文_${n}`))n++;
+ return `${prompt}\n\n<<<非水·成章原文_${n}_开始>>>\n${article}\n<<<非水·成章原文_${n}_结束>>>`;
 }

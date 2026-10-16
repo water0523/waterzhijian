@@ -1,4 +1,4 @@
-纸间 · Third-party software notices
+非水·成章 · Third-party software notices
 Libraries are embedded for offline use. Their respective licenses apply.
 
 ======================================================================

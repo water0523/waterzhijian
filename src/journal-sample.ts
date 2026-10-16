@@ -91,5 +91,5 @@ export function journalFigure():Asset{
   for(const [x,y,direction] of dots){c.strokeStyle=direction>0?'#2f6edb':'#d4343b';c.fillStyle=c.strokeStyle;c.lineWidth=3;c.beginPath();c.moveTo(x,y);c.lineTo(x-direction*38,y-24);c.stroke();c.beginPath();c.arc(x,y,14,0,Math.PI*2);c.fill();}
   c.strokeStyle='#d08a22';c.lineWidth=7;c.beginPath();c.moveTo(465,155);c.lineTo(498,242);c.stroke();c.strokeStyle='#d4343b';c.lineWidth=4;c.beginPath();c.moveTo(395,200);c.lineTo(558,200);c.stroke();c.fillStyle='#d4343b';c.beginPath();c.moveTo(570,200);c.lineTo(550,190);c.lineTo(550,210);c.fill();
   c.fillStyle='#e5eaf0';c.beginPath();c.roundRect(30,396,900,42,7);c.fill();c.fillStyle='#465467';c.font='17px "Microsoft YaHei",sans-serif';c.textAlign='center';c.fillText('思想实验示意 · 通过小门与分子运动，提出关于热与信息的问题',480,423);
-  return {id:uid(),name:'信息与热-示意图.png',mime:'image/png',data:canvas.toDataURL('image/png'),width:100,align:'center',alt:'两个腔室、分子和中间小门的示意图',caption:'麦克斯韦妖思想实验。图中仅示意腔室、分子与小门的位置，完整结论需要结合正文条件阅读。',figureLabel:'图 1',source:'纸间内置示意图 · Canvas 绘制'};
+  return {id:uid(),name:'信息与热-示意图.png',mime:'image/png',data:canvas.toDataURL('image/png'),width:100,align:'center',alt:'两个腔室、分子和中间小门的示意图',caption:'麦克斯韦妖思想实验。图中仅示意腔室、分子与小门的位置，完整结论需要结合正文条件阅读。',figureLabel:'图 1',source:'非水·成章内置示意图 · Canvas 绘制'};
 }

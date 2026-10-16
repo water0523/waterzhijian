@@ -5,7 +5,7 @@ import workbench from '../assets/edition/workbench.webp';
 import {gewuAssets,gewuSample} from './gewu-sample';
 export function editionAssets():Asset[]{
  const c=document.createElement('canvas');c.width=1200;c.height=760;const x=c.getContext('2d')!,sky=x.createLinearGradient(0,0,0,760);sky.addColorStop(0,'#263b54');sky.addColorStop(.55,'#e7b083');sky.addColorStop(1,'#e6c494');x.fillStyle=sky;x.fillRect(0,0,1200,760);x.fillStyle='#f8d796';x.beginPath();x.arc(320,300,105,0,Math.PI*2);x.fill();x.fillStyle='#365b64';x.fillRect(0,480,1200,280);x.fillStyle='#233d44';x.beginPath();x.moveTo(650,760);x.lineTo(780,470);x.lineTo(1200,500);x.lineTo(1200,760);x.fill();x.fillStyle='#eee7cc';x.beginPath();x.moveTo(830,545);x.lineTo(865,240);x.lineTo(925,240);x.lineTo(960,545);x.fill();x.fillStyle='#b75a45';x.fillRect(852,305,83,28);x.fillRect(845,402,98,28);x.fillStyle='#293f46';x.fillRect(860,210,70,48);x.beginPath();x.moveTo(845,210);x.lineTo(895,170);x.lineTo(945,210);x.fill();x.fillStyle='#ffe7a6';x.fillRect(872,223,46,19);x.fillStyle='#ffe8a329';x.beginPath();x.moveTo(895,230);x.lineTo(290,150);x.lineTo(290,300);x.closePath();x.fill();x.strokeStyle='#e1d0b377';x.lineWidth=3;for(let i=0;i<7;i++){x.beginPath();x.moveTo(40+i*23,540+i*29);x.lineTo(520+i*38,540+i*29);x.stroke();}
- const built:Asset={id:'edition-lighthouse-v1',name:'日落灯塔.png',mime:'image/png',data:c.toDataURL(),width:100,align:'center',alt:'原创日落灯塔矢量风插图',caption:'在日落之前，给归途留一盏灯。',source:'纸间 · 原创 Canvas 插画'};
+ const built:Asset={id:'edition-lighthouse-v1',name:'日落灯塔.png',mime:'image/png',data:c.toDataURL(),width:100,align:'center',alt:'原创日落灯塔矢量风插图',caption:'在日落之前，给归途留一盏灯。',source:'非水·成章 · 原创 Canvas 插画'};
  return[built,...[[harbor,'harbor','港口','▲ 演示图一 · 蓝调时分的港口'],[servers,'servers','机房','▲ 演示图二 · 研究机房'],[workbench,'workbench','工作台','▲ 演示图三 · 传感器工作台']].map(([data,id,name,caption])=>({id:'edition-'+id+'-v1',name:name+'.webp',mime:'image/webp',data,width:100,align:'center' as const,alt:name+' · AI 演示图',caption,source:'AI 生成排版演示图，非真实新闻现场（imagegen）'})),...gewuAssets()];
 }
 export const digestSample=String.raw`:::digest-masthead 拾光漫读
@@ -21,7 +21,7 @@ P. 28 — 33 · 原创示例
 # 把生活调成慢速档：在日常里，留一盏灯
 
 :::digest-byline
-文 / 纸间 · 原创排版示例 · 荐稿 / 你的名字
+文 / 非水·成章 · 原创排版示例 · 荐稿 / 你的名字
 :::
 
 :::digest-note 卷首手记 · EDITOR’S NOTE
@@ -86,7 +86,7 @@ READ · 排版演示 / 非真实报道
 :::
 
 :::press-byline
-示例撰文 / 纸间 · 插图 / AI 生成 · 编辑 / 你的名字
+示例撰文 / 非水·成章 · 插图 / AI 生成 · 编辑 / 你的名字
 
 发自 虚构研究港 · 2026 年排版演示
 :::

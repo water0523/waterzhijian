@@ -18,6 +18,7 @@ export interface Article {
   version: 1; id: string; title: string; markdown: string; theme: string;
   typography: Typography; assets: string[]; created: number; updated: number;
   deleted: boolean; revisions: Revision[]; stickers?:Sticker[]; folder?:string;
+  /** Legacy backup compatibility; the workbench derives names from H1. */
   titleMode?:'auto'|'manual';
   storeRevision?:string; assetSettings?:AssetSettings;
   linkMode?:'direct'|'end';

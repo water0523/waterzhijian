@@ -3,7 +3,7 @@ export function gewuAssets():Asset[]{
  return ['wind','sky'].map((kind,index)=>{const c=document.createElement('canvas');c.width=1100;c.height=680;const x=c.getContext('2d')!;x.fillStyle='#faf7f1';x.fillRect(0,0,1100,680);x.strokeStyle='#d4c48e';x.strokeRect(20,20,1060,640);const arrow=(a:number,b:number,c:number,d:number,color:string)=>{x.strokeStyle=color;x.fillStyle=color;x.lineWidth=6;x.beginPath();x.moveTo(a,b);x.lineTo(c,d);x.stroke();const angle=Math.atan2(d-b,c-a);x.beginPath();x.moveTo(c,d);x.lineTo(c-20*Math.cos(angle-.4),d-20*Math.sin(angle-.4));x.lineTo(c-20*Math.cos(angle+.4),d-20*Math.sin(angle+.4));x.fill();};
   if(kind==='wind'){x.fillStyle='#e7dfd0';x.beginPath();x.moveTo(20,470);x.quadraticCurveTo(200,300,430,470);x.lineTo(1080,470);x.lineTo(1080,660);x.lineTo(20,660);x.fill();x.fillStyle='#6d879e';x.fillRect(390,470,450,190);x.fillStyle='#e8d6c6';x.fillRect(95,210,280,165);x.fillStyle='#e2e9ed';x.fillRect(725,210,280,165);x.font='30px "Microsoft YaHei",sans-serif';x.fillStyle='#9e2e30';x.fillText('较高气压',145,303);x.fillStyle='#315479';x.fillText('较低气压',775,303);arrow(395,290,695,290,'#9e2e30');x.font='25px "Microsoft YaHei",sans-serif';x.fillStyle='#67615b';x.fillText('仅表示气压梯度力的方向',365,415);x.font='23px SimSun,serif';x.fillText('概念示意 · 不对应具体地点与实测条件',315,610);}
   else{x.strokeStyle='#bba46f';x.lineWidth=4;x.beginPath();x.ellipse(550,335,370,190,0,0,Math.PI*2);x.stroke();x.strokeStyle='#315479';x.beginPath();x.ellipse(550,335,370,105,-.45,0,Math.PI*2);x.stroke();x.fillStyle='#9e2e30';x.beginPath();x.arc(550,335,16,0,Math.PI*2);x.fill();arrow(550,335,435,130,'#315479');x.font='28px SimSun,serif';x.fillStyle='#29261f';x.fillText('从不同坐标理解同一片天空',360,90);x.font='24px "Microsoft YaHei",sans-serif';x.fillStyle='#67615b';x.fillText('坐标与投影示意 · 非实测天象',365,610);}
-  return{id:'gewu-'+kind+'-v1',name:(index?'天球坐标':'气压梯度')+'示意.png',mime:'image/png',data:c.toDataURL(),width:100,align:'center',alt:index?'天球坐标概念图':'气压梯度力概念图',caption:index?'▲ 图二 · 坐标与投影示意，非实测天象。':'▲ 图一 · 气压梯度力方向的概念示意，不代表完整风场。',source:'纸间 · 原生 Canvas 绘制，可替换为自己的插图'} as Asset;
+  return{id:'gewu-'+kind+'-v1',name:(index?'天球坐标':'气压梯度')+'示意.png',mime:'image/png',data:c.toDataURL(),width:100,align:'center',alt:index?'天球坐标概念图':'气压梯度力概念图',caption:index?'▲ 图二 · 坐标与投影示意，非实测天象。':'▲ 图一 · 气压梯度力方向的概念示意，不代表完整风场。',source:'非水·成章 · 原生 Canvas 绘制，可替换为自己的插图'} as Asset;
  });
 }
 export const gewuSample=String.raw`:::gewu-masthead ◆ 格物文史 · 专题长文
@@ -17,7 +17,7 @@ export const gewuSample=String.raw`:::gewu-masthead ◆ 格物文史 · 专题�
 # 江风与书页：从一段古典文字，读懂观察的力量
 
 :::gewu-byline
-撰文 / 纸间 · 图示 / 原生绘制 · VOL. 042 · 排版演示
+撰文 / 非水·成章 · 图示 / 原生绘制 · VOL. 042 · 排版演示
 :::
 
 :::gewu-preface 【卷首导读】
@@ -125,7 +125,7 @@ $\vec{a}_p$ 表示单位质量空气在气压梯度力作用下的加速度；$\
 :::
 
 :::gewu-colophon 格物文史 · 寻绎字里行间的科学律令
-撰文 / 纸间 · 制图 / 原生示意图 · 审校 / 你的名字
+撰文 / 非水·成章 · 制图 / 原生示意图 · 审校 / 你的名字
 
 本篇为排版演示。古籍节选与现代说明分开标示；正文、公式、图注、来源均可编辑，图片仅承担插图本身。
 :::

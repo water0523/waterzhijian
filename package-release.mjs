@@ -3,7 +3,7 @@ import {zipSync,unzipSync} from 'fflate';
 import {createHash} from 'node:crypto';
 import assert from 'node:assert/strict';
 const files={};
-const add=async name=>files['纸间/'+name]=new Uint8Array(await readFile(name));
+const add=async name=>files['非水·成章/'+name]=new Uint8Array(await readFile(name));
 for(const name of ['README.md','开发说明.md','CHANGELOG.md','RELEASE-v1.0.md','RELEASE-v1.0.1.md','使用说明.md','验收报告.md','主题升级说明.md','本轮更新说明.md','待续功能.md','主题格式规范-v1.md','主题示例/杉影札记.纸间主题.json','plans/product-polish.md','plans/journal-themes.md','plans/literary-folio.md','plans/digest-news-templates.md','期刊主题使用说明.md','package.json','package-lock.json','tsconfig.json','index.template.html','build.mjs','package-release.mjs','.gitignore'])await add(name);
 for(const name of await readdir('src'))await add('src/'+name);
 for(const name of ['山窗听雪使用说明.md','plans/literary-science-theme.md'])await add(name);
@@ -43,9 +43,23 @@ for(const name of ['theme-output-chrome.json','theme-output-msedge.json','popove
 for(const name of ['journal-themes-chrome.json','journal-themes-msedge.json'])await add('test-results/'+name);
 for(const name of ['popover-short-chrome.png','popover-compact-chrome.png','theme-output-blueprint-chrome.png'])await add('test-results/'+name);
 for(const name of ['纸间-离线公众号排版器.html','THIRD_PARTY_NOTICES.txt','主题风格预览.png','科普主题库预览.png','青春读本预览.png','期刊主题预览.png','山窗听雪预览.png'])await add('dist/'+name);
+for(const name of ['dist/非水·成章-离线公众号排版器.html','docs/plans/2026-10-16-brand-blue-headings.md','tests/heading-numbers.mjs','tests/identity-layout.mjs','test-results/heading-numbers.json','test-results/identity-layout-chrome.json','test-results/identity-layout-msedge.json','test-results/dropcap-measurements-chrome.json','test-results/dropcap-measurements-msedge.json','dist/非水成章-日间预览.png','dist/非水成章-夜间预览.png'])await add(name);
+for(const name of ['docs/plans/2026-10-16-fullscreen.md','tests/fullscreen.mjs','test-results/fullscreen-chrome.json','test-results/fullscreen-msedge.json'])await add(name);
+for(const name of ['assets/brand-logo.jpg','assets/brand-logo.md'])await add(name);
+for(const name of ['docs/plans/2026-10-16-workbench-refinement.md','tests/workbench-refinement.mjs','tests/latex-completion.mjs'])await add(name);
+for(const channel of ['chrome','msedge']){
+  await add('test-results/workbench-refinement-'+channel+'.json');
+  await add('test-results/latex-completion-'+channel+'.json');
+}
+await add('test-results/latex-completion-day-chrome.png');
+await add('test-results/latex-completion-night-chrome.png');
+for(const channel of ['chrome','msedge'])await add('test-results/header-links-'+channel+'.json');
+for(const appearance of ['day','night'])await add('test-results/header-links-'+appearance+'-chrome.png');
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
+await writeFile('dist/非水·成章-源码与使用说明.zip',data);
 await writeFile('dist/纸间-源码与使用说明.zip',data);
 const html=await readFile('dist/纸间-离线公众号排版器.html');
-await writeFile('dist/SHA256.txt',createHash('sha256').update(html).digest('hex')+'  纸间-离线公众号排版器.html\n'+createHash('sha256').update(data).digest('hex')+'  纸间-源码与使用说明.zip\n');
+const htmlHash=createHash('sha256').update(html).digest('hex'),zipHash=createHash('sha256').update(data).digest('hex');
+await writeFile('dist/SHA256.txt',[[htmlHash,'非水·成章-离线公众号排版器.html'],[zipHash,'非水·成章-源码与使用说明.zip'],[htmlHash,'纸间-离线公众号排版器.html'],[zipHash,'纸间-源码与使用说明.zip']].map(([hash,name])=>hash+'  '+name+'\n').join(''));
 console.log(`Packaged ${Object.keys(files).length} files, verified ZIP contents (${(data.length/1024/1024).toFixed(2)} MB)`);

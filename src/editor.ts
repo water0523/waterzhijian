@@ -5,6 +5,8 @@ import {markdown} from '@codemirror/lang-markdown';
 import {syntaxHighlighting,HighlightStyle,bracketMatching,indentOnInput} from '@codemirror/language';
 import {tags} from '@lezer/highlight';
 import {searchKeymap,highlightSelectionMatches,openSearchPanel} from '@codemirror/search';
+import {closeCompletion,clearSnippet} from '@codemirror/autocomplete';
+import {latexCompletionExtension} from './latex-completion';
 export const editorThemes:Record<string,{name:string;bg:string;fg:string;line:string;muted:string;accent:string;string:string;heading:string}>= {
   dark:{name:'VS Code Dark+',bg:'#1e1e1e',fg:'#d4d4d4',line:'#282828',muted:'#858585',accent:'#569cd6',string:'#ce9178',heading:'#4ec9b0'},
   light:{name:'VS Code Light+',bg:'#ffffff',fg:'#303030',line:'#f4f4f4',muted:'#929292',accent:'#0451a5',string:'#a31515',heading:'#267f99'},
@@ -31,6 +33,14 @@ function themeExtension(id:string){
     '.cm-panels':{backgroundColor:t.line,color:t.fg},
     '.cm-searchMatch':{backgroundColor:'#cfa83050',outline:'1px solid #cfa830'},
     '.cm-foldPlaceholder':{backgroundColor:t.line,color:t.muted},
+    '.cm-tooltip-autocomplete':{backgroundColor:t.bg,color:t.fg,border:`1px solid ${t.muted}60`,borderRadius:'7px',boxShadow:'0 6px 24px #0003',overflow:'hidden',maxWidth:'min(460px, calc(100vw - 40px))'},
+    '.cm-tooltip-autocomplete > ul':{fontFamily:'Consolas, "Cascadia Code", monospace',fontSize:'13px',maxHeight:'248px'},
+    '.cm-tooltip-autocomplete > ul > li':{padding:'5px 10px',lineHeight:'1.7'},
+    '.cm-tooltip-autocomplete > ul > li[aria-selected]':{backgroundColor:dark?'#264f78':'#dbeafe',color:t.fg},
+    '.cm-completionDetail':{fontFamily:'"Microsoft YaHei", sans-serif',fontSize:'11px',fontStyle:'normal',marginLeft:'18px',opacity:'.8'},
+    '.cm-tooltip-autocomplete::after':{content:'"↑↓ 选择 · Enter / Tab 插入 · Esc 关闭"',display:'block',fontSize:'10px',padding:'5px 10px',borderTop:`1px solid ${t.muted}40`,color:t.muted},
+    '.cm-tooltip.cm-completionInfo':{backgroundColor:t.bg,color:t.fg,border:`1px solid ${t.muted}60`,borderRadius:'6px',padding:'8px 10px',fontFamily:'"Microsoft YaHei", sans-serif',fontSize:'11px',lineHeight:'1.8',maxWidth:'250px'},
+    '.cm-snippetField':{backgroundColor:dark?'#569cd633':'#0451a51a'},
   },{dark}),syntaxHighlighting(HighlightStyle.define([
     {tag:tags.heading,color:t.heading,fontWeight:'bold'},
     {tag:tags.processingInstruction,color:t.muted},
@@ -43,13 +53,14 @@ function themeExtension(id:string){
   ]))];
 }
 export class MarkdownEditor {
-  view:EditorView; themeSlot=new Compartment(); private suppress=false; private extensions:Extension[]; private themeId:string;
+  view:EditorView; themeSlot=new Compartment(); private completionSlot=new Compartment(); latexCompletionEnabled=true; private suppress=false; private extensions:Extension[]; private themeId:string;
   constructor(parent:HTMLElement,text:string,theme:string,onChange:(text:string)=>void,onImages:(files:File[],position:number)=>void,onSave:()=>void){
     this.themeId=theme;
     this.extensions=[
       lineNumbers(),history(),drawSelection(),dropCursor(),rectangularSelection(),indentOnInput(),bracketMatching(),highlightActiveLine(),highlightActiveLineGutter(),markdown(),highlightSelectionMatches(),EditorView.lineWrapping,
       EditorState.phrases.of({'Find':'查找','Replace':'替换','next':'下一个','previous':'上一个','all':'全部','match case':'区分大小写','regexp':'正则表达式','by word':'全词匹配','replace':'替换','replace all':'全部替换','close':'关闭','Go to line':'跳转到行'}),
       this.themeSlot.of(themeExtension(theme)),
+      this.completionSlot.of(latexCompletionExtension()),
       keymap.of([{key:'Mod-s',run:()=>{onSave();return true;}},...defaultKeymap,...historyKeymap,...searchKeymap,indentWithTab]),
       EditorView.updateListener.of(update=>{if(update.docChanged&&!this.suppress)onChange(update.state.doc.toString());}),
       EditorView.updateListener.of(update=>{if(update.selectionSet||update.docChanged||update.focusChanged||update.viewportChanged)requestAnimationFrame(()=>this.selectionTools());}),
@@ -75,8 +86,9 @@ export class MarkdownEditor {
     tools.hidden=(!this.view.hasFocus&&!tools.contains(document.activeElement))||selection.empty||!coords||coords.top<bounds.top||coords.top>bounds.bottom;
     if(!tools.hidden&&coords){tools.style.left=Math.max(8,Math.min(window.innerWidth-tools.offsetWidth-8,coords.left))+'px';tools.style.top=Math.max(bounds.top,coords.top-tools.offsetHeight-7)+'px';}
   }
-  setText(text:string,resetHistory=false){this.suppress=true;if(resetHistory){this.view.setState(EditorState.create({doc:text,extensions:this.extensions}));this.theme(this.themeId);}else this.view.dispatch({changes:{from:0,to:this.view.state.doc.length,insert:text},selection:{anchor:0}});this.suppress=false;this.view.scrollDOM.scrollTop=0;}
+  setText(text:string,resetHistory=false){this.suppress=true;if(resetHistory){this.view.setState(EditorState.create({doc:text,extensions:this.extensions}));this.theme(this.themeId);this.setLatexCompletion(this.latexCompletionEnabled);}else this.view.dispatch({changes:{from:0,to:this.view.state.doc.length,insert:text},selection:{anchor:0}});this.suppress=false;this.view.scrollDOM.scrollTop=0;}
   theme(id:string){this.themeId=id;this.view.dispatch({effects:this.themeSlot.reconfigure(themeExtension(id))});}
+  setLatexCompletion(enabled:boolean){closeCompletion(this.view);clearSnippet(this.view);this.latexCompletionEnabled=enabled;this.view.dispatch({effects:this.completionSlot.reconfigure(enabled?latexCompletionExtension():[])});}
   replaceText(from:number,to:number,insert:string){this.view.dispatch({changes:{from,to,insert},userEvent:'input.preview'});}
   formatSelection(from:number,to:number,outerFrom:number,outerTo:number,attributes:string){
     const prefix=attributes?'[':'',suffix=attributes?']{'+attributes+'}':'',anchor=outerFrom+prefix.length;

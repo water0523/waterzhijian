@@ -1,0 +1,46 @@
+import {chromium} from 'playwright';
+import {mkdir,writeFile} from 'node:fs/promises';
+import {pathToFileURL} from 'node:url';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+const channel=process.env.FULLSCREEN_BROWSER||'chrome',checks=[],errors=[];
+await mkdir('test-results',{recursive:true});
+const browser=await chromium.launch({channel,headless:true});
+const page=await browser.newPage({offline:true,viewport:{width:1440,height:900},screen:{width:1920,height:1080}});
+page.on('pageerror',e=>errors.push(e.message));
+const check=s=>{checks.push(s);console.log('PASS '+s);};
+const state=()=>page.evaluate(()=>{const a=JSON.parse(localStorage.getItem('paper-recovery'));return{markdown:a.markdown,theme:a.theme,typography:a.typography,editor:document.getElementById('editor-theme').value,width:document.getElementById('preview-width').value};});
+const waitFull=active=>page.waitForFunction(active=>Boolean(document.fullscreenElement)===active&&document.getElementById('fullscreen-button').getAttribute('aria-pressed')===String(active)&&!document.getElementById('fullscreen-button').disabled,active);
+try{
+ await page.goto(pathToFileURL(path.resolve('dist/非水·成章-离线公众号排版器.html')).href);await page.waitForSelector('.cm-content');
+ const button=page.locator('#fullscreen-button');assert.equal(await button.getAttribute('aria-pressed'),'false');
+ assert.ok(await button.evaluate(n=>Boolean(n.parentElement.querySelector('.workspace-view-switch'))));
+ await page.selectOption('#preview-width','430');const initial=await state();
+ await button.click();await waitFull(true);assert.equal(await page.evaluate(()=>document.fullscreenElement===document.documentElement),true);
+ assert.equal(await button.getAttribute('aria-label'),'退出全屏');assert.equal(await page.locator('#fullscreen-label').innerText(),'退出全屏');
+ await page.click('#export-toggle');assert.equal(await page.locator('#modal').isVisible(),true);await page.click('#modal-close');assert.equal(await page.evaluate(()=>Boolean(document.fullscreenElement)),true);
+ await button.click();await waitFull(false);assert.deepEqual(await state(),initial);
+ check('actual browser fullscreen enters at the page root, retains export dialogs, exits by button and preserves article/settings');
+ await button.focus();await page.keyboard.press('Enter');await waitFull(true);await page.keyboard.press('Escape');await waitFull(false);
+ await button.click();await waitFull(true);await page.evaluate(()=>document.exitFullscreen());await waitFull(false);
+ check('keyboard Enter opens fullscreen; Esc and external native exit both update the button');
+ await page.click('#view-preview');await button.click();await waitFull(true);assert.equal(await page.locator('#markdown-pane').isVisible(),false);
+ await page.click('#night-button');await page.waitForTimeout(220);assert.equal(await page.locator('body').getAttribute('data-appearance'),'night');
+ assert.ok(await button.locator('.fullscreen-exit').isVisible());assert.equal(await button.locator('.fullscreen-enter').isVisible(),false);
+ await page.click('#format-rewrite-button');assert.equal(await page.locator('#modal').isVisible(),true);await page.keyboard.press('Escape');assert.equal(await page.locator('#modal').isVisible(),false);assert.equal(await page.evaluate(()=>Boolean(document.fullscreenElement)),true);
+ await button.click();await waitFull(false);assert.equal(await page.locator('body').getAttribute('data-workspace-view'),'preview');
+ await page.click('#view-compare');await page.click('#night-button');
+ check('fullscreen also supports preview-only layout, night styling and formatting dialogs without resetting layout');
+ await page.evaluate(()=>{document.documentElement.requestFullscreen=()=>Promise.reject(new Error('Test denial'));});
+ await button.click();await page.waitForFunction(()=>document.getElementById('toast').textContent.includes('未允许全屏'));await waitFull(false);assert.equal(await button.isEnabled(),true);
+ await page.evaluate(()=>{delete document.documentElement.requestFullscreen;Object.defineProperty(document,'fullscreenEnabled',{value:false,configurable:true});});
+ await button.click();await page.waitForFunction(()=>document.getElementById('toast').textContent.includes('未开放全屏'));await waitFull(false);
+ await page.evaluate(()=>delete document.fullscreenEnabled);assert.deepEqual(await state(),initial);
+ check('denied and unavailable fullscreen leave accurate controls, unchanged source and a usable F11 hint');
+ for(const width of [1440,1280,1024]){await page.setViewportSize({width,height:800});assert.ok(await button.isVisible());const r=await button.boundingBox();assert.ok(r.x>=0&&r.x+r.width<=width);assert.ok(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));}
+ await page.setViewportSize({width:1600,height:1000});await button.click();await waitFull(true);await page.waitForTimeout(250);await page.screenshot({path:'test-results/fullscreen-'+channel+'.png'});await button.click();await waitFull(false);
+ await page.reload();await page.waitForSelector('.cm-content');assert.equal(await button.getAttribute('aria-pressed'),'false');assert.equal(await button.getAttribute('aria-label'),'全屏展开');
+ check('button remains reachable at three desktop widths and reload starts outside fullscreen');
+ assert.deepEqual(errors,[]);
+ await writeFile('test-results/fullscreen-'+channel+'.json',JSON.stringify({channel,version:browser.version(),checks,errors},null,2));
+}finally{await browser.close();}

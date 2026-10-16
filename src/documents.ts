@@ -120,7 +120,7 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
       return output;
     };
     const children=await blocks(content.children);
-    const doc=new Document({creator:'纸间',title:article.title,description:'Markdown 标准文档',styles:{default:{document:{run:{font:{ascii:'Calibri',eastAsia:'宋体',hAnsi:'Calibri'},size:24,color:'222222'},paragraph:{spacing:{after:180,line:330}}},heading1:{run:{font:'Microsoft YaHei',size:36,bold:true,color:'000000'}},heading2:{run:{font:'Microsoft YaHei',size:30,bold:true,color:'000000'}},heading3:{run:{font:'Microsoft YaHei',size:26,bold:true,color:'000000'}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1134,bottom:1134,left:1134,right:1134}}},children}]});
+    const doc=new Document({creator:'非水·成章',title:article.title,description:'Markdown 标准文档',styles:{default:{document:{run:{font:{ascii:'Calibri',eastAsia:'宋体',hAnsi:'Calibri'},size:24,color:'222222'},paragraph:{spacing:{after:180,line:330}}},heading1:{run:{font:'Microsoft YaHei',size:36,bold:true,color:'000000'}},heading2:{run:{font:'Microsoft YaHei',size:30,bold:true,color:'000000'}},heading3:{run:{font:'Microsoft YaHei',size:26,bold:true,color:'000000'}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1134,bottom:1134,left:1134,right:1134}}},children}]});
     return await Packer.toBlob(doc);
   }finally{host.remove();}
 }
