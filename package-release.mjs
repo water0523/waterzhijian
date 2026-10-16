@@ -77,6 +77,11 @@ for(const channel of ['chrome','msedge']){
   await add('test-results/multiblock-styles-'+channel+'.json');
   for(const mode of ['day','night'])await add('test-results/multiblock-styles-'+mode+'-'+channel+'.png');
 }
+for(const name of ['docs/plans/2026-10-16-script-tags.md','tests/script-tags.mjs'])await add(name);
+for(const channel of ['chrome','msedge']){
+  await add('test-results/script-tags-'+channel+'.json');
+  for(const mode of ['day','night'])await add('test-results/script-tags-'+mode+'-'+channel+'.png');
+}
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);

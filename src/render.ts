@@ -24,6 +24,34 @@ installFolioBlocks(md);
 installEditionBlocks(md);
 md.validateLink=(url:string)=>/^asset:[a-zA-Z0-9-]+$/.test(url)||baseValidate(url);
 
+// Accept only paired, attribute-free script tags. Keep raw HTML disabled, and
+// tokenize their contents in the original state so links and source edits work.
+md.inline.ruler.before('escape','script_tag',(state,silent)=>{
+  if(silent||state.src[state.pos]!=='<')return false;
+  const start=state.pos,max=state.posMax,open=/^<(sup|sub)>/i.exec(state.src.slice(start,max));
+  if(!open)return false;
+  const tag=open[1].toLowerCase(),stack=[tag],cache=state.cache;
+  let close=-1,end=-1;
+  state.cache={};state.pos=start+open[0].length;
+  try{
+    while(state.pos<max){
+      const match=state.src[state.pos]==='<'?/^<(\/?)(sup|sub)>/i.exec(state.src.slice(state.pos,max)):null;
+      if(match){
+        const name=match[2].toLowerCase();
+        if(match[1]){if(stack.pop()!==name)break;if(!stack.length){close=state.pos;end=close+match[0].length;break;}}
+        else {stack.push(name);if(stack.length+state.level>=((md.options as {maxNesting?:number}).maxNesting??100))break;}
+        state.pos+=match[0].length;
+      }else md.inline.skipToken(state);
+    }
+  }finally{state.pos=start;state.cache=cache;}
+  if(close<0)return false;
+  const token=state.push(tag+'_open',tag,1);token.markup=open[0];
+  token.attrSet('style',`font-size:.75em;line-height:0;vertical-align:${tag==='sup'?'super':'sub'}`);
+  state.pos=start+open[0].length;state.posMax=close;
+  md.inline.tokenize(state);state.push(tag+'_close',tag,-1);
+  state.pos=end;state.posMax=max;return true;
+});
+
 md.inline.ruler.before('escape','math_inline',(state,silent)=>{
   const p=state.pos;
   if(state.src[p]!=='$'||state.src[p+1]==='$'||/\s/.test(state.src[p+1]||' ')) return false;

@@ -76,7 +76,7 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
       }
       if(node.tagName==='IMG')return [await rasterImage(node as HTMLImageElement)];
       if(node.tagName==='BR')return [new TextRun({...format,break:1})];
-      const next={...format};if(node.tagName==='STRONG')next.bold=true;if(node.tagName==='EM')next.italics=true;if(node.tagName==='CODE'){next.font='Consolas';next.size=21;}if(node.tagName==='S')next.strike=true;if(node.tagName==='SUP')next.superScript=true;
+      const next={...format};if(node.tagName==='STRONG')next.bold=true;if(node.tagName==='EM')next.italics=true;if(node.tagName==='CODE'){next.font='Consolas';next.size=21;}if(node.tagName==='S')next.strike=true;if(node.tagName==='SUP'){next.superScript=true;next.subScript=false;}if(node.tagName==='SUB'){next.subScript=true;next.superScript=false;}
       if(node.classList.contains('inline-style')){
         const font=inlineFonts[node.dataset.inlineFont||''];if(font)next.font={ascii:font.word,hAnsi:font.word,eastAsia:font.word};
         if(node.style.fontSize)next.size=Math.round(Number.parseFloat(node.style.fontSize)*1.5);
