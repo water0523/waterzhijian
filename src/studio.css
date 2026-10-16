@@ -150,7 +150,7 @@ body[data-appearance=night] .workbench{background:#17232c}body[data-appearance=n
 /* The settings drawer stays usable when both catalogs are open. */
 .style-panel{position:absolute;right:0;top:0;bottom:0;z-index:7;width:280px;box-shadow:-8px 0 24px #1a273020}
 /* A temporary menu from another toolbar must not block selection actions. */
-.quick-popover[data-mode=hover]:not([data-toolbar=selection-tools]){z-index:7}
+.quick-popover[data-mode=hover]:not([data-toolbar=selection-tools]){z-index:9}
 
 /* Export formats: distinct symbols with a shared, quiet visual language. */
 .export-option{display:flex;align-items:center;gap:16px;padding:16px 18px}.export-option-icon{display:grid;place-items:center;flex:0 0 44px;height:44px;border-radius:10px;background:var(--export-paper);color:var(--export-ink)}.export-option-copy{flex:1;min-width:0}.export-option .export-option-copy strong{font-size:14px;font-weight:600}.export-option .export-option-copy small{font-size:11px;line-height:1.8;margin-top:5px}.export-option-arrow{font-size:17px;color:#8da5b8;margin-left:6px}.export-recommended{font-size:10px;color:#507089;font-weight:400;margin-left:5px}.export-option:hover .export-option-icon{box-shadow:inset 0 0 0 1px var(--export-ink)}body[data-appearance=night] .export-option-icon{background:#ffffff0d;color:#bdcdd9}body[data-appearance=night] .export-recommended{color:#99b5ca}body[data-appearance=night] .export-option-arrow{color:#96acbd}

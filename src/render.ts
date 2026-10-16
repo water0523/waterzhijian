@@ -33,7 +33,7 @@ md.inline.ruler.before('escape','math_inline',(state,silent)=>{
     break;
   }
   if(end<0||/\s/.test(state.src[end-1])||/\d/.test(state.src[end+1]||''))return false;
-  if(!silent){const t=state.push('math_inline','span',0);t.content=state.src.slice(p+1,end);}
+  if(!silent){const t=state.push('math_inline','span',0);t.content=state.src.slice(p+1,end);if(state.env.editable)t.meta={rawElementFrom:p,rawElementTo:end+1};}
   state.pos=end+1;return true;
 });
 md.block.ruler.before('fence','math_block',(state,start,end,silent)=>{
@@ -161,6 +161,23 @@ export function firstArticleHeading(source:string):string|null{
   if(heading<0)return null;
   const text=(tokens[heading+1]?.children||[]).filter(t=>['text','code_inline','math_inline','image'].includes(t.type)).map(t=>t.content).join('').trim();
   return text||null;
+}
+// Parsing for source tools must not render SVG, load optional engines or alter text.
+export function mappedInlineTokens(source:string){return md.parse(source,{source,editable:true}).filter(t=>t.type==='inline').map(t=>t.children||[]);}
+export function mappedStyleBlocks(source:string){
+  const tokens=md.parse(source,{source,editable:true}),stack:typeof tokens=[],starts=[0];
+  for(let i=0;i<source.length;i++)if(source[i]==='\n')starts.push(i+1);
+  const blocks:{tokens:typeof tokens;scope:string}[]=[],barriers:{from:number;to:number}[]=[];
+  for(const token of tokens){
+    if(token.nesting===1)stack.push(token);
+    if(token.type==='inline'){
+      const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/');
+      blocks.push({tokens:token.children||[],scope:scope||'paragraph'});
+    }
+    if(token.map&&['fence','code_block','math_block','hr','decorative_divider','table_open'].includes(token.type))barriers.push({from:starts[token.map[0]],to:starts[token.map[1]]??source.length});
+    if(token.nesting===-1)stack.pop();
+  }
+  return {blocks,barriers};
 }
 
 const copiedProperties=['color','background-color','font-family','font-size','font-weight','font-style','line-height','letter-spacing','text-align','text-indent','text-decoration','text-emphasis-style','text-emphasis-position','text-emphasis-color','white-space','word-break','overflow-wrap','vertical-align','display','float','clear','text-wrap','margin-top','margin-bottom','margin-left','margin-right','padding-top','padding-bottom','padding-left','padding-right','border-top','border-bottom','border-left','border-right','border-radius','box-shadow','outline','background-image','background-size','background-position','background-repeat','opacity','border-collapse','table-layout','max-width','list-style-type','box-sizing'];

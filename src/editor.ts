@@ -100,6 +100,10 @@ export class MarkdownEditor {
     const anchor=outerFrom+prefix.length;
     this.view.dispatch({changes:[{from:outerFrom,to:from,insert:prefix},{from:to,to:outerTo,insert:suffix}],selection:{anchor,head:anchor+to-from},userEvent:'input.format',annotations:isolateHistory.of('full')});
   }
+  formatTextRanges(specs:import('@codemirror/state').ChangeSpec[]){
+    const selection=this.view.state.selection.main,changes=this.view.state.changes(specs),from=changes.mapPos(selection.from,1),to=changes.mapPos(selection.to,-1);
+    this.view.dispatch({changes,selection:{anchor:from,head:Math.max(from,to)},userEvent:'input.format',annotations:isolateHistory.of('full')});this.view.focus();
+  }
   insert(text:string,at?:number){const sel=this.view.state.selection.main;const from=at??sel.from;this.view.dispatch({changes:{from,to:at===undefined?sel.to:from,insert:text},selection:{anchor:from+text.length},scrollIntoView:true});this.view.focus();}
   wrap(before:string,after=before){
     const s=this.view.state.selection.main,selected=this.view.state.sliceDoc(s.from,s.to)||'文字';

@@ -20,10 +20,11 @@ import {showRewrite,cancelRewrite} from './rewrite';
 import {inspectFonts} from './font-inspection';
 import {StickerController,updateStickerLines,flattenStickers,publicationHTML} from './stickers';
 import {PreviewEditor} from './preview-editor';
-import {styleAttributes,parseInlineStyle,literaryRoles} from './inline-style';
+import {styleAttributes,parseInlineStyle,literaryRoles,type InlineStyle} from './inline-style';
 import {showInlineMenu,mountInlineMenus,type InlineMenu} from './inline-picker';
 import {appendReferences} from './references';
 import {boldSelection,selectedMath,applyMathStyle} from './math-format';
+import {selectedTextRuns,textStyleChanges,selectionStyleKeys} from './text-selection';
 import {createLongImage} from './long-image';
 import {saveImageFile} from './image-delivery';
 import {openPopover,closePopover,enhanceColors,mountPopoverHover} from './popover';
@@ -360,6 +361,13 @@ function showTableMenu(target:HTMLElement){
   panel.querySelectorAll<HTMLElement>('[data-table-style]').forEach(el=>el.onclick=()=>{current.typography.tableStyle=el.dataset.tableStyle as Typography['tableStyle'];markDirty();render();if(!$('style-panel').hidden)renderStylePanel();panel.querySelectorAll('[data-table-style]').forEach(b=>b.classList.toggle('active',b===el));toast('表格样式已更新');});
   bind('insert-table',()=>{closePopover();editor.insert('\n\n| 项目 | 说明 |\n| --- | --- |\n| 内容 | 内容 |\n\n');});
 }
+function applySelectedTextStyle(plan:ReturnType<typeof selectedTextRuns>,patch:InlineStyle){
+  if(plan.source!==editor.view.state.doc.toString()){toast('选区内容已经变化，请重新选择文字。');return false;}
+  if(plan.error){toast(plan.error);return false;}
+  if(!plan.selected.length){toast('选区内没有可设置样式的正文文字；代码和公式请分别选择。');return false;}
+  if(patch.size!==undefined&&(!Number.isFinite(patch.size)||patch.size<10||patch.size>64||Math.round(patch.size*10)!==patch.size*10)){toast('选区字号范围是 10–64 px，最多一位小数。');return false;}
+  const changes=textStyleChanges(plan,patch);closePopover();if(changes.length)editor.formatTextRanges(changes);else editor.view.focus();return true;
+}
 function showInlineStyle(event?:Event){
   const selection=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(selection.from,selection.to);
   if(!selected){toast('先在 Markdown 栏选中需要设置样式的文字。');return;}
@@ -374,7 +382,22 @@ function showInlineStyle(event?:Event){
       closePopover();return true;
     },true);return;
   }
-  if(selected.includes('\n')){toast('请选中同一行 Markdown 中的文字；跨段落样式请在排版设置中调整。');return;}
+  if(selected.includes('\n')){
+    const plan=selectedTextRuns(editor.view.state.doc.toString(),selection.from,selection.to);
+    if(plan.error){toast(plan.error);return;}
+    if(!plan.selected.length){toast('选区内没有可设置样式的正文文字；代码和公式请分别选择。');return;}
+    showInlineMenu(target,kind,plan.common,(root,markdown)=>{
+      root.innerHTML=renderMarkdown(markdown,assets).html;if(publisher==='wechat')decorateTheme(root,themeById(current.theme));
+    },(style,change)=>{
+      let patch:InlineStyle;
+      if(change?.clear)patch=Object.fromEntries(selectionStyleKeys.map(key=>[key,undefined]));
+      else if(kind==='effect'){
+        const key=change!.effect!;patch={[key]:style[key]};if(key==='gold'&&style.gold)Object.assign(patch,{marker:undefined,markerColor:undefined});
+      }else if(kind==='marker')patch={marker:style.marker,markerColor:style.markerColor,...(style.marker?{gold:undefined}:{})};
+      else patch={[kind]:style[kind]};
+      return applySelectedTextStyle(plan,patch);
+    });return;
+  }
   const before=editor.view.state.doc.toString();
   const suffix=before.slice(selection.to).match(/^\]\{([^}]+)\}/);
   const existing=before[selection.from-1]==='['&&suffix?parseInlineStyle(suffix[1]):null;
@@ -858,6 +881,12 @@ async function init(){
       if(type==='wave'){toast('公式可使用普通下划线；波浪线用于普通文字。');return;}
       const key=type as 'bold'|'italic'|'underline'|'strike';applyMathStyle(editor,math,{...math.style,[key]:!math.style[key]},toast,(tex,display)=>renderMath(tex,display).error);return;
     }
+    const selection=editor.view.state.selection.main;
+    if(['bold','italic','underline','wave','strike'].includes(type||'')&&editor.view.state.sliceDoc(selection.from,selection.to).includes('\n')){
+      const plan=selectedTextRuns(editor.view.state.doc.toString(),selection.from,selection.to),key=type as 'bold'|'italic'|'underline'|'wave'|'strike',enabled=plan.common[key]!==true;
+      const patch:InlineStyle={[key]:enabled?true:undefined};if(enabled&&key==='wave')patch.underline=undefined;if(enabled&&key==='underline')patch.wave=undefined;
+      applySelectedTextStyle(plan,patch);return;
+    }
     if(type==='bold')boldSelection(editor,toast);
     else if(type==='italic'){if(hasSelectedStyle(editor))toggleTextStyle(editor,'italic');else editor.wrap('*');}
     else if(type==='strike'||type==='underline'||type==='wave'){
@@ -896,7 +925,7 @@ async function init(){
   window.addEventListener('beforeunload',e=>{if(dirtyGeneration!==savedGeneration){e.preventDefault();e.returnValue='';}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirtyArticles.size)void save();});
   mountPopoverHover(document.querySelectorAll<HTMLElement>('[data-inline-menu],#selection-block-button,.format-toolbar [data-format="heading"],#table-style-button,#image-layout-button,#divider-button,#math-button,#journal-block-button,#folio-block-button,#edition-block-button,#folio-font-button,#writing-tools-button'),target=>{
-    if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text)return false;const math=selectedMath(editor);return math?!math.error&&['color','size','highlight','effect'].includes(target.dataset.inlineMenu):!text.includes('\n');}
+    if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text)return false;const math=selectedMath(editor);if(math)return !math.error&&['color','size','highlight','effect'].includes(target.dataset.inlineMenu);if(!text.includes('\n'))return true;const plan=selectedTextRuns(editor.view.state.doc.toString(),s.from,s.to);return !plan.error&&plan.selected.length>0;}
     return target.id!=='image-layout-button'||/^:::gallery /m.test(current.markdown);
   });
   // The constructor already contains the restored document and its settings.

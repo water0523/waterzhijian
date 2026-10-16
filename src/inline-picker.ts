@@ -16,7 +16,7 @@ export function mountInlineMenus(handler:(event:Event)=>void){
   }
 }
 
-export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:InlineStyle|null,renderSample:(root:HTMLElement,markdown:string)=>void,apply:(style:InlineStyle)=>boolean,math=false){
+export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:InlineStyle|null,renderSample:(root:HTMLElement,markdown:string)=>void,apply:(style:InlineStyle,change?:{clear?:boolean;effect?:'dots'|'gold'})=>boolean,math=false){
   const current:InlineStyle={...existing},label=menus.find(([id])=>id===kind)![1];
   const row=(value:string,content:string,checked:boolean,extra='')=>`<button type="button" role="menuitemradio" aria-checked="${checked}" data-inline-choice="${esc(value)}" ${extra}>${content}<span class="inline-menu-check" aria-hidden="true">${checked?'✓':''}</span></button>`;
   let html='';
@@ -41,7 +41,7 @@ export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:Inlin
   if(kind==='font')panel.querySelector<HTMLElement>('[data-inline-choice=""]>span')!.style.fontFamily=getComputedStyle(document.getElementById('preview')!).fontFamily;
   panel.querySelectorAll<HTMLElement>('[data-inline-choice]').forEach(button=>button.onclick=()=>{
     const value=button.dataset.inlineChoice!,style={...current};
-    if(kind==='effect'){if(value==='clear'){apply({});return;}const key=value as typeof effects[number][0];if(style[key])delete style[key];else {style[key]=true;if(key==='gold'){delete style.marker;delete style.markerColor;}}}
+    if(kind==='effect'){if(value==='clear'){apply({},{clear:true});return;}const key=value as typeof effects[number][0];if(style[key])delete style[key];else {style[key]=true;if(key==='gold'){delete style.marker;delete style.markerColor;}}apply(style,{effect:key});return;}
     else if(kind==='size'){if(value)style.size=Number(value);else delete style.size;}
     else if(kind==='role'){if(value)style.role=value as InlineStyle['role'];else delete style.role;}
     else if(kind==='font'){if(value)style.font=value;else delete style.font;}

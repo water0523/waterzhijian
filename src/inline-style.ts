@@ -13,6 +13,7 @@ export const inlineFonts:Record<string,{name:string;css:string;word:string}>={
 };
 export const literaryRoles={note:'朱砂夹批',aside:'竖排眉批',preface:'词前小序',rhyme:'韵脚微标',painting:'题画文字',date:'年代胶囊',term:'科普术语',redline:'朱红强调'};
 export interface InlineStyle {font?:string;size?:number;color?:string;highlight?:string;bold?:boolean;italic?:boolean;underline?:boolean;wave?:boolean;strike?:boolean;dots?:boolean;gold?:boolean;marker?:boolean;markerColor?:string;role?:keyof typeof literaryRoles}
+export interface StyleSourceRange {from:number;to:number;contentFrom:number;contentTo:number;attrsFrom:number;attrsTo:number;style:InlineStyle;native?:'bold'|'italic'|'strike'}
 export const markerInk=(style:InlineStyle)=>/^#[\da-f]{6}$/i.test(style.markerColor||'')?style.markerColor!:'#f5d878';
 export function styleAttributes(style:InlineStyle){
   return [style.font&&inlineFonts[style.font]?'font='+style.font:'',style.size&&style.size>=10&&style.size<=64?'size='+style.size:'',style.color&&/^#[\da-f]{6}$/i.test(style.color)?'color='+style.color:'',style.highlight&&/^#[\da-f]{6}$/i.test(style.highlight)?'highlight='+style.highlight:'',style.role&&Object.hasOwn(literaryRoles,style.role)?'role='+style.role:'',...(['bold','italic','underline','wave','strike','dots','gold','marker'] as const).filter(key=>style[key]).map(key=>key==='marker'&&style.markerColor?'marker='+markerInk(style):key)].filter(Boolean).join(' ');
@@ -75,7 +76,7 @@ export function installInlineStyles(md:MarkdownIt){
     const end=md.helpers.parseLinkLabel(state,start+2,false);if(end<0||state.src[end+1]!=='{')return false;
     const close=state.src.indexOf('}',end+2);if(close<0||close+2>=max||!state.src.startsWith('**',close+1))return false;
     const style=parseInlineStyle(state.src.slice(end+2,close));if(!style)return false;
-    if(!silent){state.pos=start+3;state.posMax=end;state.push('strong_open','strong',1);const open=state.push('text_style_open','span',1);open.attrSet('class','inline-style'+(style.role?' literary-'+style.role:''));open.attrSet('style',inlineCSS(style));if(style.font)open.attrSet('data-inline-font',style.font);if(style.wave||style.underline)open.attrSet('data-inline-underline',style.wave?'wave':'single');if(style.strike)open.attrSet('data-inline-strike','true');if(style.marker&&!style.gold)open.attrSet('data-inline-marker',markerInk(style));md.inline.tokenize(state);state.push('text_style_close','span',-1);state.push('strong_close','strong',-1);}
+    if(!silent){state.pos=start+3;state.posMax=end;const strong=state.push('strong_open','strong',1);if(state.env.editable)strong.meta={nativeFrom:start};const open=state.push('text_style_open','span',1);if(state.env.editable)open.meta={styleSource:{from:start+2,to:close+1,contentFrom:start+3,contentTo:end,attrsFrom:end+2,attrsTo:close,style} satisfies StyleSourceRange};open.attrSet('class','inline-style'+(style.role?' literary-'+style.role:''));open.attrSet('style',inlineCSS(style));if(style.font)open.attrSet('data-inline-font',style.font);if(style.wave||style.underline)open.attrSet('data-inline-underline',style.wave?'wave':'single');if(style.strike)open.attrSet('data-inline-strike','true');if(style.marker&&!style.gold)open.attrSet('data-inline-marker',markerInk(style));md.inline.tokenize(state);state.push('text_style_close','span',-1);const closing=state.push('strong_close','strong',-1);if(state.env.editable)closing.meta={nativeFrom:close+1};}
     state.pos=close+3;state.posMax=max;return true;
   });
   md.inline.ruler.before('link','text_style',(state,silent)=>{
@@ -91,6 +92,7 @@ export function installInlineStyles(md:MarkdownIt){
     if(!silent){
       state.pos=start+1;state.posMax=end;
       const open=state.push('text_style_open','span',1);open.attrSet('class','inline-style'+(style.role?' literary-'+style.role:''));open.attrSet('style',inlineCSS(style));
+      if(state.env.editable)open.meta={styleSource:{from:start,to:close+1,contentFrom:start+1,contentTo:end,attrsFrom:end+2,attrsTo:close,style} satisfies StyleSourceRange};
       if(style.font)open.attrSet('data-inline-font',style.font);
       if(style.wave||style.underline)open.attrSet('data-inline-underline',style.wave?'wave':'single');
       if(style.strike)open.attrSet('data-inline-strike','true');
