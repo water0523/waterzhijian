@@ -128,6 +128,7 @@ for(const channel of ['chrome','msedge']){
  for(const file of ['report.json','water-day.png','water-night.png','witch-light-day.png','witch-light-night.png','witch-immersive-day.png','witch-immersive-night.png','desktop-1280.png','desktop-1024.png'])await add('test-results/sky-workspace-'+channel+'/'+file);
  for(const file of ['report.json','menu.png','night.png'])await add('test-results/ornaments-'+channel+'/'+file);
 }
+for(const name of ['Markdown快捷键.md','tests/markdown-shortcuts.mjs','test-results/markdown-shortcuts-chrome.json','test-results/markdown-shortcuts-msedge.json'])await add(name);
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);

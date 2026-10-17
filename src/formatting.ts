@@ -24,7 +24,7 @@ export function insertFootnote(editor:MarkdownEditor){
   const insert=doc.slice(0,s.to)+marker+doc.slice(s.to)+definition,from=insert.length-'脚注内容'.length;
   editor.view.dispatch({changes:{from:0,to:doc.length,insert},selection:{anchor:from,head:insert.length},scrollIntoView:true,userEvent:'input.format'});editor.view.focus();
 }
-export function blockFormat(editor:MarkdownEditor,kind:'quote'|'poem'|'h1'|'h2'|'h3'|'paragraph'){
+export function blockFormat(editor:MarkdownEditor,kind:'quote'|'poem'|'h1'|'h2'|'h3'|'h4'|'h5'|'h6'|'paragraph'){
   const state=editor.view.state,s=state.selection.main,first=state.doc.lineAt(s.from),last=state.doc.lineAt(s.to>s.from&&state.doc.sliceString(s.to-1,s.to)==='\n'?s.to-1:s.to);
   let from=first.from,to=last.to,text=state.doc.sliceString(from,to),insert='';
   if(kind==='poem'){
