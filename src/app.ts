@@ -18,6 +18,9 @@ import {editionCatalog,editionTitles,type Edition} from './edition-blocks';
 import {examSubjects} from './exam-themes';
 import {examSamples,examComponentExamples,examComponentSample} from './exam-samples';
 import {isExam} from './exam-design';
+import {isAnime,animeThemes} from './anime-design';
+import {animeSample,animeAssets,animeComponentSample,animeComponentExamples} from './anime-sample';
+import type {AnimeKind} from './anime-blocks';
 import {themeMatches} from './theme-search';
 import {showRewrite,cancelRewrite} from './rewrite';
 import {inspectFonts} from './font-inspection';
@@ -225,6 +228,7 @@ function render(){
     $('theme-name').textContent=committed.name;$('theme-dot').style.background=committed.accent;$('preview-caption-name').textContent=publisher==='zhihu'?'知乎 · 标准 Markdown':(peekThemeId?'试看 · ':'')+theme.name;
     const mood=$('folio-font-button');if(mood){mood.hidden=!isFolio(committed)||publisher!=='wechat';mood.textContent=({'noto-serif':'书卷宋体',wenkai:'温润楷体','noto-sans':'现代人文黑'} as Record<string,string>)[current.typography.font||committed.font]||'自定字体';mood.textContent+=' ▾';}
     const examButton=$('exam-block-button');if(examButton)examButton.hidden=!isExam(committed)||publisher!=='wechat';
+    const animeButton=$('anime-block-button');if(animeButton)animeButton.hidden=!isAnime(committed)||publisher!=='wechat';
     $<HTMLSelectElement>('publisher').value=publisher;$('preview-target').textContent=publisher==='zhihu'?'知乎样式':peekThemeId?'主题试看 · 点击卡片应用':'公众号样式';paintCopyButton();
     themeSidebar?.updateCurrent();
     $<HTMLButtonElement>('theme-button').disabled=publisher==='zhihu';$<HTMLButtonElement>('style-button').disabled=publisher==='zhihu';if(publisher==='zhihu')$('style-panel').hidden=true;
@@ -295,6 +299,7 @@ function themeThumbnail(id:string){
   if(id==='classical')node.innerHTML='<h1>陋室铭</h1><h2>原文选读</h2><p>山不在高，有仙则名。水不在深，有龙则灵。<strong>斯是陋室，惟吾德馨。</strong>苔痕上阶绿，草色入帘青。</p><blockquote><p>铭，古代刻在器物上用来警戒自己或者称述功德的文字。</p></blockquote><h2>读一读，想一想</h2><p>谈笑有鸿儒，往来无白丁。</p>';
   if(t.variant==='journal')node.innerHTML=renderMarkdown('## 从一个好问题开始\n:::subtitle SCIENCE & IDEAS\n\n:::theorem 核心定律 · 理解世界\n用清晰的概念，建立**可检验的联系**。\n:::\n\n> 从一次认真观察出发。',new Map()).html;
   if(isFolio(t))node.innerHTML=renderMarkdown('## 江南雨声里的旧宣纸\n:::subtitle PROSE · 散文随笔卷\n\n:::folio-preface 卷首题记\n古人把一扇窗，借给了一座山。\n:::',new Map()).html;
+  if(isAnime(t))node.innerHTML=renderMarkdown('# 把天空写进手记\n\n## 收集一点小美好\n\n:::anime-quote\n让每个值得记住的瞬间，拥有自己的光。\n:::',new Map()).html;
   const edition=t.baseId||t.id;
   if(examSamples[edition])node.innerHTML=renderMarkdown(examSamples[edition],new Map()).html;
   if(editionSamples[edition])node.innerHTML=renderMarkdown(editionSamples[edition].split(':::'+edition+(edition==='digest'?'-note':edition==='press'?'-byline':'-preface'))[0],new Map()).html;
@@ -313,7 +318,7 @@ function showThemes(filter='全部'){
     selectedDetail=id;
     const t=themeById(id),sample=document.createElement('article');sample.className='theme-detail-article';
     const sampleText=t.group==='文学'?'# 在平凡里，收集微光\n\n## 写在日常的页边\n\n风从窗边经过，留下一页值得珍藏的文字。\n\n### 片刻的停留\n\n> 让文字留下温柔的回声。\n\n:::poem center\n光落在纸上\n也落在**未说完的故事**里\n\n愿你记得\n每一次出发\n:::\n\n## 留住那些瞬间\n\n- 一段散步的时光\n- 一封写给自己的信': '# 一束光，读懂宇宙\n\n## 从一个好问题开始\n\n科学始于好奇，也来自一次次**认真观察**。好的排版让推理更清晰。\n\n### 观察与证据\n\n> 我们用可重复的观察，检验关于世界的猜想。\n\n## 把现象写成规律\n\n$$E=mc^2$$\n\n| 观测对象 | 特征 |\n| --- | --- |\n| 光 | 传播与能量 |\n| 物质 | 质量与运动 |\n\n- 提出可检验的问题\n- 记录证据，比较结果\n\n---\n\n继续探索，让知识成为自己的理解。';
-    sample.innerHTML=renderMarkdown(examSamples[t.baseId||t.id]||editionSamples[t.baseId||t.id]||(isFolio(t)?folioSample:t.variant==='journal'?journalPreviewSample:sampleText),new Map((editionSamples[t.baseId||t.id]?editionAssets():isFolio(t)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(sample,t);
+    sample.innerHTML=renderMarkdown(examSamples[t.baseId||t.id]||editionSamples[t.baseId||t.id]||(isAnime(t)?animeSample:isFolio(t)?folioSample:t.variant==='journal'?journalPreviewSample:sampleText),new Map((isAnime(t)?animeAssets():editionSamples[t.baseId||t.id]?editionAssets():isFolio(t)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(sample,t);
     const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div id="theme-detail-scroll" class="theme-detail-scroll" tabindex="0" aria-label="主题完整排版示例"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>${isExam(t)?'试卷排版 · 可选 A4 宽度':'完整排版效果'}</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
     document.querySelector('.theme-browser')!.classList.add('has-detail');
     $('theme-results').querySelectorAll<HTMLElement>('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themePreview===id)));
@@ -508,8 +513,10 @@ function showSamples(){
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<button class="option-card" data-sample="folio"><strong>06 / 山窗听雪 · 一纸山水清欢</strong><small>古籍题记 · 三种正文气质 · 横排诗笺 / 阶梯新诗 · 朱批笺注 · 水墨装裱</small></button>');
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend',Object.entries(editionSamples).map(([id])=>`<button class="option-card" data-sample="${id}"><strong>${editionTitles[id as Edition]}</strong><small>完整组件示例 · 可改文字、数据、插图与来源</small></button>`).join(''));
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<h3>试卷 · 湖南高考版式</h3>'+examSubjects.map(s=>`<button class="option-card" data-sample="${s.id}"><strong>${s.name}试卷 · 原创题型示例</strong><small>${s.topics} · 无插图</small></button>`).join(''));
+  $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<h3>动漫手记 · 两种主题色</h3>'+animeThemes.map(t=>`<button class="option-card" data-sample="${t.id}"><strong>${t.name} · 黄昏里的小小魔法</strong><small>完整组件示例 · 胶带引文、角色气泡、拍立得、公式与档案卡</small></button>`).join(''));
   $('modal-body').querySelectorAll<HTMLButtonElement>('[data-sample]').forEach(el=>el.onclick=async()=>{
     try{
+      if(el.dataset.sample&&animeThemes.some(t=>t.id===el.dataset.sample)){const id=el.dataset.sample;el.disabled=true;const incoming=animeAssets().filter(a=>!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle('黄昏里的小小魔法',animeSample,id);return;}
       if(el.dataset.sample&&examSamples[el.dataset.sample]){const id=el.dataset.sample;closeModal();addArticle(examSubjects.find(s=>s.id===id)!.name,examSamples[id],id);setPreviewWidth('794');return;}
       if(el.dataset.sample&&editionSamples[el.dataset.sample]){const id=el.dataset.sample;el.disabled=true;const incoming=editionAssets().filter(a=>editionSamples[id].includes('asset:'+a.id)&&!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle(editionTitles[id as Edition],editionSamples[id],id);return;}
       if(el.dataset.sample==='folio'){el.disabled=true;const incoming=folioAssets().filter(a=>!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle('山窗听雪录',folioSample,'folio');return;}
@@ -550,7 +557,7 @@ function showJournalBlocks(anchor:HTMLElement){
 }
 
 function enhanceComponentPreviews(panel:HTMLElement,attribute:string,source:string,back:()=>void){
- const theme=themeById(current.theme),resource=new Map([...assets,...folioAssets().map(a=>[a.id,a] as const),...editionAssets().map(a=>[a.id,a] as const)]),article=document.createElement('article');article.innerHTML=renderMarkdown(source,resource,false,current.typography).html;decorateTheme(article,theme);
+ const theme=themeById(current.theme),resource=new Map([...assets,...folioAssets().map(a=>[a.id,a] as const),...editionAssets().map(a=>[a.id,a] as const),...animeAssets().map(a=>[a.id,a] as const)]),article=document.createElement('article');article.innerHTML=renderMarkdown(source,resource,false,current.typography).html;decorateTheme(article,theme);
  const style=document.createElement('style');style.textContent=themeCSS(theme,current.typography).replaceAll('.article','.component-preview-article');panel.prepend(style);
  for(const button of panel.querySelectorAll<HTMLButtonElement>('[data-'+attribute+']')){
   const key=button.getAttribute('data-'+attribute)!,cls=attribute==='journal-block'?'journal-'+key:attribute==='folio-block'?'folio-'+key:key;
@@ -560,6 +567,14 @@ function enhanceComponentPreviews(panel:HTMLElement,attribute:string,source:stri
   preview.innerHTML='<span class="component-mini-window" aria-hidden="true"><article class="component-preview-article">'+node.outerHTML+'</article></span><small>放大预览 ↗</small>';wrapper.append(preview,button);
   preview.onclick=()=>{openModal('组件效果预览',`<p class="modal-subtitle">跟随当前文章的主题色与排版设置。这里展示示例内容，插入后可继续修改。</p><div class="component-full-scroll" tabindex="0"><style>${style.textContent}</style><article class="component-preview-article component-full-article">${node.outerHTML}</article></div><div class="component-preview-actions"><button id="component-back" class="button outline">返回选择</button><button id="component-insert" class="button primary">插入当前文章</button></div>`);bind('component-back',()=>{closeModal();back();document.querySelector<HTMLElement>('[data-component-preview="'+cls+'"]')?.focus();});bind('component-insert',()=>{closeModal();button.click();});};
  }
+}
+function showAnimeElements(anchor:HTMLElement){
+ const panel=openPopover(anchor,'动漫手记元素',`<p class="help">樱粉魔法 / 抹茶猫猫共用标签，先预览再插入。彩蛋始终展开，分镜顺序阅读，适合公众号。</p><div class="journal-insert-choices">${Object.entries(animeComponentExamples).map(([kind,[name,description]])=>`<button data-anime-block="anime-${kind}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div>`);
+ panel.querySelectorAll<HTMLButtonElement>('[data-anime-block]').forEach(button=>button.onclick=async()=>{
+  const kind=button.dataset.animeBlock!.slice(6) as AnimeKind,example=animeComponentExamples[kind][2],s=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(s.from,s.to),text=selected?':::anime-'+kind+'\n'+selected+'\n:::':example,before=editor.view.state.doc.toString(),articleId=current.id;
+  button.disabled=true;try{const incoming=animeAssets().filter(a=>text.includes('asset:'+a.id)&&!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(current.id!==articleId||before!==editor.view.state.doc.toString()){toast('文章已变化，请重新选择插入位置。',true);return;}closePopover();editor.insert('\n\n'+text+'\n\n');}catch(error){toast(errorMessage(error),true);}finally{button.disabled=false;}
+ });
+ enhanceComponentPreviews(panel,'anime-block',animeComponentSample,()=>showAnimeElements(anchor));
 }
 function showExamElements(anchor:HTMLElement){
  const panel=openPopover(anchor,'试卷元素',`<p class="help">保留题号与分值，先预览再插入。选项可改为 1、2 或 4 列；答题留白可改为 1—12 行。</p><div class="journal-insert-choices">${examComponentExamples.map(([id,name,description])=>`<button data-exam-block="exam-${id}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div><button id="exam-insert-pagebreak" class="button outline full">插入分页标记</button>`);
@@ -891,6 +906,7 @@ async function init(){
   const writingButton=document.createElement('button');writingButton.id='writing-tools-button';writingButton.className='tool-button';writingButton.setAttribute('aria-label','写作助手');writingButton.title='公式命令补全、写作检查、文字整理与恢复点';writingButton.innerHTML='✎ <span>写作助手</span> ▾';$('assets-button').before(writingButton);writingButton.onclick=()=>showWritingTools(writingButton);
   const editionButton=document.createElement('button');editionButton.id='edition-block-button';editionButton.textContent='模板组件 ▾';editionButton.title='预览与插入杂志、新闻和文学科普组件';$('folio-block-button').after(editionButton);editionButton.onclick=()=>showEditionElements(editionButton);
   const examButton=document.createElement('button');examButton.id='exam-block-button';examButton.textContent='试卷元素 ▾';examButton.hidden=true;examButton.title='预览与插入卷头、题目、选项、答题区和参考答案';$('edition-block-button').after(examButton);examButton.onclick=()=>showExamElements(examButton);
+  const animeButton=document.createElement('button');animeButton.id='anime-block-button';animeButton.textContent='动漫元素 ▾';animeButton.hidden=true;animeButton.title='预览与插入胶带引文、角色气泡、拍立得、公式与设定档案';examButton.after(animeButton);animeButton.onclick=()=>showAnimeElements(animeButton);
   bind('publisher',()=>{clearThemePreview(false);publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
   bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>$('import-input').click());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
   document.querySelectorAll<HTMLElement>('[data-format]').forEach(el=>el.onclick=()=>{
@@ -950,7 +966,7 @@ async function init(){
   new ResizeObserver(()=>requestAnimationFrame(()=>{stickerController.reposition();sync.rebuild();})).observe($('preview'));
   window.addEventListener('beforeunload',e=>{if(dirtyGeneration!==savedGeneration){e.preventDefault();e.returnValue='';}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirtyArticles.size)void save();});
-  mountPopoverHover(document.querySelectorAll<HTMLElement>('[data-inline-menu],#selection-block-button,.format-toolbar [data-format="heading"],#table-style-button,#image-layout-button,#divider-button,#math-button,#journal-block-button,#folio-block-button,#edition-block-button,#exam-block-button,#folio-font-button,#writing-tools-button'),target=>{
+  mountPopoverHover(document.querySelectorAll<HTMLElement>('[data-inline-menu],#selection-block-button,.format-toolbar [data-format="heading"],#table-style-button,#image-layout-button,#divider-button,#math-button,#journal-block-button,#folio-block-button,#edition-block-button,#exam-block-button,#anime-block-button,#folio-font-button,#writing-tools-button'),target=>{
     if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text)return false;const math=selectedMath(editor);if(math)return !math.error&&['color','size','highlight','effect'].includes(target.dataset.inlineMenu);const plan=selectedTextRuns(editor.view.state.doc.toString(),s.from,s.to);return !plan.error&&plan.selected.length>0;}
     return target.id!=='image-layout-button'||/^:::gallery /m.test(current.markdown);
   });

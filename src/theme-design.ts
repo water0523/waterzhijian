@@ -4,9 +4,12 @@ import {decorateJournal,isJournal} from './journal-design';
 import {decorateFolio,isFolio} from './folio-design';
 import {isExam} from './exam-design';
 import {decorateEdition} from './edition-design';
+import {decorateAnime} from './anime-design';
 
 type Design={label:string;mark:string;number?:boolean;quote?:string;code?:string;tags:string[]};
 export const designs:Record<string,Design>={
+ 'anime-sakura':{label:'',mark:'',number:true,code:'MAGIC / CODE',tags:['樱粉魔法','星星题签','胶带引文','角色气泡','公式手札']},
+ 'anime-matcha':{label:'',mark:'',number:true,code:'MATCHA / CODE',tags:['抹茶猫猫','猫咪题签','拍立得','设定档案','角色气泡']},
  digest:{label:'',mark:'',tags:['红枫暖刊','胶带手记','折角摘抄']},
  press:{label:'',mark:'',tags:['新闻红刊头','数据看板','深度访谈']},
  gewu:{label:'',mark:'',tags:['朱砂方印','文史与科学','公式释义']},
@@ -91,6 +94,7 @@ export function decorateTheme(node:HTMLElement,theme:Theme){
  if(isJournal(theme))decorateJournal(node);
  if(isFolio(theme))decorateFolio(node);
  decorateEdition(node,theme);
+ decorateAnime(node,theme);
  if(id==='magazine'){
   const first=[...node.children].find(el=>el.tagName==='P'&&el.textContent?.trim()&&!el.querySelector('.image-wrap,.math-display'));
   if(first){

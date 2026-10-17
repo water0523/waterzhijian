@@ -113,6 +113,13 @@ for(const channel of ['chrome','msedge']){
 }
 for(const name of ['docs/plans/2026-10-17-find-replace-formats.md','tests/find-formats.mjs','tests/find-replace.mjs','test-results/find-formats.json'])await add(name);
 for(const channel of ['chrome','msedge'])for(const file of ['report.json','day.png','night.png','compact.png'])await add('test-results/find-'+channel+'/'+file);
+await addTree('动漫手记示例');
+for(const name of ['动漫手记主题使用说明.md','docs/plans/2026-10-17-anime-themes.md','scripts/export-anime-samples.mjs','tests/anime-schema.mjs','tests/anime-themes.mjs','tests/anime-image.mjs','test-results/anime-schema.json','test-results/anime-images/report.json'])await add(name);
+for(const id of ['anime-sakura','anime-matcha'])await add('test-results/anime-images/'+id+'.png');
+for(const channel of ['chrome','msedge']){
+  for(const file of ['report.json','night.png','desktop-1280.png'])await add('test-results/anime-'+channel+'/'+file);
+  for(const id of ['anime-sakura','anime-matcha'])for(const file of [id+'-top.png',id+'-chat.png',id+'.pdf'])await add('test-results/anime-'+channel+'/'+file);
+}
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);

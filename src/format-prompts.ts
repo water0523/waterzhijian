@@ -2,10 +2,12 @@ import {journalKinds} from './journal-blocks';
 import {folioNames} from './folio-blocks';
 import {editionCatalog} from './edition-blocks';
 import {examTags} from './exam-blocks';
+import {animeTags} from './anime-blocks';
 import type {Theme} from './theme-types';
-export type FormatProfile='journal'|'folio'|'digest'|'press'|'gewu'|'exam'|'standard';
-export function formatProfile(theme:Theme):FormatProfile{return ['journal','folio','digest','press','gewu','exam'].includes(theme.variant)?theme.variant as FormatProfile:'standard';}
+export type FormatProfile='journal'|'folio'|'digest'|'press'|'gewu'|'exam'|'anime'|'standard';
+export function formatProfile(theme:Theme):FormatProfile{return ['journal','folio','digest','press','gewu','exam','anime'].includes(theme.variant)?theme.variant as FormatProfile:'standard';}
 export function formatTags(profile:FormatProfile):string[]{
+ if(profile==='anime')return animeTags;
  if(profile==='exam')return [...examTags,'exam-pagebreak'];
  if(profile==='journal')return [...journalKinds];
  if(profile==='folio')return Object.keys(folioNames).filter(k=>k!=='scroll').map(k=>'folio-'+k);
@@ -13,6 +15,14 @@ export function formatTags(profile:FormatProfile):string[]{
  return Object.keys(editionCatalog[profile]).map(k=>profile+'-'+k);
 }
 const policies:Record<FormatProfile,string>={
+ anime:`【樱粉魔法 / 抹茶猫猫的用法】
+- 按这篇具体文章的语气，自主搭配胶带引文、角色气泡、拍立得、公式手札、设定档案、轻量便签和彩蛋尾卡；也保留适量普通正文。主题色与字体由排版器处理，不把主题名字或颜色说明写进文章。
+- 原有题首引导、栏目或短引入可用 anime-banner；原有署名、日期、出处可用 anime-meta。原有关键词、分类词可用 anime-tags，保留文字和标点，允许用行内代码包住原有标签词；不得补作者、关注号召、标签文案或元数据。现成文章标题与章节用 # / ## / ###，胶囊章节编号由主题生成，不另外手写序号。
+- 原有引语、独立短段、感悟可在原位置用 anime-quote，采用便利贴和楷体，不抽取后重复展示；普通引用也可直接用 >。原有故事对话、采访或聊天可用 anime-chat 内嵌 anime-left / anime-right，原来独占一行的角色名可原样放在容器标题处。保留说话人、标点与顺序，不给叙述编对话，也不新增虚构角色。
+- 原有图片可用 anime-figure，图片链接、替代文字与图注完全保留；连续的现有片段、画面描述或图文可用 anime-panels 内嵌 anime-panel，不要求原稿先有分镜标签，不移动或拆写正文。分镜按原顺序上下排列，不能为了并排效果输出 HTML 或表格；没有图片时仍可以只排现有文字，不补占位图。
+- 公式及其相邻现有解释可用 anime-equation，释义、背景、补充文字可嵌套或单独用 anime-note。所有公式定界符、命令、参数和换行原样保留。没有说明就不编写符号释义；不要把整段长公式放进容器标题。
+- 原有设定说明、人物资料、并列属性或数据表可用 anime-profile，不要求事先已经叫档案。已有两列表格的第二列为 0—100% 时，排版器会在原值下显示属性条；不是这种表就保留原表或普通文字，不转换段落造表、不捏造、换算或归一化百分比。
+- 原有趣闻、附记、提示或延伸文字可用 anime-spoiler；这是始终展开的静态彩蛋卡，不添加“点击展开”等交互指令。原有文末收束、落款或互动短句可用 anime-footer，没有这些文字就省略，不生成新号召。重要字词可主动选用加粗、荧光、半高荧光、着重号或既有文体标记，多个属性合并在一层，避免整段反复涂色。`,
  exam:`【湖南高考试卷的用法】
 - 只改变试卷格式。原题干、题号、分值、选项字母及顺序、材料、表格、公式、单位、答案与解析必须逐字保留；绝不代答、纠错、补题、改分、翻译或将答案移进题目。没有答案就不生成答案。
 - 原题号若采用数字加英文点号，且不是普通有序列表，可将点号写为反斜杠转义的点号，避免 Markdown 自动改号；渲染后的题号必须与原文相同。
@@ -61,6 +71,55 @@ const policies:Record<FormatProfile,string>={
 };
 // Examples are complete snippets that can also be checked by the actual renderer.
 export const formatExamples:Record<FormatProfile,string>={
+ anime:String.raw`:::anime-banner 原有题首短语
+原有引入文字。
+:::
+
+# 原有文章标题
+
+:::anime-meta
+原有署名文字。
+:::
+
+## 原有章节标题
+
+:::anime-quote
+原有独立短段。
+:::
+
+:::anime-chat
+:::anime-left 原有角色名
+原有对话文字。
+:::
+:::anime-right 原有另一位角色名
+原有回应文字。
+:::
+:::
+
+:::anime-equation
+$$I \propto \frac{1}{\lambda^4}$$
+:::anime-note
+原有释义文字，保留 $\lambda$。
+:::
+:::
+
+:::anime-panels
+:::anime-panel 原有片段标题
+原有连续片段全文。
+:::
+:::
+
+:::anime-profile
+原有资料或现成表格。
+:::
+
+:::anime-spoiler
+原有补充文字。
+:::
+
+:::anime-footer
+原有收束文字。
+:::`,
  exam:String.raw`:::exam-meta
 原有考试名称
 :::

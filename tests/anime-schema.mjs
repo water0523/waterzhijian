@@ -1,0 +1,18 @@
+import {build} from 'esbuild';
+import {mkdir,writeFile,readFile} from 'node:fs/promises';
+import assert from 'node:assert/strict';
+globalThis.localStorage={getItem:()=>null,setItem:()=>{}};
+const bundle=await build({stdin:{contents:"export * from './src/themes';export * from './src/theme-schema';export * from './src/format-prompts';export * from './src/anime-sample';export * from './src/anime-blocks';export * from './src/component-check';export * from './src/find-formats';export * from './src/text-selection';",resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',write:false});
+const m=await import('data:text/javascript;base64,'+Buffer.from(bundle.outputFiles[0].text).toString('base64')),checks=[],check=name=>{checks.push(name);console.log('PASS '+name);};
+const themes=m.themes.filter(t=>t.variant==='anime');assert.equal(m.themes.length,50);assert.deepEqual(themes.map(t=>[t.id,t.name]),[['anime-sakura','樱粉魔法'],['anime-matcha','抹茶猫猫']]);
+assert.equal(m.animeTags.length,15);assert.deepEqual(m.inspectComponentStructure(m.animeSample),[]);assert.deepEqual(m.inspectComponentStructure(m.animeComponentSample),[]);assert.doesNotMatch(m.animeSample,/[\u0000-\u0008\u000b\u000c\u000e-\u001f]/);
+for(const t of themes){assert.equal(m.formatProfile(t),'anime');const prompt=m.buildFormatPrompt(t);for(const tag of m.animeTags)assert.ok(prompt.includes(':::'+tag));for(const word of ['逐字保留','自主','不新增虚构角色','不捏造','公式原样保留','始终展开','原顺序'])assert.ok(prompt.includes(word));assert.equal(await readFile('动漫手记示例/'+t.name+'.md','utf8'),m.animeSample);assert.equal(t.headingFont,'rounded');assert.equal(t.codeFont,'jetbrains');}
+check('exactly two reference palettes, 15 complete components, intact TeX, exported samples and content-preserving prompts');
+for(const t of themes){const d=m.validateTheme({id:'my-'+t.id,name:'自定 '+t.name,group:'通用',base:t.id,palette:{accent:'#ac4477',paper:'#ffffff',ink:'#443344'},fonts:{heading:'rounded',body:'anime-sans'}},m.builtInIds),custom=m.materializeTheme(d);assert.equal(custom.variant,'anime');assert.equal(m.formatProfile(custom),'anime');const css=m.themeCSS(custom,{headingFont:'kai',elements:{h2:{size:24}}});assert.match(css,/KaiTi/);assert.match(css,/font-size:24px/);assert.match(css,/anime-right/);assert.match(css,/#ac4477/);assert.doesNotMatch(css,/@import|https?:|url\(/);}
+check('custom themes inherit anime components, prompts, local font fallbacks and explicit typography overrides without external assets');
+const original=':::anime-left 同名\n[重点文字]{font=kai marker=#fff29b}\n\n第二段正文。\n:::\n\n:::anime-left 同名\n[重点文字]{font=kai marker=#fff29b}\n:::';
+const hits=m.findFormats(original,'marker','#fff29b');assert.equal(hits.length,2);assert.equal(original.slice(hits[1].from,hits[1].to),'重点文字');const changes=m.formatFindChanges(original,[hits[1]],{marker:true,markerColor:'#bbf7d0'});let next=original;for(const c of [...changes].reverse())next=next.slice(0,c.from)+c.insert+next.slice(c.to);assert.equal(m.findFormats(next,'marker','#fff29b').length,1);assert.equal(m.findFormats(next,'marker','#bbf7d0').length,1);assert.equal(m.findFormats(next,'font','kai').length,2);
+const from=original.indexOf('第二段'),to=original.lastIndexOf('重点文字')+4;assert.match(m.selectedTextRuns(original,from,to).error,/不同格式/);
+assert.deepEqual(m.inspectComponentStructure(':::anime-chat\n:::anime-left\n正文\n:::\n:::').length,0);assert.equal(m.inspectComponentStructure(':::anime-equation\n未闭合。')[0].line,1);
+check('repeated dialogue bodies map distinctly, batch style replacement preserves neighbors, separate containers reject a spanning style, and unclosed containers are diagnosed');
+await mkdir('test-results',{recursive:true});await writeFile('test-results/anime-schema.json',JSON.stringify({checks},null,2));

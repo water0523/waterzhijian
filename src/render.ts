@@ -12,6 +12,7 @@ import {normalizeFolioPublication} from './folio-design';
 import {installEditionBlocks} from './edition-blocks';
 import {normalizeEditionPublication} from './edition-design';
 import {installExamBlocks,layoutExamOptions,normalizeExamPublication} from './exam-blocks';
+import {installAnimeBlocks} from './anime-blocks';
 
 export interface RenderResult {html:string; errors:{line:number;message:string}[]; external:string[]; missing:string[]}
 export function renderMath(source:string,display:boolean,startNumber=0,equationNumbers=false){return offlineModule<typeof import('./math-engine')>('math').renderMath(source,display,startNumber,equationNumbers);}
@@ -24,6 +25,7 @@ installJournalBlocks(md);
 installFolioBlocks(md);
 installEditionBlocks(md);
 installExamBlocks(md);
+installAnimeBlocks(md);
 md.validateLink=(url:string)=>/^asset:[a-zA-Z0-9-]+$/.test(url)||baseValidate(url);
 
 // Accept only paired, attribute-free script tags. Keep raw HTML disabled, and
@@ -202,7 +204,7 @@ export function mappedStyleBlocks(source:string){
   for(const token of tokens){
     if(token.nesting===1)stack.push(token);
     if(token.type==='inline'){
-    const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem|exam)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/')+(stack.some(t=>t.type==='table_open')?':cell-'+cell++:'');
+    const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem|exam|anime)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/')+(stack.some(t=>t.type==='table_open')?':cell-'+cell++:'');
       blocks.push({tokens:token.children||[],scope:scope||'paragraph'});
     }
     if(token.map&&['fence','code_block','math_block','hr','decorative_divider','table_open'].includes(token.type))barriers.push({from:starts[token.map[0]],to:starts[token.map[1]]??source.length,table:token.type==='table_open'});

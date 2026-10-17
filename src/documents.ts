@@ -9,6 +9,7 @@ import {flattenJournalBlocks} from './journal-blocks';
 import {flattenFolioBlocks} from './folio-blocks';
 import {flattenEditionBlocks} from './edition-blocks';
 import {flattenExamBlocks} from './exam-blocks';
+import {flattenAnimeBlocks} from './anime-blocks';
 import {themeById} from './themes';
 import {isExam} from './exam-design';
 
@@ -33,6 +34,7 @@ export function standardBody(article:Article,assets:Map<string,Asset>,rendered?:
   flattenFolioBlocks(node);
   flattenEditionBlocks(node);
   flattenExamBlocks(node);
+  flattenAnimeBlocks(node);
   node.querySelectorAll('.decorative-divider').forEach(el=>el.replaceWith(document.createElement('hr')));
   node.querySelectorAll('.image-gallery').forEach(group=>{
     const fragment=document.createDocumentFragment();group.querySelectorAll('.image-wrap,.missing-image').forEach(image=>{const p=document.createElement('p');p.append(image);fragment.append(p);});group.replaceWith(fragment);

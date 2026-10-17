@@ -57,7 +57,8 @@ export function installTextMapping(md:MarkdownIt){
       for(const part of block.content.split('\n')){
         let found=false;
         for(;sourceLine<map[1];sourceLine++){
-          const col=lines[sourceLine].indexOf(part,consumed.get(sourceLine)||0);
+          const minimum=Math.max(consumed.get(sourceLine)||0,Number.isFinite(block.meta?.sourceFrom)?block.meta.sourceFrom-starts[sourceLine]:0);
+          const col=lines[sourceLine].indexOf(part,minimum);
           if(col<0)continue;
           for(let n=0;n<part.length;n++)positions.push(starts[sourceLine]+col+n);
           positions.push(starts[sourceLine]+col+part.length);
