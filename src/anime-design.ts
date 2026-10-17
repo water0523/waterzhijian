@@ -3,8 +3,8 @@ import {fontStacks,type Typography} from './model';
 import {readableColor} from './theme-readability';
 export const isAnime=(theme:Theme)=>theme.variant==='anime';
 const palettes={
- 'anime-sakura':{soft:'#fff0f5',line:'#ffc2d6',light:'#ff9ebb',secondary:'#7c69ef',mint:'#eefcf8',mintLine:'#4cd3a5',muted:'#8c7687',dots:'#ffd6e5'},
- 'anime-matcha':{soft:'#eef9ee',line:'#b7e4c7',light:'#8ce0b8',secondary:'#ce6545',mint:'#fff0f3',mintLine:'#eaa1b4',muted:'#6b8577',dots:'#c8ecc8'}
+ 'anime-sakura':{soft:'#fff0f5',line:'#ffc2d6',light:'#ff9ebb',secondary:'#7c69ef',profile:'#fff0f3',profileLine:'#eaa1b4',muted:'#8c7687',dots:'#ffd6e5'},
+ 'anime-matcha':{soft:'#eef9ee',line:'#b7e4c7',light:'#8ce0b8',secondary:'#ce6545',profile:'#eefcf8',profileLine:'#4cd3a5',muted:'#6b8577',dots:'#c8ecc8'}
 };
 export const animeThemes:Theme[]=[
  {id:'anime-sakura',name:'樱粉魔法',group:'通用',description:'樱粉与星紫、圆体胶囊章节、胶带引文与角色小剧场',accent:'#ff6b9d',paper:'#ffffff',ink:'#4a3b47',font:'anime-sans',headingFont:'rounded',quoteFont:'wenkai',captionFont:'kai',poemFont:'wenkai',codeFont:'jetbrains',variant:'anime',defaults:{size:15.5,lineHeight:1.82,paragraphGap:18,padding:26,indent:false}},
@@ -58,9 +58,9 @@ export function animeCSS(theme:Theme,a:string,o:Typography={}){
  .article .anime-equation>.anime-title{display:table;background:${dark};color:#fff;border-radius:999px;padding:3px 12px;font-size:.82em}
  .article .anime-equation .math-display{background:transparent;border:0;box-shadow:none;margin:12px 0;padding:8px 0}
  .article .anime-note{background:#fef9e7;border:0;border-top:1px dashed ${p.line};border-radius:8px;padding:10px 12px;margin:14px 0 0;font-size:.86em;color:${muted}}
- .article .anime-profile{background:${p.mint};border-color:${p.mintLine}}.article .anime-profile>.anime-title{border-bottom:1px dashed ${p.mintLine};padding-bottom:10px}
- .article :where(.anime-profile) table{margin:8px 0;background:transparent}.article :where(.anime-profile) th{background:#fff;color:${dark}}.article :where(.anime-profile) td{background:transparent;border-color:${p.mintLine};vertical-align:top}
- .article .anime-stat-rail{display:block;min-width:0;height:8px;border-radius:8px;background:#fff;border:1px solid ${p.mintLine};overflow:hidden;margin-top:7px}.article .anime-stat-fill{display:block;height:100%;background:${a};border-radius:8px}
+ .article .anime-profile{background:${p.profile};border-color:${p.profileLine}}.article .anime-profile>.anime-title{border-bottom:1px dashed ${p.profileLine};padding-bottom:10px}
+ .article :where(.anime-profile) table{margin:8px 0;background:transparent}.article :where(.anime-profile) th{background:#fff;color:${dark}}.article :where(.anime-profile) td{background:transparent;border-color:${p.profileLine};vertical-align:top}
+ .article .anime-stat-rail{display:block;min-width:0;height:8px;border-radius:8px;background:#fff;border:1px solid ${p.profileLine};overflow:hidden;margin-top:7px}.article .anime-stat-fill{display:block;height:100%;background:${a};border-radius:8px}
  .article .anime-spoiler{border-style:dashed;border-color:${p.secondary}}.article .anime-spoiler>.anime-title{color:${secondary};border-bottom:1px dashed ${p.line};padding-bottom:10px}
  .article .anime-footer{background:#fef9e7;text-align:center;padding:22px 18px;border-radius:22px}.article .anime-footer p,.article .anime-footer .anime-title{text-align:center}
  `;
