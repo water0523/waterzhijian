@@ -3,12 +3,14 @@ import {mappedStyleBlocks} from './render';
 import {styleAttributes,type InlineStyle,type StyleSourceRange} from './inline-style';
 
 export const selectionStyleKeys=['font','size','color','highlight','bold','italic','underline','wave','strike','dots','gold','marker','markerColor','role'] as const;
-type Run={from:number;to:number;styles:StyleSourceRange[];atomic:boolean;locked:boolean;scope:string};
+export type TextSourceRange={from:number;to:number};
+type Run={from:number;to:number;text:string;styles:StyleSourceRange[];atomic:boolean;locked:boolean;scope:string};
 function inheritedStyle(styles:InlineStyle[]){
   const result:InlineStyle={};
   for(const style of styles){Object.assign(result,style);if(style.marker&&!style.markerColor)delete result.markerColor;}
   return result;
 }
+export const textRunStyle=(run:Pick<Run,'styles'>)=>inheritedStyle(run.styles.map(range=>range.style));
 function patched(style:InlineStyle,patch:InlineStyle){
   const result={...style};
   for(const key of selectionStyleKeys)if(Object.hasOwn(patch,key)){
@@ -16,7 +18,8 @@ function patched(style:InlineStyle,patch:InlineStyle){
   }
   return result;
 }
-export function selectedTextRuns(source:string,from:number,to:number){
+export function selectedTextRuns(source:string,from:number,to:number,selectionRanges?:readonly TextSourceRange[]){
+  const ranges=selectionRanges||[{from,to}];
   const runs:Run[]=[],seen=new Set<string>(),parsed=mappedStyleBlocks(source);
   for(const {tokens,scope} of parsed.blocks){
     const stack:(StyleSourceRange|undefined)[]=[];
@@ -26,22 +29,25 @@ export function selectedTextRuns(source:string,from:number,to:number){
       else if(token.type==='text'&&token.meta?.editFrom!==undefined||token.meta?.protectedRange){
         const locked=!!token.meta?.protectedRange,a=(locked?token.meta.protectedRange.from:token.meta.editFrom) as number,b=(locked?token.meta.protectedRange.to:token.meta.editTo) as number,key=a+':'+b;
         if(seen.has(key))continue;seen.add(key);
-        runs.push({from:a,to:b,styles:stack.filter((s):s is StyleSourceRange=>!!s),atomic:locked||b-a!==token.content.length,locked,scope});
+        runs.push({from:a,to:b,text:locked?'':token.content,styles:stack.filter((s):s is StyleSourceRange=>!!s),atomic:locked||b-a!==token.content.length,locked,scope});
       }
     }
   }
-  const selected=runs.filter(run=>!run.locked&&run.from<to&&run.to>from&&(!run.atomic||from<=run.from&&to>=run.to));
+  const selected=runs.filter(run=>!run.locked&&ranges.some(range=>run.from<range.to&&run.to>range.from&&(!run.atomic||range.from<=run.from&&range.to>=run.to)));
   const effective=(run:Run)=>inheritedStyle(run.styles.map(s=>s.style)),common:InlineStyle={};
   for(const key of selectionStyleKeys){const value=selected.length?effective(selected[0])[key]:undefined;if(value!==undefined&&selected.every(run=>effective(run)[key]===value))Object.assign(common,{[key]:value});}
-  const scopes=new Set(selected.map(run=>run.scope)),barrier=parsed.barriers.some(b=>b.from<to&&b.to>from&&!(b.table&&from>=b.from&&to<=b.to));
-  const error=scopes.size>1||barrier&&selected.length?'选区跨过了不同格式区域，请分别选择正文、标题、引用、列表、代码或公式后操作。':undefined;
-  return {source,from,to,runs,selected,common,error};
+  const incompatible=ranges.some(range=>{
+    const inside=selected.filter(run=>run.from<range.to&&run.to>range.from),scopes=new Set(inside.map(run=>run.scope));
+    return scopes.size>1||inside.length&&parsed.barriers.some(b=>b.from<range.to&&b.to>range.from&&!(b.table&&range.from>=b.from&&range.to<=b.to));
+  });
+  const error=incompatible?'选区跨过了不同格式区域，请分别选择正文、标题、引用、列表、代码或公式后操作。':undefined;
+  return {source,from,to,ranges,runs,selected,common,error};
 }
 export function textStyleChanges(plan:ReturnType<typeof selectedTextRuns>,patch:InlineStyle):ChangeSpec[]{
   if(plan.error||!plan.selected.length)return [];
-  const {from,to,runs,selected}=plan,keys=selectionStyleKeys.filter(key=>Object.hasOwn(patch,key)),updates=new Map<number,{range:StyleSourceRange;style:InlineStyle}>();
+  const {ranges,runs,selected}=plan,keys=selectionStyleKeys.filter(key=>Object.hasOwn(patch,key)),updates=new Map<number,{range:StyleSourceRange;style:InlineStyle}>();
   const lockedAncestors=new Set(runs.filter(run=>run.locked).flatMap(run=>run.styles.map(s=>s.from)));
-  const whole=(s:StyleSourceRange)=>from<=s.contentFrom&&to>=s.contentTo&&!lockedAncestors.has(s.from);
+  const whole=(s:StyleSourceRange)=>ranges.some(range=>range.from<=s.contentFrom&&range.to>=s.contentTo)&&!lockedAncestors.has(s.from);
   for(const run of selected)for(const range of run.styles){
     if(!keys.some(key=>range.style[key]!==undefined))continue;
     if(range.native&&patch[range.native]===true)continue;
@@ -68,9 +74,9 @@ export function textStyleChanges(plan:ReturnType<typeof selectedTextRuns>,patch:
   const selectedSet=new Set(selected);
   for(const run of runs){
     const original=inheritedStyle(run.styles.map(s=>s.style)),after=effective(run),inside=selectedSet.has(run);
-    const points=[run.from,...(inside?[Math.max(run.from,from),Math.min(run.to,to)]:[]),run.to].filter((p,i,all)=>!i||p>all[i-1]);
+    const points=[...new Set([run.from,...(inside?ranges.filter(range=>range.from<run.to&&range.to>run.from).flatMap(range=>[Math.max(run.from,range.from),Math.min(run.to,range.to)]):[]),run.to])].sort((a,b)=>a-b);
     for(let i=1;i<points.length;i++){
-      const a=points[i-1],b=points[i],desired=inside&&a>=from&&b<=to?patched(original,patch):original,delta:InlineStyle={};
+      const a=points[i-1],b=points[i],selectedSegment=inside&&ranges.some(range=>a>=range.from&&b<=range.to),desired=selectedSegment?patched(original,patch):original,delta:InlineStyle={};
       for(const key of selectionStyleKeys)if(desired[key]!==undefined&&desired[key]!==false&&desired[key]!==after[key])Object.assign(delta,{[key]:desired[key]});
       // A role has its own CSS font, size and color. When moving it into a new
       // inner span, retain explicit overrides there rather than inheriting them
@@ -80,7 +86,7 @@ export function textStyleChanges(plan:ReturnType<typeof selectedTextRuns>,patch:
       // can give <strong>/<em>/<s> a different appearance from styled spans.
       // Put boundary whitespace outside delimiters so Markdown still parses.
       const nativeEdges:{from:number;to:number;delimiter:string}[]=[];
-      if(!inside||a<from||b>to)for(const key of ['bold','italic','strike'] as const){
+      if(!selectedSegment)for(const key of ['bold','italic','strike'] as const){
         const native=run.styles.find(s=>s.native===key);
         if(!native||!delta[key]||run.locked)continue;
         const text=plan.source.slice(a,b),leading=text.length-text.trimStart().length,trailing=text.length-text.trimEnd().length;

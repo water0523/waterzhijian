@@ -114,6 +114,7 @@ export class MarkdownEditor {
     this.view.focus();
   }
   goto(line:number){const l=this.view.state.doc.line(Math.max(1,Math.min(this.view.state.doc.lines,line)));this.view.dispatch({selection:{anchor:l.from},effects:EditorView.scrollIntoView(l.from,{y:'center'})});this.view.focus();}
+  selectRange(from:number,to:number){this.view.dispatch({selection:{anchor:from,head:to},effects:EditorView.scrollIntoView(from,{y:'center'})});}
   undo(focus=true){undo(this.view);if(focus)this.view.focus();} redo(focus=true){redo(this.view);if(focus)this.view.focus();} search(){openSearchPanel(this.view);}
 }
 

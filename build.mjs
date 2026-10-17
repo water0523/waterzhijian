@@ -31,7 +31,7 @@ for(const dir of [...packages].sort()){
 }
 const logo='data:image/jpeg;base64,'+(await readFile('assets/brand-logo.jpg')).toString('base64');
 const template=(await readFile('index.template.html','utf8')).replaceAll('/*BRAND_LOGO*/',logo);
-const css=await readFile('src/app.css','utf8')+'\n'+await readFile('src/workspace.css','utf8')+'\n'+await readFile('src/studio.css','utf8')+'\n'+await readFile('src/workbench.css','utf8');
+const css=await readFile('src/app.css','utf8')+'\n'+await readFile('src/workspace.css','utf8')+'\n'+await readFile('src/studio.css','utf8')+'\n'+await readFile('src/workbench.css','utf8')+'\n'+await readFile('src/find-replace.css','utf8');
 const script=result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
 const payloads=vendors.map(v=>'<script type="application/x-feishui-module" data-encoding="gzip-base64" id="offline-module-'+v.name+'">'+Buffer.from(gzipSync(strToU8(v.script),{level:9,mtime:0})).toString('base64')+'</script>').join('\n')+'\n'+[...images].sort(([a],[b])=>a.localeCompare(b)).map(([key,data])=>'<script type="application/x-feishui-image" id="'+key+'">'+data+'</script>').join('\n');
 const html=template.replace('</body>',()=>'<script type="text/plain" id="third-party-notices">'+notices.replace(/<\/script/gi,'<\\/script')+'</script></body>').replace('/*APP_CSS*/',()=>css).replace('<script>/*APP_JS*/</script>',()=>payloads+'\n<script>'+script+'</script>');

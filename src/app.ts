@@ -24,6 +24,7 @@ import {inspectFonts} from './font-inspection';
 import {StickerController,updateStickerLines,flattenStickers,publicationHTML} from './stickers';
 import {PreviewEditor} from './preview-editor';
 import {PreviewFormatting} from './preview-formatting';
+import {FindReplace} from './find-replace';
 import {literaryRoles,styleDecoratedInitials,type InlineStyle} from './inline-style';
 import {showInlineMenu,mountInlineMenus,type InlineMenu} from './inline-picker';
 import {appendReferences} from './references';
@@ -57,6 +58,7 @@ let editor:MarkdownEditor,sync:ScrollSync;
 let stickerController:StickerController;
 let previewEditor:PreviewEditor;
 let previewFormatting:PreviewFormatting;
+let findReplace:FindReplace;
 let night=readPreference('appearance','day')==='night';
 let fontInspection=readPreference('font-inspection','false')==='true';
 const savedBrightness=Number(readPreference('preview-brightness','78'));
@@ -153,7 +155,7 @@ async function saveBatch(){
     return true;
   }catch(e){paintSaveState('error','保存失败 · 请立即导出备份');toast('浏览器保存失败，当前内容仍在。请导出文件备份。'+errorMessage(e),true);return false;}
 }
-function queueRender(){clearTimeout(renderTimer);if(previewEditor?.updating){updateStats();return;}renderTimer=window.setTimeout(()=>{if(editor.view.composing){queueRender();return;}render();},200);}
+function queueRender(){clearTimeout(renderTimer);findReplace?.refresh();if(previewEditor?.updating){updateStats();return;}renderTimer=window.setTimeout(()=>{if(editor.view.composing){queueRender();return;}render();},200);}
 function updateStats(){
   const walker=document.createTreeWalker($('preview'),NodeFilter.SHOW_TEXT,{acceptNode:node=>node.parentElement?.closest('[aria-hidden="true"],svg,.math-inline,.math-display,.footnote-backref,.article-references')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
   const chunks:string[]=[];while(walker.nextNode())chunks.push(walker.currentNode.textContent||'');
@@ -198,6 +200,7 @@ function syncCatalogLayout(){
 }
 function toggleThemeSidebar(){const panel=$('theme-sidebar');clearThemePreview();panel.hidden=!panel.hidden;if(!panel.hidden)themeSidebar?.reveal();preference('theme-sidebar-open',String(!panel.hidden));syncCatalogLayout();}
 function render(){
+  findReplace?.refresh();
   syncArticleTitle(current);
   clearTimeout(renderTimer);const start=performance.now();const reading=sync?.capture()||0;
   try{
@@ -811,6 +814,8 @@ async function init(){
   sync=new ScrollSync(editor,$('preview-scroll'),$('preview'));
   previewEditor=new PreviewEditor($('preview'),editor,render,toast);
   previewFormatting=new PreviewFormatting($('preview'),editor,render);
+  findReplace=new FindReplace({editor,preview:$('preview'),articleId:()=>current.id,reveal:()=>setWorkspaceView('compare'),render,notify:toast,renderSample:(root,markdown)=>{root.innerHTML=renderMarkdown(markdown,assets).html;if(publisher==='wechat')decorateTheme(root,themeById(current.theme));}});
+  $('search-button').textContent='⌕ 查找替换';$('search-button').title='查找文字或格式，支持替换与批量修改（Ctrl+F / Ctrl+H）';$('search-button').setAttribute('aria-expanded','false');
   $('preview-edit-button').title='点击修改文字；直接划选预览文字即可调整字体、荧光等格式';
   stickerController=new StickerController($('preview'),()=>current,assets,()=>{markDirty();requestAnimationFrame(()=>sync.rebuild());},makeSticker,restoreSticker,()=>void showStickerRegions().catch(e=>toast(errorMessage(e),true)));
   bind('modal-close',closeModal);modal.addEventListener('cancel',e=>{e.preventDefault();const detail=document.getElementById('theme-detail');if(detail&&!detail.hidden)$('theme-detail-close').click();else closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
@@ -882,7 +887,7 @@ async function init(){
   $('preview').addEventListener('click',event=>{if(previewEditor.enabled||publisher!=='wechat')return;const target=event.target as HTMLElement,group=target.closest<HTMLElement>('.image-gallery');if(group){event.stopImmediatePropagation();showImageLayouts(group.dataset.gallery!,layoutButton);return;}const image=target.closest<HTMLElement>('.image-wrap');if((themeById(current.theme).baseId||current.theme)==='magazine'&&image){event.stopImmediatePropagation();showMagazineImage(image);}},true);
   const dividerButton=document.createElement('button');dividerButton.id='divider-button';dividerButton.textContent='分割线 ▾';$('image-layout-button').after(dividerButton);dividerButton.onclick=()=>showDividers(dividerButton);
   const indentButton=document.createElement('button');indentButton.id='indent-toggle';indentButton.textContent='段首空两格';indentButton.title='自动缩进正文首行；不改变 Markdown 内容';$('inline-style-button').before(indentButton);indentButton.onclick=()=>{current.typography.indent=!(current.typography.indent??themeDefaults(themeById(current.theme)).indent);markDirty();render();if(!$('style-panel').hidden)renderStylePanel();};
-  bind('math-button',showFormulas);bind('assets-button',showAssets);bind('toc-button',showTOC);bind('undo-button',()=>editor.undo());bind('redo-button',()=>editor.redo());bind('search-button',()=>editor.search());
+  bind('math-button',showFormulas);bind('assets-button',showAssets);bind('toc-button',showTOC);bind('undo-button',()=>editor.undo());bind('redo-button',()=>editor.redo());bind('search-button',()=>findReplace.toggle());
   const writingButton=document.createElement('button');writingButton.id='writing-tools-button';writingButton.className='tool-button';writingButton.setAttribute('aria-label','写作助手');writingButton.title='公式命令补全、写作检查、文字整理与恢复点';writingButton.innerHTML='✎ <span>写作助手</span> ▾';$('assets-button').before(writingButton);writingButton.onclick=()=>showWritingTools(writingButton);
   const editionButton=document.createElement('button');editionButton.id='edition-block-button';editionButton.textContent='模板组件 ▾';editionButton.title='预览与插入杂志、新闻和文学科普组件';$('folio-block-button').after(editionButton);editionButton.onclick=()=>showEditionElements(editionButton);
   const examButton=document.createElement('button');examButton.id='exam-block-button';examButton.textContent='试卷元素 ▾';examButton.hidden=true;examButton.title='预览与插入卷头、题目、选项、答题区和参考答案';$('edition-block-button').after(examButton);examButton.onclick=()=>showExamElements(examButton);
