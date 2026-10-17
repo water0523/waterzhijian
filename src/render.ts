@@ -215,6 +215,7 @@ export function exportFragment(article:HTMLElement):string{
   clone.classList.remove('text-editing');
   const originals=[article,...article.querySelectorAll<HTMLElement>('*')];
   const copies=[clone,...clone.querySelectorAll<HTMLElement>('*')];
+  const editorOnly=[...clone.querySelectorAll('[data-editor-only]')];
   originals.forEach((el,i)=>{
     const target=copies[i];
     if(el.namespaceURI!=='http://www.w3.org/2000/svg'){
@@ -231,6 +232,7 @@ export function exportFragment(article:HTMLElement):string{
     for(const attr of [...target.attributes])if(attr.name.startsWith('data-')||['contenteditable','loading'].includes(attr.name))target.removeAttribute(attr.name);
   });
   clone.style.width='100%';clone.style.maxWidth='100%';clone.style.margin='0';
+  editorOnly.forEach(el=>el.remove());
   clone.querySelectorAll('.footnote-backref').forEach(el=>el.remove());
   clone.querySelectorAll('.sticker-handle').forEach(el=>el.remove());
   clone.querySelectorAll('.sticker-item').forEach(el=>{el.classList.remove('selected');el.removeAttribute('tabindex');el.removeAttribute('role');});

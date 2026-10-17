@@ -1,4 +1,5 @@
 import MarkdownIt from 'markdown-it';
+import {inspectComponentStructure} from './component-check';
 const parser=new MarkdownIt({html:false});
 export interface WritingIssue {line:number;title:string;detail:string}
 function protectedLines(text:string){
@@ -71,7 +72,7 @@ function inlineVisible(line:string){
   return line.replace(/(`+)([\s\S]*?)\1/g,'').replace(/\$(?:\\.|[^$])*\$/g,'').replace(/https?:\/\/\S+/g,'');
 }
 export function inspectWriting(text:string):WritingIssue[]{
-  const {lines,protectedSet}=protectedLines(text),issues:WritingIssue[]=[];let level=0,h1=0;
+  const {lines,protectedSet}=protectedLines(text),issues:WritingIssue[]=[...inspectComponentStructure(text)];let level=0,h1=0;
   const add=(line:number,title:string,detail:string)=>{if(issues.length<80)issues.push({line,title,detail});};
   for(const token of parser.parse(text,{})){
     if(token.type!=='heading_open'||!token.map||protectedSet.has(token.map[0]))continue;

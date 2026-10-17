@@ -41,6 +41,8 @@ import {exportOptionsHTML} from './export-options';
 import {showFormatRewrite} from './format-rewrite';
 import {uiIcon} from './ui-icons';
 import {mountDownloadLocation,showDownloadLocation,openDownloadFolder} from './download-location';
+import {mountCodeTools} from './code-tools';
+import {inspectComponentStructure} from './component-check';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const assetStore=new Map<string,Asset>();const articles=new Map<string,Article>();
@@ -55,6 +57,7 @@ let fontInspection=readPreference('font-inspection','false')==='true';
 const savedBrightness=Number(readPreference('preview-brightness','78'));
 let brightness=Number.isFinite(savedBrightness)?Math.max(35,Math.min(100,savedBrightness)):78;
 let renderResult:RenderResult={html:'',errors:[],missing:[],external:[]};
+let componentIssues:ReturnType<typeof inspectComponentStructure>=[];
 let renderTimer=0,saveTimer=0,toastTimer=0,dirtyGeneration=0,savedGeneration=0,trash=false;
 let savePromise:Promise<boolean>|undefined,recoveryWarning=false;
 const dirtyArticles=new Set<string>(),dirtyAssets=new Set<string>();
@@ -207,6 +210,7 @@ function render(){
     }
     renderedArticleId=current.id;
     if(publisher==='wechat'&&referencesEnabled())appendReferences($('preview'));
+    mountCodeTools($('preview'));
     stickerController?.setEnabled(publisher==='wechat'&&!previewEditor?.enabled);if(publisher==='wechat')stickerController?.render();
     previewEditor?.attach();inspectFonts($('preview'),fontInspection);
     $('theme-name').textContent=committed.name;$('theme-dot').style.background=committed.accent;$('preview-caption-name').textContent=publisher==='zhihu'?'知乎 · 标准 Markdown':(peekThemeId?'试看 · ':'')+theme.name;
@@ -215,8 +219,10 @@ function render(){
     themeSidebar?.updateCurrent();
     $<HTMLButtonElement>('theme-button').disabled=publisher==='zhihu';$<HTMLButtonElement>('style-button').disabled=publisher==='zhihu';if(publisher==='zhihu')$('style-panel').hidden=true;
     updateStats();
-    const problems=renderResult.errors.length+renderResult.missing.length;
+    componentIssues=inspectComponentStructure(current.markdown);
+    const problems=renderResult.errors.length+renderResult.missing.length+componentIssues.length;
     $('render-state').textContent=problems?`${problems} 处待检查`:'实时预览';$('render-state').className=problems?'render-error':'';
+    if(problems){$('render-state').tabIndex=0;$('render-state').setAttribute('role','button');$('render-state').title=renderResult.errors[0]?.message||(renderResult.missing.length?'点击检查缺失图片':componentIssues[0]?.detail)||'点击定位需要检查的内容';}else{$('render-state').removeAttribute('tabindex');$('render-state').removeAttribute('role');$('render-state').removeAttribute('title');}
     $('asset-count').textContent=String($('preview').querySelectorAll('img,.math-inline,.math-display').length);
     for(const el of $('preview').querySelectorAll<HTMLElement>('.math-error'))el.onclick=()=>{editor.goto(Number(el.dataset.line)+1);toast(el.title,true);};
     requestAnimationFrame(()=>{sync?.rebuild();sync?.restore(reading);});
@@ -918,7 +924,8 @@ async function init(){
     }else if(!trash)switchArticle(article.id);
   });
   $('article-list').addEventListener('keydown',e=>{if(e.key==='Escape'){const menu=(e.target as HTMLElement).closest<HTMLDetailsElement>('.article-actions[open]');if(menu){e.preventDefault();menu.open=false;menu.querySelector('summary')?.focus();return;}}if(e.key==='Enter'&&(e.target as HTMLElement).classList.contains('article-item'))(e.target as HTMLElement).click();});
-  bind('render-state',()=>{if(renderResult.errors.length){editor.goto(renderResult.errors[0].line);toast(renderResult.errors[0].message,true);}else if(renderResult.missing.length)showAssets();});
+  bind('render-state',()=>{if(renderResult.errors.length){editor.goto(renderResult.errors[0].line);toast(renderResult.errors[0].message,true);}else if(renderResult.missing.length)showAssets();else if(componentIssues.length){editor.goto(componentIssues[0].line);toast(componentIssues[0].detail,true);}});
+  bind('render-state',event=>{if(['Enter',' '].includes((event as KeyboardEvent).key)&&$('render-state').getAttribute('role')==='button'){event.preventDefault();$('render-state').click();}},'keydown');
   const splitter=$('splitter');splitter.addEventListener('pointerdown',e=>{splitter.setPointerCapture(e.pointerId);document.body.style.userSelect='none';});
   splitter.addEventListener('pointermove',e=>{if(!splitter.hasPointerCapture(e.pointerId))return;const rect=$('split-workspace').getBoundingClientRect();const share=Math.max(25,Math.min(75,(e.clientX-rect.left)/rect.width*100));$('split-workspace').style.setProperty('--editor-share',share+'%');editor.view.requestMeasure();sync.rebuild();});
   const rememberSplit=()=>{document.body.style.userSelect='';preference('split-share',$('split-workspace').style.getPropertyValue('--editor-share').replace('%',''));sync.rebuild();};

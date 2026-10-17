@@ -7,7 +7,11 @@ export function appendReferences(article:HTMLElement){
     let number=numbers.get(url);
     if(!number){number=references.length+1;numbers.set(url,number);references.push({url,label:link.textContent?.trim()||url});}
     const text=document.createElement('span');text.className='reference-label';text.append(...link.childNodes);
-    const mark=document.createElement('sup');mark.className='reference-marker';mark.textContent='[参'+number+']';mark.setAttribute('aria-hidden','true');text.append(mark);link.replaceWith(text);
+    const inSup=!!link.closest('sup'),numeric=/^\s*\[?\d+\]?\s*$/.test(text.textContent||'');
+    const mark=document.createElement(inSup?'span':'sup');mark.className='reference-marker';mark.textContent='[参'+number+']';
+    if(inSup&&numeric){text.replaceChildren(mark);mark.setAttribute('aria-label','参考链接 '+number);}
+    else {mark.setAttribute('aria-hidden','true');text.append(mark);}
+    link.replaceWith(text);
   }
   if(!references.length)return;
   const section=document.createElement('section');section.className='article-references';

@@ -85,6 +85,15 @@ for(const channel of ['chrome','msedge']){
 await addTree('folder-helper');
 for(const name of ['docs/plans/2026-10-16-download-location.md','tests/download-location.mjs','test-results/download-location.json','test-results/download-location-connected-edge.png','dist/非水成章-下载定位助手.zip'])await add(name);
 for(const channel of ['chrome','msedge'])for(const mode of ['day','night'])await add('test-results/download-location-'+mode+'-'+channel+'.png');
+await addTree('体验样稿');
+for(const name of ['写作体验与改进记录.md','docs/plans/2026-10-17-writing-polish.md','tests/writing-field-review.mjs','tests/writing-polish.mjs','dist/写作体验主题预览.png'])await add(name);
+for(const channel of ['chrome','msedge']){
+  await add('test-results/writing-polish-'+channel+'/report.json');
+  for(const shot of ['code-day.png','code-night.png','references.png','structure-warning.png'])await add('test-results/writing-polish-'+channel+'/'+shot);
+  await add('test-results/field-after-'+channel+'/report.json');
+  await add('test-results/field-after-'+channel+'/overview.png');
+}
+for(const shot of ['report.json','2-opening.png','4-code.png','4-references.png','5-opening.png'])await add('test-results/field-before-chrome/'+shot);
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);
