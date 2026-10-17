@@ -198,7 +198,7 @@ function render(){
   try{
     const disclosureKey=(node:HTMLElement)=>node.className+'|'+node.dataset.line+'|'+node.querySelector(':scope > summary')?.textContent;
     const disclosures=new Map(renderedArticleId===current.id?[...$('preview').querySelectorAll<HTMLDetailsElement>('details')].map(n=>[disclosureKey(n),{open:n.open,scroll:n.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content,:scope > .edition-content')?.scrollTop||0}] as const):[]);
-    renderResult=renderMarkdown(current.markdown,assets,previewEditor?.enabled);
+    renderResult=renderMarkdown(current.markdown,assets,previewEditor?.enabled,current.typography);
     const committed=themeById(current.theme),theme=themeById(peekThemeId||current.theme);$('article-style').textContent=publisher==='zhihu'?standardCSS():themeCSS(theme,peekThemeId?{}:current.typography);
     const indentButton=document.getElementById('indent-toggle') as HTMLButtonElement|null;
     if(indentButton){const active=current.typography.indent??themeDefaults(committed).indent;indentButton.classList.toggle('active',active);indentButton.setAttribute('aria-pressed',String(active));indentButton.disabled=publisher==='zhihu';}
@@ -291,7 +291,7 @@ function themeThumbnail(id:string){
   const html=`<style>${themeCSS(t).replaceAll('.article','.theme-sample-'+id)}</style><div class="theme-live-window">${node.outerHTML}</div>`;
   themePreviews.set(id,html);return html;
 }
-function applyArticleTheme(id:string){clearThemePreview(false);snapshot(current,true);current.theme=id;current.typography={};markDirty();render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast('已切换为「'+themeById(id).name+'」');}
+function applyArticleTheme(id:string){clearThemePreview(false);snapshot(current,true);current.theme=id;current.typography=current.typography.equationNumbers===undefined?{}:{equationNumbers:current.typography.equationNumbers};markDirty();render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast('已切换为「'+themeById(id).name+'」');}
 function themeHost(){return {open:openModal,close:closeModal,notify:toast,current:()=>current.theme,apply:applyArticleTheme,changed:()=>{themePreviews.clear();themeSidebar?.refresh();render();if(!$('style-panel').hidden)renderStylePanel();}};}
 function showThemes(filter='全部'){
   let selectedDetail='';
@@ -342,6 +342,8 @@ function renderStylePanel(){
   $('reset-style').insertAdjacentHTML('afterend','<button id="manage-theme-library" class="button outline full">完整主题库 / 导入与恢复</button>');bind('manage-theme-library',()=>showThemeManager(themeHost()));
   $('reset-style').insertAdjacentHTML('beforebegin',`<label class="switch-row">外部链接转文末参考<input id="setting-references" type="checkbox" ${referencesEnabled()?'checked':''}></label><p class="help">关闭时保留直接超链接（默认）。选择随当前文章保存；知乎模式始终保留超链接。</p>`);
   bind('setting-references',()=>setLinkMode($<HTMLInputElement>('setting-references').checked?'end':'direct'),'change');
+  $('reset-style').insertAdjacentHTML('beforebegin',`<label class="switch-row">公式自动编号<input id="setting-equationNumbers" type="checkbox" ${o.equationNumbers?'checked':''} aria-describedby="equation-numbers-help"></label><p id="equation-numbers-help" class="help">独立公式按全文顺序显示 (1)、(2)…；保留手写 <code>\\tag</code>，<code>\\notag</code> 可跳过。行内公式不编号，不修改原文。</p>`);
+  bind('setting-equationNumbers',()=>{snapshot(current,true);current.typography.equationNumbers=$<HTMLInputElement>('setting-equationNumbers').checked;markDirty();render();},'change');
   $('reset-style').insertAdjacentHTML('beforebegin',`<label for="setting-tableStyle">表格样式</label><select id="setting-tableStyle">${[['theme','跟随主题'],['three-line','三线表 · 学术'],['striped','斑马纹 · 数据'],['grid','网格 · 清晰']].map(([id,name])=>`<option value="${id}" ${id===(o.tableStyle||'theme')?'selected':''}>${name}</option>`).join('')}</select><p class="help">表格样式用于公众号排版及主题 HTML / PDF。知乎与常规 Word 保持标准表格。</p>`);
   bind('setting-tableStyle',()=>{current.typography.tableStyle=$<HTMLSelectElement>('setting-tableStyle').value as Typography['tableStyle'];markDirty();render();},'change');
   for(const key of ['font','headingFont','size','lineHeight','paragraphGap','padding','accent','indent'])bind('setting-'+key,()=>{
@@ -550,7 +552,7 @@ function showJournalBlocks(anchor:HTMLElement){
 }
 
 function enhanceComponentPreviews(panel:HTMLElement,attribute:string,source:string,back:()=>void){
- const theme=themeById(current.theme),resource=new Map([...assets,...folioAssets().map(a=>[a.id,a] as const),...editionAssets().map(a=>[a.id,a] as const)]),article=document.createElement('article');article.innerHTML=renderMarkdown(source,resource).html;decorateTheme(article,theme);
+ const theme=themeById(current.theme),resource=new Map([...assets,...folioAssets().map(a=>[a.id,a] as const),...editionAssets().map(a=>[a.id,a] as const)]),article=document.createElement('article');article.innerHTML=renderMarkdown(source,resource,false,current.typography).html;decorateTheme(article,theme);
  const style=document.createElement('style');style.textContent=themeCSS(theme,current.typography).replaceAll('.article','.component-preview-article');panel.prepend(style);
  for(const button of panel.querySelectorAll<HTMLButtonElement>('[data-'+attribute+']')){
   const key=button.getAttribute('data-'+attribute)!,cls=attribute==='journal-block'?'journal-'+key:attribute==='folio-block'?'folio-'+key:key;

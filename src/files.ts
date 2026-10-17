@@ -37,6 +37,7 @@ function validTypography(t:any):Typography{
   for(const [key,min,max] of [['size',12,24],['lineHeight',1.3,2.8],['paragraphGap',0,40],['padding',12,48]] as const)if(Number.isFinite(t[key]))out[key]=Math.min(max,Math.max(min,t[key]));
   if(/^#[a-f\d]{6}$/i.test(t.accent))out.accent=t.accent;
   if(typeof t.indent==='boolean')out.indent=t.indent;
+  if(typeof t.equationNumbers==='boolean')out.equationNumbers=t.equationNumbers;
   if(['theme','three-line','striped','grid'].includes(t.tableStyle))out.tableStyle=t.tableStyle;
   if(t.elements!==undefined)out.elements=validateElements(t.elements,'文章元素样式');
   return out;

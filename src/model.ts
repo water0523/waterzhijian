@@ -3,6 +3,7 @@ export interface Typography {
   font?: string; headingFont?: string; size?: number; lineHeight?: number;
   paragraphGap?: number; padding?: number; accent?: string; indent?: boolean;
   tableStyle?: 'theme' | 'three-line' | 'striped' | 'grid';
+  equationNumbers?: boolean;
   elements?:Partial<Record<ElementName,ElementStyle>>;
 }
 export interface Asset {

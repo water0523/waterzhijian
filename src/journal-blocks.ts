@@ -33,7 +33,12 @@ export function installJournalBlocks(md:MarkdownIt){
     if(tokens[i].tag==='h2'&&tokens[i].level===0){env.journalSection=(env.journalSection||0)+1;env.journalEquation=0;}
     return heading?heading(tokens,i,o,env,self):self.renderToken(tokens,i,o);
   };
-  md.renderer.rules.journal_equation_number=(_tokens,_i,_o,env)=>`(式 ${env.journalSection||0}.${env.journalEquation=(env.journalEquation||0)+1})`;
+  md.renderer.rules.journal_equation_number=(_tokens,_i,_o,env)=>env.equationNumbers?'':`(式 ${env.journalSection||0}.${env.journalEquation=(env.journalEquation||0)+1})`;
+  // The article-wide TeX tags replace only generated component numbers;
+  // user-written component titles stay intact.
+  for(const [type,offset] of [['journal_title_open',1],['journal_title_close',-1]] as const){
+    md.renderer.rules[type]=(tokens,i,_o,env,self)=>env.equationNumbers&&tokens[i+offset]?.type==='journal_equation_number'?'':self.renderToken(tokens,i,_o);
+  }
 }
 
 // Standard documents retain headings, paragraphs and lists without themed boxes.

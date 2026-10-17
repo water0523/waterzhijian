@@ -13,7 +13,7 @@ import {installEditionBlocks} from './edition-blocks';
 import {normalizeEditionPublication} from './edition-design';
 
 export interface RenderResult {html:string; errors:{line:number;message:string}[]; external:string[]; missing:string[]}
-export function renderMath(source:string,display:boolean,startNumber=0){return offlineModule<typeof import('./math-engine')>('math').renderMath(source,display,startNumber);}
+export function renderMath(source:string,display:boolean,startNumber=0,equationNumbers=false){return offlineModule<typeof import('./math-engine')>('math').renderMath(source,display,startNumber,equationNumbers);}
 
 const md = new MarkdownIt({html:false,linkify:true,typographer:true,breaks:false,
   highlight:(s,lang)=>{if(!lang)return escapeHTML(s);const hljs=offlineModule<typeof import('./highlight-engine')>('highlight').default;return hljs.getLanguage(lang)?hljs.highlight(s,{language:lang,ignoreIllegals:true}).value:escapeHTML(s);}
@@ -141,7 +141,7 @@ md.core.ruler.after('inline','source_lines',state=>{
   }
 });
 function mathHTML(source:string,display:boolean,line:number,env:any){
-  const result=renderMath(source,display,env.equationNumber||0);
+  const result=renderMath(source,display,env.equationNumber||0,env.equationNumbers);
   if(!result.error)env.equationNumber=result.nextNumber??env.equationNumber;
   if(result.error){env.errors.push({line:line+1,message:result.error});return `<span class="math-error" data-line="${line}" title="第 ${line+1} 行：${escapeHTML(result.error)}">${escapeHTML(source)}<br>公式错误：${escapeHTML(result.error)}</span>`;}
   return `<${display?'section':'span'} class="math-${display?'display':'inline'}" data-tex="${escapeHTML(source)}" data-line="${line}">${result.html}</${display?'section':'span'}>`;
@@ -177,8 +177,8 @@ md.core.ruler.after('text_join','math_text_styles',state=>{
     }
   }
 });
-export function renderMarkdown(source:string,assets:Map<string,Asset>,editable=false):RenderResult{
-  const env={assets,editable,source,equationNumber:0,errors:[] as RenderResult['errors'],missing:[] as string[],external:[] as string[]};
+export function renderMarkdown(source:string,assets:Map<string,Asset>,editable=false,options:{equationNumbers?:boolean}={}):RenderResult{
+  const env={assets,editable,source,equationNumbers:options.equationNumbers===true,equationNumber:0,errors:[] as RenderResult['errors'],missing:[] as string[],external:[] as string[]};
   const raw=md.render(source,env);
   const html=DOMPurify.sanitize(raw,{ADD_TAGS:['mjx-container'],ADD_ATTR:['xmlns','display','focusable'],FORBID_TAGS:['script','iframe','object','embed','foreignObject'],ALLOW_DATA_ATTR:true});
   return {html,errors:env.errors,missing:[...new Set(env.missing)],external:[...new Set(env.external)]};

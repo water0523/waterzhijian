@@ -94,6 +94,8 @@ for(const channel of ['chrome','msedge']){
   await add('test-results/field-after-'+channel+'/overview.png');
 }
 for(const shot of ['report.json','2-opening.png','4-code.png','4-references.png','5-opening.png'])await add('test-results/field-before-chrome/'+shot);
+for(const name of ['docs/plans/2026-10-17-equation-numbers.md','tests/equation-numbers.mjs'])await add(name);
+for(const channel of ['chrome','msedge'])for(const file of ['report.json','day.png','night.png','settings.png','article.png','theme.pdf','standard.pdf'])await add('test-results/equation-numbers-'+channel+'/'+file);
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);

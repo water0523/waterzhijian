@@ -24,7 +24,7 @@ export function standardCSS(selector='.article'){
   ${selector} .footnotes{font-size:12px;border-top:1px solid #ddd;margin-top:2em;padding-top:12px;color:#666}${selector} .math-error,${selector} .missing-image{color:#9b3838;background:#fff0ed;padding:8px}`;
 }
 export function standardBody(article:Article,assets:Map<string,Asset>,rendered?:string){
-  const node=document.createElement('div');node.innerHTML=rendered??renderMarkdown(article.markdown,assets).html;
+  const node=document.createElement('div');node.innerHTML=rendered??renderMarkdown(article.markdown,assets,false,article.typography).html;
   flattenJournalBlocks(node);
   flattenFolioBlocks(node);
   flattenEditionBlocks(node);
