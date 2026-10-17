@@ -1,6 +1,6 @@
 import type {Typography} from './model';
 
-export const themeGroups=['科普','文学','通用'] as const;
+export const themeGroups=['科普','文学','通用','试卷'] as const;
 export const elementNames=['h1','h2','h3','quote','caption','table','list','code','formula','poem','divider'] as const;
 export type ElementName=typeof elementNames[number];
 export interface ElementStyle {

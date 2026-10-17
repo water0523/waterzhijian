@@ -3,6 +3,8 @@ import {readabilityCSS} from './theme-readability';
 import {journalCSS} from './journal-design';
 import {folioCSS} from './folio-design';
 import {editionCSS} from './edition-design';
+import {examCSS} from './exam-design';
+import {examThemes} from './exam-themes';
 import {fontStacks, type Typography} from './model';
 import type {Theme,ThemeDefinition,ElementStyle} from './theme-types';
 import {parseThemeFile,libraryDocument,validateTheme} from './theme-schema';
@@ -63,6 +65,7 @@ const pairings:Record<string,[string,string,string?,string?]>={
   orange:['sans','hei','kai','sans'],blueprint:['sans','mono','sans','mono'],matcha:['serif','kai','kai','serif'],berry:['sans','sans','serif','sans'],gold:['serif','serif','kai','serif'],ocean:['sans','serif','kai','serif'],pixel:['sans','mono','mono','mono'],sunset:['serif','kai','kai','serif'],lavender:['serif','kai','kai','serif'],newspaper:['serif','serif','kai','mono'],cream:['sans','kai','kai','sans'],terracotta:['serif','hei','serif','sans'],cartoon:['sans','sans','kai','sans'],arcade:['sans','mono','mono','mono'],kuromi:['sans','hei','kai','sans'],pop:['sans','hei','hei','sans'],classical:['serif','serif','kai','fang']
 };
 for(const t of builtInThemes){const [body,heading,quote,caption]=pairings[t.id]||['noto-sans','noto-serif','kai','noto-sans'];Object.assign(t,{font:body,headingFont:heading,quoteFont:quote,captionFont:caption,poemFont:t.id==='folio'?'wenkai':['moon','ink','classical'].includes(t.id)?'kai':body,codeFont:['journal','press','gewu'].includes(t.variant)?'jetbrains':'mono'});}
+builtInThemes.push(...examThemes);
 export const builtInIds=builtInThemes.map(t=>t.id);
 export function materializeTheme(d:ThemeDefinition):Theme{
   const base=builtInThemes.find(t=>t.id===d.base)!;
@@ -196,6 +199,7 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   ${journalCSS(theme,a)}
   ${folioCSS(theme,a)}
   ${editionCSS(theme,a)}
+  ${examCSS(theme,o)}
   .article h1,.article h2,.article h3,.article h4,.article h5,.article h6{font-family:${hf}}
   .article blockquote{font-family:${fontStacks[theme.quoteFont||theme.font]||f}}
   .article .image-caption{font-family:${fontStacks[theme.captionFont||theme.font]||f}}

@@ -11,6 +11,7 @@ import {installFolioBlocks} from './folio-blocks';
 import {normalizeFolioPublication} from './folio-design';
 import {installEditionBlocks} from './edition-blocks';
 import {normalizeEditionPublication} from './edition-design';
+import {installExamBlocks,layoutExamOptions,normalizeExamPublication} from './exam-blocks';
 
 export interface RenderResult {html:string; errors:{line:number;message:string}[]; external:string[]; missing:string[]}
 export function renderMath(source:string,display:boolean,startNumber=0,equationNumbers=false){return offlineModule<typeof import('./math-engine')>('math').renderMath(source,display,startNumber,equationNumbers);}
@@ -22,6 +23,7 @@ const baseValidate=md.validateLink;
 installJournalBlocks(md);
 installFolioBlocks(md);
 installEditionBlocks(md);
+installExamBlocks(md);
 md.validateLink=(url:string)=>/^asset:[a-zA-Z0-9-]+$/.test(url)||baseValidate(url);
 
 // Accept only paired, attribute-free script tags. Keep raw HTML disabled, and
@@ -180,7 +182,8 @@ md.core.ruler.after('text_join','math_text_styles',state=>{
 export function renderMarkdown(source:string,assets:Map<string,Asset>,editable=false,options:{equationNumbers?:boolean}={}):RenderResult{
   const env={assets,editable,source,equationNumbers:options.equationNumbers===true,equationNumber:0,errors:[] as RenderResult['errors'],missing:[] as string[],external:[] as string[]};
   const raw=md.render(source,env);
-  const html=DOMPurify.sanitize(raw,{ADD_TAGS:['mjx-container'],ADD_ATTR:['xmlns','display','focusable'],FORBID_TAGS:['script','iframe','object','embed','foreignObject'],ALLOW_DATA_ATTR:true});
+  let html=DOMPurify.sanitize(raw,{ADD_TAGS:['mjx-container'],ADD_ATTR:['xmlns','display','focusable'],FORBID_TAGS:['script','iframe','object','embed','foreignObject'],ALLOW_DATA_ATTR:true});
+  if(html.includes('exam-options')){const node=document.createElement('div');node.innerHTML=html;layoutExamOptions(node);html=node.innerHTML;}
   return {html,errors:env.errors,missing:[...new Set(env.missing)],external:[...new Set(env.external)]};
 }
 export function firstArticleHeading(source:string):string|null{
@@ -199,7 +202,7 @@ export function mappedStyleBlocks(source:string){
   for(const token of tokens){
     if(token.nesting===1)stack.push(token);
     if(token.type==='inline'){
-      const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/');
+    const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem|exam)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/');
       blocks.push({tokens:token.children||[],scope:scope||'paragraph'});
     }
     if(token.map&&['fence','code_block','math_block','hr','decorative_divider','table_open'].includes(token.type))barriers.push({from:starts[token.map[0]],to:starts[token.map[1]]??source.length});
@@ -251,6 +254,7 @@ export function exportFragment(article:HTMLElement):string{
   });
   normalizeFolioPublication(clone);
   normalizeEditionPublication(clone);
+  normalizeExamPublication(clone);
   // Inline styles are authoritative, so no dependency on editor CSS remains.
   return clone.outerHTML;
 }

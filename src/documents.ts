@@ -8,6 +8,9 @@ import {inlineFonts} from './inline-style';
 import {flattenJournalBlocks} from './journal-blocks';
 import {flattenFolioBlocks} from './folio-blocks';
 import {flattenEditionBlocks} from './edition-blocks';
+import {flattenExamBlocks} from './exam-blocks';
+import {themeById} from './themes';
+import {isExam} from './exam-design';
 
 export function standardCSS(selector='.article'){
   return `${selector}{box-sizing:border-box;background:#fff;color:#222;font:16px/1.75 "Microsoft YaHei","PingFang SC",sans-serif;padding:24px;overflow-wrap:anywhere;text-align:left;display:flow-root}
@@ -21,6 +24,7 @@ export function standardCSS(selector='.article'){
   ${selector} img{max-width:100%;height:auto}${selector} .image-wrap{display:block;margin:1em 0;text-indent:0}${selector} .image-caption{display:block;color:#666;font-size:12px;line-height:1.7;margin-top:8px}${selector} .image-source{display:block;color:#777;font-size:11px;line-height:1.7;margin-top:4px}
   ${selector} hr{border:0;border-top:1px solid #ddd;margin:1.5em 0;clear:both}${selector} .poem{white-space:pre-wrap;line-height:2;margin:1.5em 0;text-align:left}${selector} .poem[data-align=center]{text-align:center}
   ${selector} .math-inline{display:inline-block;vertical-align:middle;max-width:100%}${selector} .math-display{text-align:center;margin:1em 0;padding:10px 0;clear:both;overflow-x:auto}${selector} svg{max-width:100%;height:auto;vertical-align:middle}${selector} mjx-container{display:inline-block;margin:0!important;max-width:100%}
+  ${selector} .exam-answer-line{height:32px;margin:0;border-bottom:1px solid #999}${selector} .exam-options-table,${selector} .exam-options-table td{border:0;background:transparent}${selector} .exam-center{text-align:center}
   ${selector} .footnotes{font-size:12px;border-top:1px solid #ddd;margin-top:2em;padding-top:12px;color:#666}${selector} .math-error,${selector} .missing-image{color:#9b3838;background:#fff0ed;padding:8px}`;
 }
 export function standardBody(article:Article,assets:Map<string,Asset>,rendered?:string){
@@ -28,6 +32,7 @@ export function standardBody(article:Article,assets:Map<string,Asset>,rendered?:
   flattenJournalBlocks(node);
   flattenFolioBlocks(node);
   flattenEditionBlocks(node);
+  flattenExamBlocks(node);
   node.querySelectorAll('.decorative-divider').forEach(el=>el.replaceWith(document.createElement('hr')));
   node.querySelectorAll('.image-gallery').forEach(group=>{
     const fragment=document.createDocumentFragment();group.querySelectorAll('.image-wrap,.missing-image').forEach(image=>{const p=document.createElement('p');p.append(image);fragment.append(p);});group.replaceWith(fragment);
@@ -62,6 +67,7 @@ async function rasterImage(img:HTMLImageElement,maxWidth=570):Promise<WordImageR
 export async function createWord(article:Article,assets:Map<string,Asset>):Promise<Blob>{
   const {Document,Packer,Paragraph,TextRun,ImageRun,Table,TableRow,TableCell,HeadingLevel,WidthType,AlignmentType,BorderStyle,ExternalHyperlink,LevelFormat,VerticalAlign,UnderlineType}=offlineModule<typeof import('./word-engine')>('word');
   const {host,content}=mountStandard(article,assets);
+  const theme=themeById(article.theme),exam=isExam(theme),chineseExam=exam&&(theme.baseId||theme.id)==='exam-chinese';
   const numbering:INumberingOptions['config'][number][]=[];let listSequence=0;
   try{
     const inline=async(node:Node,format:IRunOptions={}):Promise<ParagraphChild[]>=>{
@@ -77,6 +83,8 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
       if(node.tagName==='IMG')return [await rasterImage(node as HTMLImageElement)];
       if(node.tagName==='BR')return [new TextRun({...format,break:1})];
       const next={...format};if(node.tagName==='STRONG')next.bold=true;if(node.tagName==='EM')next.italics=true;if(node.tagName==='CODE'){next.font='Consolas';next.size=21;}if(node.tagName==='S')next.strike=true;if(node.tagName==='SUP'){next.superScript=true;next.subScript=false;}if(node.tagName==='SUB'){next.subScript=true;next.superScript=false;}
+      if(node.matches('.exam-key-text'))next.font={ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'宋体'};
+      if(node.matches('.exam-analysis-text')||chineseExam&&node.matches('.exam-reading'))next.font={ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'楷体'};
       if(node.classList.contains('inline-style')){
         const font=inlineFonts[node.dataset.inlineFont||''];if(font)next.font={ascii:font.word,hAnsi:font.word,eastAsia:font.word};
         if(node.style.fontSize)next.size=Math.round(Number.parseFloat(node.style.fontSize)*1.5);
@@ -98,11 +106,18 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
       for(const node of nodes){
         if(!(node instanceof HTMLElement))continue;
         const tag=node.tagName;
-        if(/^H[1-6]$/.test(tag)){const headings=[HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3,HeadingLevel.HEADING_4,HeadingLevel.HEADING_5,HeadingLevel.HEADING_6];output.push(new Paragraph({children:await inline(node),heading:headings[Number(tag[1])-1],keepNext:true,spacing:{before:260,after:160}}));}
+        if(node.matches('.exam-pagebreak'))output.push(new Paragraph({pageBreakBefore:true}));
+        else if(node.matches('.exam-answer-line'))output.push(new Paragraph({children:[new TextRun(' ')],spacing:{after:0,line:480},border:{bottom:{style:BorderStyle.SINGLE,size:4,color:'999999'}}}));
+        else if(node.matches('.exam-center'))output.push(new Paragraph({children:await inline(node),alignment:AlignmentType.CENTER,spacing:{after:100}}));
+        else if(node.matches('.exam-key-text'))output.push(new Paragraph({children:await inline(node,{font:{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'宋体'}}),spacing:{after:120,line:360}}));
+        else if(node.matches('.exam-analysis-text'))output.push(new Paragraph({children:await inline(node,{font:{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'楷体'}}),spacing:{after:120,line:400}}));
+        else if(chineseExam&&node.matches('.exam-reading'))output.push(new Paragraph({children:await inline(node,{font:{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'楷体'}}),spacing:{after:120,line:400}}));
+        else if(node.matches('.exam-question-heading'))output.push(new Paragraph({children:await inline(node),keepNext:true,spacing:{before:160,after:100}}));
+        else if(/^H[1-6]$/.test(tag)){const headings=[HeadingLevel.HEADING_1,HeadingLevel.HEADING_2,HeadingLevel.HEADING_3,HeadingLevel.HEADING_4,HeadingLevel.HEADING_5,HeadingLevel.HEADING_6];output.push(new Paragraph({children:await inline(node),heading:headings[Number(tag[1])-1],...(exam&&tag==='H1'?{alignment:AlignmentType.CENTER}:{}),keepNext:true,spacing:{before:260,after:160}}));}
         else if(tag==='TABLE'){
           const rows:WordTableRow[]=[];
           for(const row of node.querySelectorAll('tr')){const cells:WordTableCell[]=[];for(const cell of row.children)cells.push(new TableCell({children:[new Paragraph({children:await inline(cell),spacing:{after:60,before:60}})],verticalAlign:VerticalAlign.CENTER,shading:cell.tagName==='TH'?{fill:'EFEFEF'}:undefined,margins:{top:90,bottom:90,left:110,right:110}}));rows.push(new TableRow({children:cells,tableHeader:!!row.querySelector('th')}));}
-          const border={style:BorderStyle.SINGLE,size:4,color:'D9D9D9'};output.push(new Table({rows,width:{size:100,type:WidthType.PERCENTAGE},borders:{top:border,bottom:border,left:border,right:border,insideHorizontal:border,insideVertical:border}}));output.push(new Paragraph({spacing:{after:100}}));
+          const border={style:node.getAttribute('role')==='presentation'?BorderStyle.NONE:BorderStyle.SINGLE,size:4,color:'D9D9D9'};output.push(new Table({rows,width:{size:100,type:WidthType.PERCENTAGE},borders:{top:border,bottom:border,left:border,right:border,insideHorizontal:border,insideVertical:border}}));output.push(new Paragraph({spacing:{after:100}}));
         }else if(tag==='UL'||tag==='OL'){
           const reference='list-'+(++listSequence);if(tag==='OL')numbering.push({reference,levels:Array.from({length:9},(_,i)=>({level:i,format:LevelFormat.DECIMAL,text:`%${i+1}.`,alignment:AlignmentType.LEFT,style:{paragraph:{indent:{left:720*(i+1),hanging:360}}}}))});
           for(const li of [...node.children].filter(el=>el.tagName==='LI')){
@@ -123,7 +138,7 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
       return output;
     };
     const children=await blocks(content.children);
-    const doc=new Document({creator:'非水·成章',title:article.title,description:'Markdown 标准文档',styles:{default:{document:{run:{font:{ascii:'Calibri',eastAsia:'宋体',hAnsi:'Calibri'},size:24,color:'222222'},paragraph:{spacing:{after:180,line:330}}},heading1:{run:{font:'Microsoft YaHei',size:36,bold:true,color:'000000'}},heading2:{run:{font:'Microsoft YaHei',size:30,bold:true,color:'000000'}},heading3:{run:{font:'Microsoft YaHei',size:26,bold:true,color:'000000'}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1134,bottom:1134,left:1134,right:1134}}},children}]});
+    const doc=new Document({creator:'非水·成章',title:article.title,description:'Markdown 标准文档',styles:{default:{document:{run:{font:{ascii:exam?'Times New Roman':'Calibri',eastAsia:'宋体',hAnsi:exam?'Times New Roman':'Calibri'},size:24,color:'222222'},paragraph:{spacing:{after:180,line:330}}},heading1:{run:{font:exam?{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'黑体'}:'Microsoft YaHei',size:exam?40:36,bold:true,color:'000000'}},heading2:{run:{font:exam?{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'黑体'}:'Microsoft YaHei',size:exam?28:30,bold:true,color:'000000'}},heading3:{run:{font:exam?{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'黑体'}:'Microsoft YaHei',size:exam?24:26,bold:true,color:'000000'}}}},numbering:{config:numbering},sections:[{properties:{page:{size:{width:11906,height:16838},margin:{top:1134,bottom:1134,left:1134,right:1134}}},children}]});
     return await Packer.toBlob(doc);
   }finally{host.remove();}
 }

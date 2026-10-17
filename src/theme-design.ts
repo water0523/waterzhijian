@@ -2,6 +2,7 @@ import type {Theme} from './themes';
 import {scienceMotif,scienceCSS} from './science-design';
 import {decorateJournal,isJournal} from './journal-design';
 import {decorateFolio,isFolio} from './folio-design';
+import {isExam} from './exam-design';
 import {decorateEdition} from './edition-design';
 
 type Design={label:string;mark:string;number?:boolean;quote?:string;code?:string;tags:string[]};
@@ -51,6 +52,7 @@ export const designs:Record<string,Design>={
 };
 
 export function themeDesign(theme:Theme):Design{
+ if(isExam(theme))return {label:'',mark:'',number:false,quote:'',tags:['湖南高考',theme.name.split(' · ').at(-1)||'试卷','黑白印刷','宋体 / Times New Roman']};
  const base=designs[theme.baseId||theme.id]||designs.plain,o=theme.definition?.ornaments;
  return {...base,...(o?.label!==undefined?{label:o.label}:{}),...(o?.mark!==undefined?{mark:o.mark}:{}),...(o?.numbered!==undefined?{number:o.numbered}:{}),...(o?.quoteLabel!==undefined?{quote:o.quoteLabel}:{}),...(o?.codeLabel!==undefined?{code:o.codeLabel}:{}),tags:theme.definition?['自定义',...base.tags]:base.tags};
 }
@@ -65,6 +67,7 @@ const motifs:Record<string,string>={
 // Real elements keep chapter badges and ornaments in inline HTML exports.
 // They are created only for themed articles, never for Zhihu or standard Word.
 export function decorateTheme(node:HTMLElement,theme:Theme){
+ node.classList.toggle('exam-paper',isExam(theme));if(isExam(theme))return;
  const id=theme.baseId||theme.id,d=themeDesign(theme);
  const span=(cls:string,text:string)=>{const el=document.createElement('span');el.className=cls;el.textContent=text;el.setAttribute('aria-hidden','true');return el;};
  node.querySelectorAll<HTMLElement>('h1').forEach(h=>{if(d.label)h.prepend(span('theme-kicker',d.label));if(motifs[id]){const motif=span('theme-motif','');motif.innerHTML=motifs[id];h.prepend(motif);}});

@@ -10,6 +10,7 @@ import {folioSample,folioAssets} from './folio-sample';
 import {isFolio} from './folio-design';
 import {editionSamples,editionAssets} from './edition-samples';
 import {themeMatches} from './theme-search';
+import {examSamples} from './exam-samples';
 
 type Host={open:(title:string,html:string,eyebrow?:string)=>void;close:()=>void;notify:(message:string,error?:boolean)=>void;changed:()=>void;apply:(id:string)=>void;current:()=>string};
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
@@ -22,7 +23,7 @@ const guide=`# 非水·成章主题文件规范 · v1
 顶层：format 固定为 zhijian-theme；version 为数字 1；theme 为主题对象。
 theme 必填：id、name、group、base、palette；description 可选。
 id：小写字母、数字和连字符，以字母开头，最多 60 字符。自动加 custom- 前缀，与内置主题隔离。
-name：1–32 字；description：1–140 字；group：科普 / 文学 / 通用。
+name：1–32 字；description：1–140 字；group：科普 / 文学 / 通用 / 试卷。
 base：内置主题标识，继承其完整标题、引用、图表与装饰。可在完整主题库中查看每个标识。
 palette：accent、paper、ink，全部是 #RRGGBB 六位颜色。
 
@@ -57,7 +58,7 @@ ornaments 可选：label（刊头小字）、mark（章节符号，最多 8 字�
 
 export function themeGuide(){return guide+'\n## 内置基础主题标识\n\n'+themes.filter(t=>!t.definition).map(t=>`- ${t.id}：${t.name}`).join('\n')+'\n';}
 function preview(theme:Theme){
-  const key=theme.baseId||theme.id,node=document.createElement('article');node.className='theme-import-article';node.innerHTML=renderMarkdown(editionSamples[key]|| (isFolio(theme)?folioSample:theme.variant==='journal'?journalPreviewSample:sample),new Map((editionSamples[key]?editionAssets():isFolio(theme)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(node,theme);
+  const key=theme.baseId||theme.id,node=document.createElement('article');node.className='theme-import-article';node.innerHTML=renderMarkdown(examSamples[key]||editionSamples[key]|| (isFolio(theme)?folioSample:theme.variant==='journal'?journalPreviewSample:sample),new Map((editionSamples[key]?editionAssets():isFolio(theme)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(node,theme);
   return `<style>${themeCSS(theme).replaceAll('.article','.theme-import-article')}</style>${node.outerHTML}`;
 }
 const guarded=(host:Host,fn:()=>void)=>()=>{try{fn();}catch(e){host.notify(e instanceof Error?e.message:String(e),true);}};

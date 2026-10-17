@@ -96,6 +96,16 @@ for(const channel of ['chrome','msedge']){
 for(const shot of ['report.json','2-opening.png','4-code.png','4-references.png','5-opening.png'])await add('test-results/field-before-chrome/'+shot);
 for(const name of ['docs/plans/2026-10-17-equation-numbers.md','tests/equation-numbers.mjs'])await add(name);
 for(const channel of ['chrome','msedge'])for(const file of ['report.json','day.png','night.png','settings.png','article.png','theme.pdf','standard.pdf'])await add('test-results/equation-numbers-'+channel+'/'+file);
+await addTree('试卷示例');
+for(const name of ['试卷模板使用说明.md','docs/plans/2026-10-17-hunan-exam-themes.md','scripts/export-exam-samples.mjs','tests/exam-themes.mjs','tests/exam-schema.mjs','tests/exam-image.mjs','tests/exam-pdf-review.py','test-results/exam-schema.json','test-results/exam-pdf-review.json','test-results/exam-longimage.json','test-results/exam-longimage.png','dist/试卷主题预览.png'])await add(name);
+for(const channel of ['chrome','msedge']){
+  await add('test-results/exam-'+channel+'/report.json');
+  await add('test-results/exam-'+channel+'/night-analysis.png');
+  for(const id of ['chinese','math','physics','geography','english','biology']){
+    for(const file of ['exam-'+id+'-top.png','exam-'+id+'-answers.png','exam-'+id+'.pdf'])await add('test-results/exam-'+channel+'/'+file);
+    if(channel==='chrome')await add('test-results/exam-chrome/exam-'+id+'-pages.png');
+  }
+}
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);

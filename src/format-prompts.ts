@@ -1,16 +1,26 @@
 import {journalKinds} from './journal-blocks';
 import {folioNames} from './folio-blocks';
 import {editionCatalog} from './edition-blocks';
+import {examTags} from './exam-blocks';
 import type {Theme} from './theme-types';
-export type FormatProfile='journal'|'folio'|'digest'|'press'|'gewu'|'standard';
-export function formatProfile(theme:Theme):FormatProfile{return ['journal','folio','digest','press','gewu'].includes(theme.variant)?theme.variant as FormatProfile:'standard';}
+export type FormatProfile='journal'|'folio'|'digest'|'press'|'gewu'|'exam'|'standard';
+export function formatProfile(theme:Theme):FormatProfile{return ['journal','folio','digest','press','gewu','exam'].includes(theme.variant)?theme.variant as FormatProfile:'standard';}
 export function formatTags(profile:FormatProfile):string[]{
+ if(profile==='exam')return [...examTags,'exam-pagebreak'];
  if(profile==='journal')return [...journalKinds];
  if(profile==='folio')return Object.keys(folioNames).filter(k=>k!=='scroll').map(k=>'folio-'+k);
  if(profile==='standard')return [];
  return Object.keys(editionCatalog[profile]).map(k=>profile+'-'+k);
 }
 const policies:Record<FormatProfile,string>={
+ exam:`【湖南高考试卷的用法】
+- 只改变试卷格式。原题干、题号、分值、选项字母及顺序、材料、表格、公式、单位、答案与解析必须逐字保留；绝不代答、纠错、补题、改分、翻译或将答案移进题目。没有答案就不生成答案。
+- 原题号若采用数字加英文点号，且不是普通有序列表，可将点号写为反斜杠转义的点号，避免 Markdown 自动改号；渲染后的题号必须与原文相同。
+- 原有考试名称、科目、考试时间和满分可用 exam-meta；科目标题用 #，原有考生信息用 exam-info，现成注意事项用 exam-notice。原有题型标题用 ##，不要补考试年份、机密标志、官方名称或准考证信息。
+- 已有阅读、古文、英文或情境材料用 exam-passage；现成的一道题用 exam-question。若原来的题干位于独立一行，可原样放在容器标题处；不得拆掉公式或把整段长材料塞进标题。
+- 同一题原有的选项可用 :::exam-options 1（每行一个）、2（两列）或 4（四列），每个选项使用原字母与原文的 Markdown 列表项，长选项优先 1 列，不合并选项文字或改动内容。
+- 原有作答区域可用 :::exam-answer 3 表示三行空白，允许 1—12 行；不要把原有答案文字替换为空白。已有参考答案用 exam-key（中文宋体），已有解析用 exam-analysis（中文楷体），仍留在原来的位置。英文均由主题默认使用 Times New Roman，不改写任何英文。
+- :::exam-pagebreak 是单行分页指令，不跟结束 :::，仅在原文已经明确要求分页的位置使用；其余 exam 容器都需要结束 :::。不自动生成页码、密封线、答题卡、题号或公式编号。`,
  journal:`【科普期刊的用法】
 - 原文已有的独立导读可用 abstract，定律与成立条件可用 theorem，现成的公式及紧随其后的符号解释可用 equation，已有连续推导可用 derivation。
 - takeaways 只包裹原文已经存在的结论/要点列表；references 只包裹已有参考文献。不得重新概括、抽取并重复一份要点，不能补编文献。
@@ -50,6 +60,33 @@ const policies:Record<FormatProfile,string>={
 };
 // Examples are complete snippets that can also be checked by the actual renderer.
 export const formatExamples:Record<FormatProfile,string>={
+ exam:String.raw`:::exam-meta
+原有考试名称
+:::
+
+# 原有科目名称
+
+## 原有题型标题
+
+:::exam-question 原有题号、题干与分值
+:::exam-options 2
+- A. 原有选项 A
+- B. 原有选项 B
+- C. 原有选项 C
+- D. 原有选项 D
+:::
+:::
+
+:::exam-answer 3
+:::
+
+:::exam-key 原有答案标题
+原有答案文字。
+:::
+
+:::exam-analysis 原有解析标题
+原有解析文字。
+:::`,
  journal:String.raw`:::theorem 原有小标题
 原有定律文字。
 :::

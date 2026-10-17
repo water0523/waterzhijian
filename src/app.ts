@@ -15,6 +15,9 @@ import {folioNames,type FolioKind} from './folio-blocks';
 import {isFolio} from './folio-design';
 import {editionAssets,editionSamples} from './edition-samples';
 import {editionCatalog,editionTitles,type Edition} from './edition-blocks';
+import {examSubjects} from './exam-themes';
+import {examSamples,examComponentExamples,examComponentSample} from './exam-samples';
+import {isExam} from './exam-design';
 import {themeMatches} from './theme-search';
 import {showRewrite,cancelRewrite} from './rewrite';
 import {inspectFonts} from './font-inspection';
@@ -172,11 +175,11 @@ function setWorkspaceView(mode:'compare'|'preview'){
   editor.view.requestMeasure();sync.rebuild();
 }
 function setPreviewWidth(value:string){
-  const width=['375','430','wide'].includes(value)?value:'430',line=sync.capture();
+  const width=['375','430','794','wide'].includes(value)?value:'430',line=sync.capture();
   $<HTMLSelectElement>('preview-width').value=width;preference('preview-width',width);
   const max=width==='wide'?'760px':width+'px';$('preview').style.maxWidth=max;
   document.querySelector<HTMLElement>('.preview-caption')!.style.maxWidth=max;
-  $('preview-narrow').setAttribute('aria-pressed',String(width!=='wide'));$('preview-wide').setAttribute('aria-pressed',String(width==='wide'));
+  $('preview-narrow').setAttribute('aria-pressed',String(['375','430'].includes(width)));$('preview-wide').setAttribute('aria-pressed',String(['794','wide'].includes(width)));
   requestAnimationFrame(()=>{sync.rebuild();sync.restore(line);});
 }
 let renderedArticleId='';
@@ -215,6 +218,7 @@ function render(){
     previewEditor?.attach();inspectFonts($('preview'),fontInspection);
     $('theme-name').textContent=committed.name;$('theme-dot').style.background=committed.accent;$('preview-caption-name').textContent=publisher==='zhihu'?'知乎 · 标准 Markdown':(peekThemeId?'试看 · ':'')+theme.name;
     const mood=$('folio-font-button');if(mood){mood.hidden=!isFolio(committed)||publisher!=='wechat';mood.textContent=({'noto-serif':'书卷宋体',wenkai:'温润楷体','noto-sans':'现代人文黑'} as Record<string,string>)[current.typography.font||committed.font]||'自定字体';mood.textContent+=' ▾';}
+    const examButton=$('exam-block-button');if(examButton)examButton.hidden=!isExam(committed)||publisher!=='wechat';
     $<HTMLSelectElement>('publisher').value=publisher;$('preview-target').textContent=publisher==='zhihu'?'知乎样式':peekThemeId?'主题试看 · 点击卡片应用':'公众号样式';paintCopyButton();
     themeSidebar?.updateCurrent();
     $<HTMLButtonElement>('theme-button').disabled=publisher==='zhihu';$<HTMLButtonElement>('style-button').disabled=publisher==='zhihu';if(publisher==='zhihu')$('style-panel').hidden=true;
@@ -286,24 +290,25 @@ function themeThumbnail(id:string){
   if(t.variant==='journal')node.innerHTML=renderMarkdown('## 从一个好问题开始\n:::subtitle SCIENCE & IDEAS\n\n:::theorem 核心定律 · 理解世界\n用清晰的概念，建立**可检验的联系**。\n:::\n\n> 从一次认真观察出发。',new Map()).html;
   if(isFolio(t))node.innerHTML=renderMarkdown('## 江南雨声里的旧宣纸\n:::subtitle PROSE · 散文随笔卷\n\n:::folio-preface 卷首题记\n古人把一扇窗，借给了一座山。\n:::',new Map()).html;
   const edition=t.baseId||t.id;
+  if(examSamples[edition])node.innerHTML=renderMarkdown(examSamples[edition],new Map()).html;
   if(editionSamples[edition])node.innerHTML=renderMarkdown(editionSamples[edition].split(':::'+edition+(edition==='digest'?'-note':edition==='press'?'-byline':'-preface'))[0],new Map()).html;
   decorateTheme(node,t);
   const html=`<style>${themeCSS(t).replaceAll('.article','.theme-sample-'+id)}</style><div class="theme-live-window">${node.outerHTML}</div>`;
   themePreviews.set(id,html);return html;
 }
-function applyArticleTheme(id:string){clearThemePreview(false);snapshot(current,true);current.theme=id;current.typography=current.typography.equationNumbers===undefined?{}:{equationNumbers:current.typography.equationNumbers};markDirty();render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast('已切换为「'+themeById(id).name+'」');}
+function applyArticleTheme(id:string){clearThemePreview(false);snapshot(current,true);current.theme=id;current.typography=current.typography.equationNumbers===undefined?{}:{equationNumbers:current.typography.equationNumbers};markDirty();if(isExam(themeById(id)))setPreviewWidth('794');render();if(!$('style-panel').hidden)renderStylePanel();closeModal();toast('已切换为「'+themeById(id).name+'」');}
 function themeHost(){return {open:openModal,close:closeModal,notify:toast,current:()=>current.theme,apply:applyArticleTheme,changed:()=>{themePreviews.clear();themeSidebar?.refresh();render();if(!$('style-panel').hidden)renderStylePanel();}};}
 function showThemes(filter='全部'){
   let selectedDetail='';
-  openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时恢复主题默认设置。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g==='已置顶'?'收藏':g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 收藏不限数量 · 在侧栏「收藏」中拖动排序</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
+  openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时恢复主题默认设置。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用','试卷'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g==='已置顶'?'收藏':g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 收藏不限数量 · 在侧栏「收藏」中拖动排序</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
   const applyTheme=applyArticleTheme;
   bind('theme-import-button',()=>chooseThemeFile(themeHost()));bind('theme-manage-button',()=>showThemeManager(themeHost()));
   const showDetail=(id:string,keyboard=false)=>{
     selectedDetail=id;
     const t=themeById(id),sample=document.createElement('article');sample.className='theme-detail-article';
     const sampleText=t.group==='文学'?'# 在平凡里，收集微光\n\n## 写在日常的页边\n\n风从窗边经过，留下一页值得珍藏的文字。\n\n### 片刻的停留\n\n> 让文字留下温柔的回声。\n\n:::poem center\n光落在纸上\n也落在**未说完的故事**里\n\n愿你记得\n每一次出发\n:::\n\n## 留住那些瞬间\n\n- 一段散步的时光\n- 一封写给自己的信': '# 一束光，读懂宇宙\n\n## 从一个好问题开始\n\n科学始于好奇，也来自一次次**认真观察**。好的排版让推理更清晰。\n\n### 观察与证据\n\n> 我们用可重复的观察，检验关于世界的猜想。\n\n## 把现象写成规律\n\n$$E=mc^2$$\n\n| 观测对象 | 特征 |\n| --- | --- |\n| 光 | 传播与能量 |\n| 物质 | 质量与运动 |\n\n- 提出可检验的问题\n- 记录证据，比较结果\n\n---\n\n继续探索，让知识成为自己的理解。';
-    sample.innerHTML=renderMarkdown(editionSamples[t.baseId||t.id]||(isFolio(t)?folioSample:t.variant==='journal'?journalPreviewSample:sampleText),new Map((editionSamples[t.baseId||t.id]?editionAssets():isFolio(t)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(sample,t);
-    const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div id="theme-detail-scroll" class="theme-detail-scroll" tabindex="0" aria-label="主题完整排版示例"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>375px 手机阅读效果</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
+    sample.innerHTML=renderMarkdown(examSamples[t.baseId||t.id]||editionSamples[t.baseId||t.id]||(isFolio(t)?folioSample:t.variant==='journal'?journalPreviewSample:sampleText),new Map((editionSamples[t.baseId||t.id]?editionAssets():isFolio(t)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(sample,t);
+    const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div id="theme-detail-scroll" class="theme-detail-scroll" tabindex="0" aria-label="主题完整排版示例"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>${isExam(t)?'试卷排版 · 可选 A4 宽度':'完整排版效果'}</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
     document.querySelector('.theme-browser')!.classList.add('has-detail');
     $('theme-results').querySelectorAll<HTMLElement>('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themePreview===id)));
     bind('theme-detail-close',()=>{selectedDetail='';detail.hidden=true;detail.replaceChildren();document.querySelector('.theme-browser')!.classList.remove('has-detail');$('theme-results').querySelectorAll('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed','false'));($('theme-results').querySelector<HTMLElement>(`[data-theme-preview="${id}"]`)||$('theme-search')).focus();});
@@ -511,8 +516,10 @@ function showSamples(){
   openModal('从一个小小的示例开始','<p class="modal-subtitle">示例将作为新文章打开，保留你正在编辑的草稿。</p><div class="option-list"><button class="option-card" data-sample="science"><strong>01 / 一束光，如何告诉我们宇宙的故事？</strong><small>科普文章 · 公式 · 表格 · 脚注</small></button><button class="option-card" data-sample="math"><strong>02 / 在符号之间，理解变化</strong><small>数学公式 · 矩阵 · 多行推导 · 编号</small></button><button class="option-card" data-sample="poetry"><strong>03 / 风经过的地方</strong><small>诗歌 · 散文 · 保留诗行与空行</small></button><button class="option-card" data-sample="journal-indigo"><strong>04 / 深空靛蓝 · 信息与热的期刊长读</strong><small>导读首字下沉 · 双语章节 · 定律 / 公式释义 / 推导 · 科学插图</small></button><button class="option-card" data-sample="journal-jade"><strong>05 / 松石青翠 · 同一篇文章，另一种气质</strong><small>松石绿配色 · 多字体层次 · 三线表 · 要点与参考文献</small></button></div>');
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<button class="option-card" data-sample="folio"><strong>06 / 山窗听雪 · 一纸山水清欢</strong><small>古籍题记 · 三种正文气质 · 横排诗笺 / 阶梯新诗 · 朱批笺注 · 水墨装裱</small></button>');
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend',Object.entries(editionSamples).map(([id])=>`<button class="option-card" data-sample="${id}"><strong>${editionTitles[id as Edition]}</strong><small>完整组件示例 · 可改文字、数据、插图与来源</small></button>`).join(''));
+  $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<h3>试卷 · 湖南高考版式</h3>'+examSubjects.map(s=>`<button class="option-card" data-sample="${s.id}"><strong>${s.name}试卷 · 原创题型示例</strong><small>${s.topics} · 无插图</small></button>`).join(''));
   $('modal-body').querySelectorAll<HTMLButtonElement>('[data-sample]').forEach(el=>el.onclick=async()=>{
     try{
+      if(el.dataset.sample&&examSamples[el.dataset.sample]){const id=el.dataset.sample;closeModal();addArticle(examSubjects.find(s=>s.id===id)!.name,examSamples[id],id);setPreviewWidth('794');return;}
       if(el.dataset.sample&&editionSamples[el.dataset.sample]){const id=el.dataset.sample;el.disabled=true;const incoming=editionAssets().filter(a=>editionSamples[id].includes('asset:'+a.id)&&!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle(editionTitles[id as Edition],editionSamples[id],id);return;}
       if(el.dataset.sample==='folio'){el.disabled=true;const incoming=folioAssets().filter(a=>!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle('山窗听雪录',folioSample,'folio');return;}
       if(el.dataset.sample?.startsWith('journal-')){el.disabled=true;const asset=journalFigure();assetStore.set(asset.id,asset);trackAsset(asset.id);await stageAssets([asset]);if(!el.isConnected)return;closeModal();addArticle('信息为什么也有物理的重量',journalSample.replace('JOURNAL_FIGURE','asset:'+asset.id),el.dataset.sample);return;}
@@ -562,6 +569,12 @@ function enhanceComponentPreviews(panel:HTMLElement,attribute:string,source:stri
   preview.innerHTML='<span class="component-mini-window" aria-hidden="true"><article class="component-preview-article">'+node.outerHTML+'</article></span><small>放大预览 ↗</small>';wrapper.append(preview,button);
   preview.onclick=()=>{openModal('组件效果预览',`<p class="modal-subtitle">跟随当前文章的主题色与排版设置。这里展示示例内容，插入后可继续修改。</p><div class="component-full-scroll" tabindex="0"><style>${style.textContent}</style><article class="component-preview-article component-full-article">${node.outerHTML}</article></div><div class="component-preview-actions"><button id="component-back" class="button outline">返回选择</button><button id="component-insert" class="button primary">插入当前文章</button></div>`);bind('component-back',()=>{closeModal();back();document.querySelector<HTMLElement>('[data-component-preview="'+cls+'"]')?.focus();});bind('component-insert',()=>{closeModal();button.click();});};
  }
+}
+function showExamElements(anchor:HTMLElement){
+ const panel=openPopover(anchor,'试卷元素',`<p class="help">保留题号与分值，先预览再插入。选项可改为 1、2 或 4 列；答题留白可改为 1—12 行。</p><div class="journal-insert-choices">${examComponentExamples.map(([id,name,description])=>`<button data-exam-block="exam-${id}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div><button id="exam-insert-pagebreak" class="button outline full">插入分页标记</button>`);
+ panel.querySelectorAll<HTMLElement>('[data-exam-block]').forEach(button=>button.onclick=()=>{const kind=button.dataset.examBlock!.slice(5),example=examComponentExamples.find(c=>c[0]===kind)!,s=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(s.from,s.to),parameter=kind==='options'?' 2':kind==='answer'?' 3':'';closePopover();editor.insert('\n\n'+(selected?':::exam-'+kind+parameter+'\n'+selected+'\n:::':example[3])+'\n\n');});
+ bind('exam-insert-pagebreak',()=>{closePopover();editor.insert('\n\n:::exam-pagebreak\n\n');});
+ enhanceComponentPreviews(panel,'exam-block',examComponentSample,()=>showExamElements(anchor));
 }
 function showEditionElements(anchor:HTMLElement,group:Edition=(['digest','press','gewu'].includes(themeById(current.theme).baseId||current.theme)?(themeById(current.theme).baseId||current.theme):'digest') as Edition){
  const options=editionCatalog[group],panel=openPopover(anchor,'模板专属元素',`<div class="theme-tabs">${Object.entries(editionTitles).filter(([id])=>editionSamples[id]).map(([id,name])=>`<button data-edition-group="${id}" class="${group===id?'active':''}">${name}</button>`).join('')}</div><p class="help">先预览再插入；示例文字、数据、图片与署名可自行替换。</p><div class="journal-insert-choices">${Object.entries(options).map(([kind,title])=>`<button data-edition-block="${group+'-'+kind}"><strong>${title||({byline:'署名栏',deck:'文章导语',photo:'摄影框',polaroid:'拍立得',tags:'学科标签',figure:'插图框',caption:'表格图注',pullquote:'破版大引文'} as Record<string,string>)[kind]||kind}</strong><small>点击插入 · 可编辑 Markdown</small></button>`).join('')}</div>`);
@@ -861,7 +874,7 @@ async function init(){
   bind('preview-edit-button',()=>{previewEditor.enabled=!previewEditor.enabled;$('preview-edit-button').setAttribute('aria-pressed',String(previewEditor.enabled));$('preview-edit-button').textContent=previewEditor.enabled?'完成修改':'编辑文字';render();if(previewEditor.enabled)toast('点击标题或正文修改文字。格式、公式、图片保持锁定；换行请在左侧修改。');});
   for(const mode of ['edit','preview'])bind('mobile-'+mode,()=>{document.body.dataset.mobilePane=mode;for(const id of ['edit','preview'])$('mobile-'+id).setAttribute('aria-selected',String(id===mode));editor.view.requestMeasure();sync.rebuild();});
   const savedWidth=readPreference('preview-width','430');
-  $<HTMLSelectElement>('preview-width').value=['375','430','wide'].includes(savedWidth)?savedWidth:'375';
+  $<HTMLSelectElement>('preview-width').value=['375','430','794','wide'].includes(savedWidth)?savedWidth:'375';
   $('preview').style.maxWidth=savedWidth==='wide'?'760px':(['375','430'].includes(savedWidth)?savedWidth:'375')+'px';
   const savedShare=Number(readPreference('split-share','49'));$('split-workspace').style.setProperty('--editor-share',(Number.isFinite(savedShare)?Math.max(25,Math.min(75,savedShare)):49)+'%');
   bind('format-rewrite-button',()=>showFormatRewrite({current:()=>current.theme,article:()=>current.markdown,open:openModal,notify:toast}));
@@ -882,6 +895,7 @@ async function init(){
   bind('math-button',showFormulas);bind('assets-button',showAssets);bind('toc-button',showTOC);bind('undo-button',()=>editor.undo());bind('redo-button',()=>editor.redo());bind('search-button',()=>editor.search());
   const writingButton=document.createElement('button');writingButton.id='writing-tools-button';writingButton.className='tool-button';writingButton.setAttribute('aria-label','写作助手');writingButton.title='公式命令补全、写作检查、文字整理与恢复点';writingButton.innerHTML='✎ <span>写作助手</span> ▾';$('assets-button').before(writingButton);writingButton.onclick=()=>showWritingTools(writingButton);
   const editionButton=document.createElement('button');editionButton.id='edition-block-button';editionButton.textContent='模板组件 ▾';editionButton.title='预览与插入杂志、新闻和文学科普组件';$('folio-block-button').after(editionButton);editionButton.onclick=()=>showEditionElements(editionButton);
+  const examButton=document.createElement('button');examButton.id='exam-block-button';examButton.textContent='试卷元素 ▾';examButton.hidden=true;examButton.title='预览与插入卷头、题目、选项、答题区和参考答案';$('edition-block-button').after(examButton);examButton.onclick=()=>showExamElements(examButton);
   bind('publisher',()=>{clearThemePreview(false);publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
   bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>$('import-input').click());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
   document.querySelectorAll<HTMLElement>('[data-format]').forEach(el=>el.onclick=()=>{
@@ -936,7 +950,7 @@ async function init(){
   new ResizeObserver(()=>requestAnimationFrame(()=>{stickerController.reposition();sync.rebuild();})).observe($('preview'));
   window.addEventListener('beforeunload',e=>{if(dirtyGeneration!==savedGeneration){e.preventDefault();e.returnValue='';}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirtyArticles.size)void save();});
-  mountPopoverHover(document.querySelectorAll<HTMLElement>('[data-inline-menu],#selection-block-button,.format-toolbar [data-format="heading"],#table-style-button,#image-layout-button,#divider-button,#math-button,#journal-block-button,#folio-block-button,#edition-block-button,#folio-font-button,#writing-tools-button'),target=>{
+  mountPopoverHover(document.querySelectorAll<HTMLElement>('[data-inline-menu],#selection-block-button,.format-toolbar [data-format="heading"],#table-style-button,#image-layout-button,#divider-button,#math-button,#journal-block-button,#folio-block-button,#edition-block-button,#exam-block-button,#folio-font-button,#writing-tools-button'),target=>{
     if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text)return false;const math=selectedMath(editor);if(math)return !math.error&&['color','size','highlight','effect'].includes(target.dataset.inlineMenu);if(!text.includes('\n'))return true;const plan=selectedTextRuns(editor.view.state.doc.toString(),s.from,s.to);return !plan.error&&plan.selected.length>0;}
     return target.id!=='image-layout-button'||/^:::gallery /m.test(current.markdown);
   });
