@@ -51,6 +51,7 @@ import {uiIcon} from './ui-icons';
 import {mountDownloadLocation,showDownloadLocation,openDownloadFolder} from './download-location';
 import {mountCodeTools} from './code-tools';
 import {inspectComponentStructure} from './component-check';
+import {mountUISkin} from './ui-skin';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const assetStore=new Map<string,Asset>();const articles=new Map<string,Article>();
@@ -813,6 +814,7 @@ async function showStickerRegions(){
 }
 
 async function init(){
+  mountUISkin({open:openModal,notify:toast,layout:()=>requestAnimationFrame(()=>{editor?.view.requestMeasure();sync?.rebuild();})});
   mountDownloadLocation((title,html)=>openModal(title,html,'DOWNLOAD LOCATION'));
   let storageError='';
   try{await openStore();const stored=await loadStore();for(const a of stored.articles){if(!a.titleMode)a.titleMode='manual';articles.set(a.id,a);}for(const a of stored.assets)assets.set(a.id,a);}catch(e){storageError=errorMessage(e);}

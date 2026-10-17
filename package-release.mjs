@@ -120,6 +120,9 @@ for(const channel of ['chrome','msedge']){
   for(const file of ['report.json','night.png','desktop-1280.png'])await add('test-results/anime-'+channel+'/'+file);
   for(const id of ['anime-sakura','anime-matcha'])for(const file of [id+'-top.png',id+'-chat.png',id+'.pdf'])await add('test-results/anime-'+channel+'/'+file);
 }
+await addTree('assets/witch');
+for(const name of ['魔女之旅界面使用说明.md','docs/plans/2026-10-17-witch-ui.md','tests/ui-skin.mjs','dist/魔女之旅-沉浸界面.png'])await add(name);
+for(const channel of ['chrome','msedge'])for(const file of ['report.json','settings.png','witch-light-day.png','witch-light-night.png','witch-immersive-day.png','witch-immersive-night.png','desktop-1280.png','desktop-1024.png'])await add('test-results/ui-skin-'+channel+'/'+file);
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);

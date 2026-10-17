@@ -22,7 +22,7 @@ try{
   if(scenario==='reopen'){await page.waitForFunction(()=>document.getElementById('save-state').dataset.state==='saved');await page.reload();await page.waitForFunction(()=>window.boot.ready>0);}
   await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));
   const metrics=await page.evaluate(()=>({ready:window.boot.ready,paint:performance.getEntriesByName('first-contentful-paint')[0]?.startTime||0,longestTask:Math.max(0,...window.boot.longTasks.map(t=>t.duration)),blocking:window.boot.longTasks.reduce((sum,t)=>sum+Math.max(0,t.duration-50),0),cards:document.querySelectorAll('[data-sidebar-card]').length,previews:document.querySelectorAll('#sidebar-theme-results .theme-sample').length,source:JSON.parse(localStorage.getItem('paper-recovery')).markdown}));
-  if(variant==='after'){assert.ok(metrics.source.includes('一束光'));assert.equal(metrics.cards,scenario==='sidebar'?42:0);assert.ok(metrics.previews<10,'only visible and nearby previews should be generated');}
+  if(variant==='after'){assert.ok(metrics.source.includes('一束光'));assert.equal(metrics.cards,scenario==='sidebar'?50:0);assert.ok(metrics.previews<10,'only visible and nearby previews should be generated');}
   delete metrics.source;runs.push({scenario,variant,...metrics});await context.close();
  }
  const median=values=>[...values].sort((a,b)=>a-b)[Math.floor(values.length/2)],summary=[];
