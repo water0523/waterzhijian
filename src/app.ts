@@ -420,7 +420,7 @@ function showInlineStyle(event?:Event){
     let patch:InlineStyle;
     if(change?.clear)patch=Object.fromEntries(selectionStyleKeys.map(key=>[key,undefined]));
     else if(kind==='effect'){
-      const key=change!.effect!;patch={[key]:style[key]};if(key==='gold'&&style.gold)Object.assign(patch,{marker:undefined,markerColor:undefined});
+      const key=change!.effect!;patch={[key]:style[key]};if(key==='gold'&&style.gold)Object.assign(patch,{marker:undefined,markerColor:undefined,ornament:undefined});if(key==='ornament'&&style.ornament)patch.gold=undefined;
     }else if(kind==='marker')patch={marker:style.marker,markerColor:style.markerColor,...(style.marker?{gold:undefined}:{})};
     else patch={[kind]:style[kind]};
     return applySelectedTextStyle(plan,patch);

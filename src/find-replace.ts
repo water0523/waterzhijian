@@ -1,7 +1,7 @@
 import type {ChangeSpec} from '@codemirror/state';
 import type {MarkdownEditor} from './editor';
 import {escapeHTML as esc} from './model';
-import {inlineFonts,literaryRoles,type InlineStyle} from './inline-style';
+import {inlineFonts,literaryRoles,inlineOrnaments,type InlineStyle} from './inline-style';
 import {showInlineMenu,type InlineMenu} from './inline-picker';
 import {closePopover,standardColors} from './popover';
 import {selectionStyleKeys,textStyleChanges} from './text-selection';
@@ -23,7 +23,7 @@ export class FindReplace {
       <div id="find-format-fields" class="find-input-row" hidden><label for="find-format-key">查找格式</label><select id="find-format-key">${formatFilters.map(([key,name])=>`<option value="${key}">${name}</option>`).join('')}</select><select id="find-format-value" aria-label="查找格式的颜色或值"></select><span id="find-color-swatch" aria-hidden="true"></span></div>
       <div class="find-results-heading"><label id="find-all-label" hidden><input id="find-select-all" type="checkbox">全选</label><output id="find-count" aria-live="polite">输入文字开始查找</output><button id="find-previous" type="button" title="上一处">↑</button><button id="find-next" type="button" title="下一处">↓</button></div>
       <ul id="find-results" aria-label="查找结果"></ul><button id="find-more" type="button" hidden>显示更多结果</button>
-      <div id="find-bulk" hidden><div class="find-input-row"><span id="find-selected-count">已选 0 处</span><select id="find-action" aria-label="要批量修改的格式">${[['marker','半高荧光'],['highlight','荧光'],['font','字体'],['size','字号'],['color','字色'],['bold','加粗'],['italic','斜体'],['underline','下划线'],['wave','波浪线'],['strike','删除线'],['effect','着重号 / 泥金 / 清除全部'],['role','文体']].map(([key,name])=>`<option value="${key}">${name}</option>`).join('')}</select><button id="find-apply" type="button">选择并应用 ▾</button><button id="find-clear" type="button">清除该项</button></div><p class="find-help">只修改勾选的片段；格式查找不包含主题默认样式、代码与公式。可一次撤销。</p></div>
+      <div id="find-bulk" hidden><div class="find-input-row"><span id="find-selected-count">已选 0 处</span><select id="find-action" aria-label="要批量修改的格式">${[['marker','半高荧光'],['highlight','荧光'],['font','字体'],['size','字号'],['color','字色'],['bold','加粗'],['italic','斜体'],['underline','下划线'],['wave','波浪线'],['strike','删除线'],['effect','修饰 / 清除全部'],['role','文体']].map(([key,name])=>`<option value="${key}">${name}</option>`).join('')}</select><button id="find-apply" type="button">选择并应用 ▾</button><button id="find-clear" type="button">清除该项</button></div><p class="find-help">只修改勾选的片段；格式查找不包含主题默认样式、代码与公式。可一次撤销。</p></div>
       <p id="find-status" class="find-help" role="status" aria-live="polite"></p>`;
     document.getElementById('editor')!.before(this.panel);
     this.get('find-close').onclick=()=>this.close();
@@ -65,13 +65,13 @@ export class FindReplace {
     if(this.mode==='format'){
       const value=this.get<HTMLSelectElement>('find-format-value'),chosen=value.value,all=findFormats(source,this.filter),values=[...new Set(all.map(hit=>hit.value))].sort((a,b)=>this.filter==='size'?Number(a)-Number(b):a.localeCompare(b));
       value.innerHTML='<option value="">全部颜色 / 值</option>'+values.map(v=>`<option value="${esc(v)}">${esc(this.valueLabel(v))}</option>`).join('')+(chosen&&!values.includes(chosen)?`<option value="${esc(chosen)}">${esc(this.valueLabel(chosen))}（0 处）</option>`:'');value.value=chosen;
-      value.hidden=!['marker','highlight','font','size','color','role'].includes(this.filter);this.hits=value.value?all.filter(hit=>hit.value===value.value):all;
+      value.hidden=!['marker','highlight','font','size','color','role','ornament'].includes(this.filter);this.hits=value.value?all.filter(hit=>hit.value===value.value):all;
       const swatch=this.get('find-color-swatch');swatch.hidden=!/^#[\da-f]{6}$/i.test(value.value);if(!swatch.hidden)swatch.style.background=value.value;
     }else this.hits=findText(source,this.get<HTMLInputElement>('find-query').value,this.get<HTMLInputElement>('find-case').checked);
     this.get('find-status').textContent='';this.renderRows();
   }
   private valueLabel(value:string){
-    if(this.filter==='font')return inlineFonts[value]?.name||value;if(this.filter==='role')return literaryRoles[value as keyof typeof literaryRoles]||value;if(this.filter==='size')return value+' px';
+    if(this.filter==='font')return inlineFonts[value]?.name||value;if(this.filter==='role')return literaryRoles[value as keyof typeof literaryRoles]||value;if(this.filter==='ornament')return inlineOrnaments[value as keyof typeof inlineOrnaments]||value;if(this.filter==='size')return value+' px';
     if(value==='true')return formatFilters.find(([key])=>key===this.filter)![1];
     return (standardColors.find(([,color])=>color.toLowerCase()===value)?.[0]||(/^#/.test(value)?'自定色':''))+(value.startsWith('#')?' '+value:value);
   }
@@ -125,7 +125,7 @@ export class FindReplace {
     const kind=action as InlineMenu;
     showInlineMenu(this.get('find-apply'),kind,plan.common,this.host.renderSample,(style,change)=>{
       let patch:InlineStyle;if(change?.clear)patch=Object.fromEntries(selectionStyleKeys.map(key=>[key,undefined]));
-      else if(kind==='effect'){const key=change!.effect!;patch={[key]:style[key]};if(key==='gold'&&style.gold)Object.assign(patch,{marker:undefined,markerColor:undefined});}
+      else if(kind==='effect'){const key=change!.effect!;patch={[key]:style[key]};if(key==='gold'&&style.gold)Object.assign(patch,{marker:undefined,markerColor:undefined,ornament:undefined});if(key==='ornament'&&style.ornament)patch.gold=undefined;}
       else if(kind==='marker')patch={marker:style.marker,markerColor:style.markerColor,...(style.marker?{gold:undefined}:{})};else patch={[kind]:style[kind]};return this.applyStyle(patch,plan,article);
     });
   }

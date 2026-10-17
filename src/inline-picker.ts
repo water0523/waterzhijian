@@ -1,10 +1,10 @@
 import {escapeHTML as esc} from './model';
-import {inlineFonts,inlineCSS,literaryRoles,markerInk,type InlineStyle} from './inline-style';
+import {inlineFonts,inlineCSS,literaryRoles,inlineOrnaments,markerInk,type InlineStyle,type InlineOrnament} from './inline-style';
 import {openPopover,standardColors} from './popover';
 
 export type InlineMenu='font'|'size'|'color'|'highlight'|'marker'|'effect'|'role';
 const menus:[InlineMenu,string][]=[['font','字体'],['size','字号'],['color','字色'],['highlight','荧光'],['marker','半高荧光'],['effect','修饰'],['role','文体']];
-const effects=[['dots','字下着重号'],['gold','泥金金句']] as const;
+const effects=[['dots','字下着重号'],['gold','泥金金句'],...Object.entries(inlineOrnaments)] as const;
 
 export function mountInlineMenus(handler:(event:Event)=>void){
   for(const id of ['inline-style-button','selection-style-button']){
@@ -16,13 +16,13 @@ export function mountInlineMenus(handler:(event:Event)=>void){
   }
 }
 
-export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:InlineStyle|null,renderSample:(root:HTMLElement,markdown:string)=>void,apply:(style:InlineStyle,change?:{clear?:boolean;effect?:'dots'|'gold'})=>boolean,math=false){
+export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:InlineStyle|null,renderSample:(root:HTMLElement,markdown:string)=>void,apply:(style:InlineStyle,change?:{clear?:boolean;effect?:'dots'|'gold'|'ornament'})=>boolean,math=false){
   const current:InlineStyle={...existing},label=menus.find(([id])=>id===kind)![1];
   const row=(value:string,content:string,checked:boolean,extra='')=>`<button type="button" role="menuitemradio" aria-checked="${checked}" data-inline-choice="${esc(value)}" ${extra}>${content}<span class="inline-menu-check" aria-hidden="true">${checked?'✓':''}</span></button>`;
   let html='';
   if(kind==='font')html=row('','<span>跟随正文</span>',!current.font)+Object.entries(inlineFonts).map(([id,font])=>row(id,`<span style="font-family:${esc(font.css)}">${esc(font.name.split(' · ')[0])}</span><small>${esc(font.name.split(' · ')[1])}</small>`,current.font===id,`data-picker-font="${id}"`)).join('');
   if(kind==='role')html=row('','<span>普通文字</span>',!current.role)+Object.entries(literaryRoles).map(([id,name])=>row(id,`<span class="inline-role-row article" data-role-demo="${id}"></span>`,current.role===id,`data-picker-role="${id}" aria-label="${name}"`)).join('');
-  if(kind==='effect')html=(math?'':effects.map(([id,name])=>row(id,`<span style="${esc(inlineCSS({[id]:true}))}">${name}</span>`,!!current[id],`data-inline-effect="${id}"`).replace('role="menuitemradio"','role="menuitemcheckbox"')).join(''))+'<button type="button" role="menuitem" class="inline-menu-clear" data-inline-choice="clear">清除选区全部样式</button>';
+  if(kind==='effect')html=(math?'':effects.map(([id,name])=>{const ornament=Object.hasOwn(inlineOrnaments,id);return row(id,`<span style="${esc(inlineCSS(ornament?{ornament:id as InlineOrnament}:{[id]:true}))}">${name}</span>`,ornament?current.ornament===id:!!current[id as 'dots'|'gold'],`data-inline-effect="${id}"`).replace('role="menuitemradio"','role="menuitemcheckbox"');}).join(''))+'<button type="button" role="menuitem" class="inline-menu-clear" data-inline-choice="clear">清除选区全部样式</button>';
   if(kind==='size')html=row('','<span>跟随正文</span>',current.size===undefined)+[12,14,15,15.5,16,18,20,24,28,32].map(size=>row(String(size),`<span style="font-size:${size}px">${size}<small> px</small></span>`,current.size===size)).join('');
   const isColor=kind==='color'||kind==='highlight'||kind==='marker';
   const chosen=kind==='marker'?(current.marker?markerInk(current):undefined):kind==='highlight'?current.highlight:current.color;
@@ -41,7 +41,7 @@ export function showInlineMenu(target:HTMLElement,kind:InlineMenu,existing:Inlin
   if(kind==='font')panel.querySelector<HTMLElement>('[data-inline-choice=""]>span')!.style.fontFamily=getComputedStyle(document.getElementById('preview')!).fontFamily;
   panel.querySelectorAll<HTMLElement>('[data-inline-choice]').forEach(button=>button.onclick=()=>{
     const value=button.dataset.inlineChoice!,style={...current};
-    if(kind==='effect'){if(value==='clear'){apply({},{clear:true});return;}const key=value as typeof effects[number][0];if(style[key])delete style[key];else {style[key]=true;if(key==='gold'){delete style.marker;delete style.markerColor;}}apply(style,{effect:key});return;}
+    if(kind==='effect'){if(value==='clear'){apply({},{clear:true});return;}if(Object.hasOwn(inlineOrnaments,value)){if(style.ornament===value)delete style.ornament;else {style.ornament=value as InlineOrnament;delete style.gold;}apply(style,{effect:'ornament'});return;}const key=value as 'dots'|'gold';if(style[key])delete style[key];else {style[key]=true;if(key==='gold'){delete style.marker;delete style.markerColor;delete style.ornament;}}apply(style,{effect:key});return;}
     else if(kind==='size'){if(value)style.size=Number(value);else delete style.size;}
     else if(kind==='role'){if(value)style.role=value as InlineStyle['role'];else delete style.role;}
     else if(kind==='font'){if(value)style.font=value;else delete style.font;}

@@ -123,6 +123,11 @@ for(const channel of ['chrome','msedge']){
 await addTree('assets/witch');
 for(const name of ['魔女之旅界面使用说明.md','docs/plans/2026-10-17-witch-ui.md','tests/ui-skin.mjs','dist/魔女之旅-沉浸界面.png'])await add(name);
 for(const channel of ['chrome','msedge'])for(const file of ['report.json','settings.png','witch-light-day.png','witch-light-night.png','witch-immersive-day.png','witch-immersive-night.png','desktop-1280.png','desktop-1024.png'])await add('test-results/ui-skin-'+channel+'/'+file);
+for(const name of ['docs/plans/2026-10-17-sky-workspace.md','docs/plans/2026-10-17-inline-ornaments.md','修饰样式使用说明.md','tests/sky-workspace.mjs','tests/ornament-styles.mjs','dist/天蓝界面预览.png','dist/魔女之旅-轻装界面.png','dist/修饰样式预览.png'])await add(name);
+for(const channel of ['chrome','msedge']){
+ for(const file of ['report.json','water-day.png','water-night.png','witch-light-day.png','witch-light-night.png','witch-immersive-day.png','witch-immersive-night.png','desktop-1280.png','desktop-1024.png'])await add('test-results/sky-workspace-'+channel+'/'+file);
+ for(const file of ['report.json','menu.png','night.png'])await add('test-results/ornaments-'+channel+'/'+file);
+}
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);

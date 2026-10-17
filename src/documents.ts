@@ -96,6 +96,8 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
         // as editable text shading when no full highlight overrides it.
         else if(/^#[\da-f]{6}$/i.test(node.dataset.inlineMarker||''))next.shading={fill:node.dataset.inlineMarker!.slice(1)};
         if(node.style.fontWeight==='700')next.bold=true;if(node.style.fontStyle==='italic')next.italics=true;
+        if(node.dataset.inlineOrnament==='doubleline')next.underline={type:UnderlineType.DOUBLE};
+        if(node.dataset.inlineOrnament==='outline')next.border={style:BorderStyle.SINGLE,size:4,color:'8AABC6'};
         if(node.dataset.inlineUnderline)next.underline={type:node.dataset.inlineUnderline==='wave'?UnderlineType.WAVE:UnderlineType.SINGLE};
         if(node.dataset.inlineStrike)next.strike=true;
       }

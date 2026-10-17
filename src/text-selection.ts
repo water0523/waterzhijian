@@ -2,7 +2,7 @@ import type {ChangeSpec} from '@codemirror/state';
 import {mappedStyleBlocks} from './render';
 import {styleAttributes,type InlineStyle,type StyleSourceRange} from './inline-style';
 
-export const selectionStyleKeys=['font','size','color','highlight','bold','italic','underline','wave','strike','dots','gold','marker','markerColor','role'] as const;
+export const selectionStyleKeys=['font','size','color','highlight','bold','italic','underline','wave','strike','dots','gold','marker','markerColor','role','ornament'] as const;
 export type TextSourceRange={from:number;to:number};
 type Run={from:number;to:number;text:string;styles:StyleSourceRange[];atomic:boolean;locked:boolean;scope:string};
 function inheritedStyle(styles:InlineStyle[]){

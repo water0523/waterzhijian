@@ -12,14 +12,25 @@ export const inlineFonts:Record<string,{name:string;css:string;word:string}>={
   consolas:{name:'Consolas · 等宽',css:'Consolas,"Cascadia Code","Microsoft YaHei",monospace',word:'Consolas'}
 };
 export const literaryRoles={note:'朱砂夹批',aside:'竖排眉批',preface:'词前小序',rhyme:'韵脚微标',painting:'题画文字',date:'年代胶囊',term:'科普术语',redline:'朱红强调'};
-export interface InlineStyle {font?:string;size?:number;color?:string;highlight?:string;bold?:boolean;italic?:boolean;underline?:boolean;wave?:boolean;strike?:boolean;dots?:boolean;gold?:boolean;marker?:boolean;markerColor?:string;role?:keyof typeof literaryRoles}
+export const inlineOrnaments={outline:'细框标记',pill:'柔彩胶囊',ribbon:'书签侧线',bracket:'朱砂括线',doubleline:'双线强调'} as const;
+export type InlineOrnament=keyof typeof inlineOrnaments;
+export interface InlineStyle {font?:string;size?:number;color?:string;highlight?:string;bold?:boolean;italic?:boolean;underline?:boolean;wave?:boolean;strike?:boolean;dots?:boolean;gold?:boolean;marker?:boolean;markerColor?:string;role?:keyof typeof literaryRoles;ornament?:InlineOrnament}
 export interface StyleSourceRange {from:number;to:number;contentFrom:number;contentTo:number;attrsFrom:number;attrsTo:number;style:InlineStyle;native?:'bold'|'italic'|'strike'}
 export const markerInk=(style:InlineStyle)=>/^#[\da-f]{6}$/i.test(style.markerColor||'')?style.markerColor!:'#f5d878';
 export function styleAttributes(style:InlineStyle){
-  return [style.font&&inlineFonts[style.font]?'font='+style.font:'',style.size&&style.size>=10&&style.size<=64?'size='+style.size:'',style.color&&/^#[\da-f]{6}$/i.test(style.color)?'color='+style.color:'',style.highlight&&/^#[\da-f]{6}$/i.test(style.highlight)?'highlight='+style.highlight:'',style.role&&Object.hasOwn(literaryRoles,style.role)?'role='+style.role:'',...(['bold','italic','underline','wave','strike','dots','gold','marker'] as const).filter(key=>style[key]).map(key=>key==='marker'&&style.markerColor?'marker='+markerInk(style):key)].filter(Boolean).join(' ');
+  return [style.font&&inlineFonts[style.font]?'font='+style.font:'',style.size&&style.size>=10&&style.size<=64?'size='+style.size:'',style.color&&/^#[\da-f]{6}$/i.test(style.color)?'color='+style.color:'',style.highlight&&/^#[\da-f]{6}$/i.test(style.highlight)?'highlight='+style.highlight:'',style.role&&Object.hasOwn(literaryRoles,style.role)?'role='+style.role:'',style.ornament&&Object.hasOwn(inlineOrnaments,style.ornament)?'ornament='+style.ornament:'',...(['bold','italic','underline','wave','strike','dots','gold','marker'] as const).filter(key=>style[key]).map(key=>key==='marker'&&style.markerColor?'marker='+markerInk(style):key)].filter(Boolean).join(' ');
 }
 export function inlineCSS(style:InlineStyle){
   const rules:string[]=[];
+  if(style.ornament){
+    const ornaments:Record<InlineOrnament,string>={
+      outline:'border:1px solid #8aabc6;border-radius:4px;padding:0 .23em',
+      pill:'color:#5c4680;background-color:#eee8f8;border:1px solid #d8cbea;border-radius:1em;padding:.04em .42em',
+      ribbon:'color:#71542c;background-color:#faf2e4;border-left:3px solid #c2a066;padding:.03em .36em',
+      bracket:'color:#9b4657;background-color:#fff4f5;border-left:2px solid #c67888;border-right:2px solid #c67888;padding:0 .3em',
+      doubleline:'border-bottom:3px double currentColor;padding-bottom:1px'
+    };if(Object.hasOwn(ornaments,style.ornament))rules.push(ornaments[style.ornament],'box-decoration-break:clone');
+  }
   if(style.font&&inlineFonts[style.font])rules.push('font-family:'+inlineFonts[style.font].css);
   if(style.size)rules.push('font-size:'+style.size+'px');
   if(style.color)rules.push('color:'+style.color);
@@ -49,6 +60,7 @@ export function parseInlineStyle(source:string):InlineStyle|null {
     const [key,value,...rest]=entry.split('=');if(rest.length)return null;
     if(key==='font'&&Object.hasOwn(inlineFonts,value))style.font=value;
     else if(key==='role'&&Object.hasOwn(literaryRoles,value))style.role=value as InlineStyle['role'];
+    else if(key==='ornament'&&Object.hasOwn(inlineOrnaments,value))style.ornament=value as InlineOrnament;
     else if(key==='color'&&/^#[\da-f]{6}$/i.test(value))style.color=value;
     else if(key==='highlight'&&/^#[\da-f]{6}$/i.test(value))style.highlight=value;
     else if(key==='marker'&&/^#[\da-f]{6}$/i.test(value)){style.marker=true;style.markerColor=value;}
@@ -86,7 +98,7 @@ export function installInlineStyles(md:MarkdownIt){
     const end=md.helpers.parseLinkLabel(state,start+2,false);if(end<0||state.src[end+1]!=='{')return false;
     const close=state.src.indexOf('}',end+2);if(close<0||close+2>=max||!state.src.startsWith('**',close+1))return false;
     const style=parseInlineStyle(state.src.slice(end+2,close));if(!style)return false;
-    if(!silent){state.pos=start+3;state.posMax=end;const strong=state.push('strong_open','strong',1);if(state.env.editable)strong.meta={nativeFrom:start};const open=state.push('text_style_open','span',1);if(state.env.editable)open.meta={styleSource:{from:start+2,to:close+1,contentFrom:start+3,contentTo:end,attrsFrom:end+2,attrsTo:close,style} satisfies StyleSourceRange};open.attrSet('class','inline-style'+(style.role?' literary-'+style.role:''));open.attrSet('style',inlineCSS(style));if(style.font)open.attrSet('data-inline-font',style.font);if(style.wave||style.underline)open.attrSet('data-inline-underline',style.wave?'wave':'single');if(style.strike)open.attrSet('data-inline-strike','true');if(style.marker&&!style.gold)open.attrSet('data-inline-marker',markerInk(style));md.inline.tokenize(state);state.push('text_style_close','span',-1);const closing=state.push('strong_close','strong',-1);if(state.env.editable)closing.meta={nativeFrom:close+1};}
+    if(!silent){state.pos=start+3;state.posMax=end;const strong=state.push('strong_open','strong',1);if(state.env.editable)strong.meta={nativeFrom:start};const open=state.push('text_style_open','span',1);if(state.env.editable)open.meta={styleSource:{from:start+2,to:close+1,contentFrom:start+3,contentTo:end,attrsFrom:end+2,attrsTo:close,style} satisfies StyleSourceRange};open.attrSet('class','inline-style'+(style.role?' literary-'+style.role:''));open.attrSet('style',inlineCSS(style));if(style.font)open.attrSet('data-inline-font',style.font);if(style.ornament)open.attrSet('data-inline-ornament',style.ornament);if(style.wave||style.underline)open.attrSet('data-inline-underline',style.wave?'wave':'single');if(style.strike)open.attrSet('data-inline-strike','true');if(style.marker&&!style.gold)open.attrSet('data-inline-marker',markerInk(style));md.inline.tokenize(state);state.push('text_style_close','span',-1);const closing=state.push('strong_close','strong',-1);if(state.env.editable)closing.meta={nativeFrom:close+1};}
     state.pos=close+3;state.posMax=max;return true;
   });
   md.inline.ruler.before('link','text_style',(state,silent)=>{
@@ -104,7 +116,7 @@ export function installInlineStyles(md:MarkdownIt){
       const open=state.push('text_style_open','span',1);open.attrSet('class','inline-style'+(style.role?' literary-'+style.role:''));open.attrSet('style',inlineCSS(style));
       if(state.env.editable)open.meta={styleSource:{from:start,to:close+1,contentFrom:start+1,contentTo:end,attrsFrom:end+2,attrsTo:close,style} satisfies StyleSourceRange};
       if(style.font)open.attrSet('data-inline-font',style.font);
-      if(style.wave||style.underline)open.attrSet('data-inline-underline',style.wave?'wave':'single');
+      if(style.ornament)open.attrSet('data-inline-ornament',style.ornament);if(style.wave||style.underline)open.attrSet('data-inline-underline',style.wave?'wave':'single');
       if(style.strike)open.attrSet('data-inline-strike','true');
       if(style.marker&&!style.gold)open.attrSet('data-inline-marker',markerInk(style));
       md.inline.tokenize(state);state.push('text_style_close','span',-1);

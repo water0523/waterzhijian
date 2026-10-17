@@ -1,7 +1,7 @@
 import {markerInk,styleAttributes,type InlineStyle} from './inline-style';
 import {selectedTextRuns,textRunStyle,textStyleChanges,type TextSourceRange} from './text-selection';
 
-export const formatFilters=[['marker','半高荧光'],['highlight','荧光'],['gold','泥金金句'],['font','字体'],['size','字号'],['color','字色'],['bold','加粗'],['italic','斜体'],['underline','下划线'],['wave','波浪线'],['strike','删除线'],['dots','字下着重号'],['role','文体标记'],['any','全部显式格式']] as const;
+export const formatFilters=[['marker','半高荧光'],['highlight','荧光'],['gold','泥金金句'],['ornament','修饰样式'],['font','字体'],['size','字号'],['color','字色'],['bold','加粗'],['italic','斜体'],['underline','下划线'],['wave','波浪线'],['strike','删除线'],['dots','字下着重号'],['role','文体标记'],['any','全部显式格式']] as const;
 export type FormatFilter=typeof formatFilters[number][0];
 export type FindHit=TextSourceRange&{text:string;line:number;value:string};
 function lineIndex(source:string){
