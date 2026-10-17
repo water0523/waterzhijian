@@ -198,14 +198,14 @@ export function mappedInlineTokens(source:string){return md.parse(source,{source
 export function mappedStyleBlocks(source:string){
   const tokens=md.parse(source,{source,editable:true}),stack:typeof tokens=[],starts=[0];
   for(let i=0;i<source.length;i++)if(source[i]==='\n')starts.push(i+1);
-  const blocks:{tokens:typeof tokens;scope:string}[]=[],barriers:{from:number;to:number}[]=[];
+  const blocks:{tokens:typeof tokens;scope:string}[]=[],barriers:{from:number;to:number;table?:boolean}[]=[];let cell=0;
   for(const token of tokens){
     if(token.nesting===1)stack.push(token);
     if(token.type==='inline'){
-    const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem|exam)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/');
+    const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem|exam)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/')+(stack.some(t=>t.type==='table_open')?':cell-'+cell++:'');
       blocks.push({tokens:token.children||[],scope:scope||'paragraph'});
     }
-    if(token.map&&['fence','code_block','math_block','hr','decorative_divider','table_open'].includes(token.type))barriers.push({from:starts[token.map[0]],to:starts[token.map[1]]??source.length});
+    if(token.map&&['fence','code_block','math_block','hr','decorative_divider','table_open'].includes(token.type))barriers.push({from:starts[token.map[0]],to:starts[token.map[1]]??source.length,table:token.type==='table_open'});
     if(token.nesting===-1)stack.pop();
   }
   return {blocks,barriers};

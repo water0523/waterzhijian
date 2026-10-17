@@ -62,7 +62,7 @@ export class PreviewEditor {
     }
     for(const el of this.root.querySelectorAll<HTMLElement>('[data-edit-from]')){
       el.classList.add('preview-text-run');
-      if(this.enabled){el.contentEditable='plaintext-only';el.spellcheck=false;el.setAttribute('aria-label','修改文字');}
+      if(this.enabled&&!el.closest('table')){el.contentEditable='plaintext-only';el.spellcheck=false;el.setAttribute('aria-label','修改文字');}
       else el.removeAttribute('contenteditable');
     }
   }

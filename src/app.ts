@@ -23,7 +23,8 @@ import {showRewrite,cancelRewrite} from './rewrite';
 import {inspectFonts} from './font-inspection';
 import {StickerController,updateStickerLines,flattenStickers,publicationHTML} from './stickers';
 import {PreviewEditor} from './preview-editor';
-import {styleAttributes,parseInlineStyle,literaryRoles,type InlineStyle} from './inline-style';
+import {PreviewFormatting} from './preview-formatting';
+import {literaryRoles,styleDecoratedInitials,type InlineStyle} from './inline-style';
 import {showInlineMenu,mountInlineMenus,type InlineMenu} from './inline-picker';
 import {appendReferences} from './references';
 import {boldSelection,selectedMath,applyMathStyle} from './math-format';
@@ -55,6 +56,7 @@ const assets=new ArticleAssetMap(assetStore,()=>current);
 let editor:MarkdownEditor,sync:ScrollSync;
 let stickerController:StickerController;
 let previewEditor:PreviewEditor;
+let previewFormatting:PreviewFormatting;
 let night=readPreference('appearance','day')==='night';
 let fontInspection=readPreference('font-inspection','false')==='true';
 const savedBrightness=Number(readPreference('preview-brightness','78'));
@@ -201,12 +203,13 @@ function render(){
   try{
     const disclosureKey=(node:HTMLElement)=>node.className+'|'+node.dataset.line+'|'+node.querySelector(':scope > summary')?.textContent;
     const disclosures=new Map(renderedArticleId===current.id?[...$('preview').querySelectorAll<HTMLDetailsElement>('details')].map(n=>[disclosureKey(n),{open:n.open,scroll:n.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content,:scope > .edition-content')?.scrollTop||0}] as const):[]);
-    renderResult=renderMarkdown(current.markdown,assets,previewEditor?.enabled,current.typography);
+    renderResult=renderMarkdown(current.markdown,assets,true,current.typography);
     const committed=themeById(current.theme),theme=themeById(peekThemeId||current.theme);$('article-style').textContent=publisher==='zhihu'?standardCSS():themeCSS(theme,peekThemeId?{}:current.typography);
     const indentButton=document.getElementById('indent-toggle') as HTMLButtonElement|null;
     if(indentButton){const active=current.typography.indent??themeDefaults(committed).indent;indentButton.classList.toggle('active',active);indentButton.setAttribute('aria-pressed',String(active));indentButton.disabled=publisher==='zhihu';}
     $('preview').innerHTML=(publisher==='zhihu'?standardBody(current,assets,renderResult.html):renderResult.html)||'<p style="color:#a1aa9c;text-align:center;padding-top:70px;text-indent:0">从左侧写下第一句话。</p>';
     if(publisher==='wechat')decorateTheme($('preview'),theme);
+    styleDecoratedInitials($('preview'));
     for(const node of $('preview').querySelectorAll<HTMLDetailsElement>('details')){
       const previous=disclosures.get(disclosureKey(node));if(previous){node.open=previous.open;const content=node.querySelector<HTMLElement>(':scope > .journal-content,:scope > .folio-content,:scope > .edition-content');if(content)content.scrollTop=previous.scroll;}
       node.addEventListener('toggle',()=>{if(node.isConnected)requestAnimationFrame(()=>sync?.rebuild());});
@@ -215,7 +218,7 @@ function render(){
     if(publisher==='wechat'&&referencesEnabled())appendReferences($('preview'));
     mountCodeTools($('preview'));
     stickerController?.setEnabled(publisher==='wechat'&&!previewEditor?.enabled);if(publisher==='wechat')stickerController?.render();
-    previewEditor?.attach();inspectFonts($('preview'),fontInspection);
+    previewEditor?.attach();previewFormatting?.attach();inspectFonts($('preview'),fontInspection);
     $('theme-name').textContent=committed.name;$('theme-dot').style.background=committed.accent;$('preview-caption-name').textContent=publisher==='zhihu'?'知乎 · 标准 Markdown':(peekThemeId?'试看 · ':'')+theme.name;
     const mood=$('folio-font-button');if(mood){mood.hidden=!isFolio(committed)||publisher!=='wechat';mood.textContent=({'noto-serif':'书卷宋体',wenkai:'温润楷体','noto-sans':'现代人文黑'} as Record<string,string>)[current.typography.font||committed.font]||'自定字体';mood.textContent+=' ▾';}
     const examButton=$('exam-block-button');if(examButton)examButton.hidden=!isExam(committed)||publisher!=='wechat';
@@ -380,7 +383,10 @@ function applySelectedTextStyle(plan:ReturnType<typeof selectedTextRuns>,patch:I
   if(plan.error){toast(plan.error);return false;}
   if(!plan.selected.length){toast('选区内没有可设置样式的正文文字；代码和公式请分别选择。');return false;}
   if(patch.size!==undefined&&(!Number.isFinite(patch.size)||patch.size<10||patch.size>64||Math.round(patch.size*10)!==patch.size*10)){toast('选区字号范围是 10–64 px，最多一位小数。');return false;}
-  const changes=textStyleChanges(plan,patch);closePopover();if(changes.length)editor.formatTextRanges(changes);else editor.view.focus();return true;
+  const changes=textStyleChanges(plan,patch),fromPreview=previewFormatting?.active;closePopover();
+  if(changes.length)editor.formatTextRanges(changes,!fromPreview);else if(!fromPreview)editor.view.focus();
+  if(fromPreview){const selection=editor.view.state.selection.main;previewEditor.active=null;render();previewFormatting.restore(selection.from,selection.to);}
+  return true;
 }
 function showInlineStyle(event?:Event){
   const selection=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(selection.from,selection.to);
@@ -396,37 +402,19 @@ function showInlineStyle(event?:Event){
       closePopover();return true;
     },true);return;
   }
-  if(selected.includes('\n')){
-    const plan=selectedTextRuns(editor.view.state.doc.toString(),selection.from,selection.to);
-    if(plan.error){toast(plan.error);return;}
-    if(!plan.selected.length){toast('选区内没有可设置样式的正文文字；代码和公式请分别选择。');return;}
-    showInlineMenu(target,kind,plan.common,(root,markdown)=>{
-      root.innerHTML=renderMarkdown(markdown,assets).html;if(publisher==='wechat')decorateTheme(root,themeById(current.theme));
-    },(style,change)=>{
-      let patch:InlineStyle;
-      if(change?.clear)patch=Object.fromEntries(selectionStyleKeys.map(key=>[key,undefined]));
-      else if(kind==='effect'){
-        const key=change!.effect!;patch={[key]:style[key]};if(key==='gold'&&style.gold)Object.assign(patch,{marker:undefined,markerColor:undefined});
-      }else if(kind==='marker')patch={marker:style.marker,markerColor:style.markerColor,...(style.marker?{gold:undefined}:{})};
-      else patch={[kind]:style[kind]};
-      return applySelectedTextStyle(plan,patch);
-    });return;
-  }
-  const before=editor.view.state.doc.toString();
-  const suffix=before.slice(selection.to).match(/^\]\{([^}]+)\}/);
-  const existing=before[selection.from-1]==='['&&suffix?parseInlineStyle(suffix[1]):null;
-  showInlineMenu(target,kind,existing,(root,markdown)=>{
-    root.innerHTML=renderMarkdown(markdown,assets).html;
-    if(publisher==='wechat')decorateTheme(root,themeById(current.theme));
-  },style=>{
-    if(before!==editor.view.state.doc.toString()){toast('选区内容已经变化，请重新选择文字。',true);return false;}
-    if(style.size!==undefined&&(!Number.isFinite(style.size)||style.size<10||style.size>64||Math.round(style.size*10)!==style.size*10)){toast('选区字号范围是 10–64 px，最多一位小数。');return false;}
-    const attrs=styleAttributes(style);
-    const from=existing?selection.from-1:selection.from,to=existing?selection.to+suffix![0].length:selection.to;
-    const insert=attrs?`[${selected}]{${attrs}}`:selected,anchor=from+(attrs?1:0);closePopover();
-    if(insert!==before.slice(from,to))editor.formatSelection(selection.from,selection.to,from,to,attrs);
-    else editor.view.dispatch({selection:{anchor,head:anchor+selected.length}});
-    editor.view.focus();return true;
+  const plan=selectedTextRuns(editor.view.state.doc.toString(),selection.from,selection.to);
+  if(plan.error){toast(plan.error);return;}
+  if(!plan.selected.length){toast('选区内没有可设置样式的正文文字；代码和公式请分别选择。');return;}
+  showInlineMenu(target,kind,plan.common,(root,markdown)=>{
+    root.innerHTML=renderMarkdown(markdown,assets).html;if(publisher==='wechat')decorateTheme(root,themeById(current.theme));
+  },(style,change)=>{
+    let patch:InlineStyle;
+    if(change?.clear)patch=Object.fromEntries(selectionStyleKeys.map(key=>[key,undefined]));
+    else if(kind==='effect'){
+      const key=change!.effect!;patch={[key]:style[key]};if(key==='gold'&&style.gold)Object.assign(patch,{marker:undefined,markerColor:undefined});
+    }else if(kind==='marker')patch={marker:style.marker,markerColor:style.markerColor,...(style.marker?{gold:undefined}:{})};
+    else patch={[kind]:style[kind]};
+    return applySelectedTextStyle(plan,patch);
   });
 }
 async function addImages(files:File[],position:number){
@@ -822,6 +810,8 @@ async function init(){
   editorChrome(editorTheme);applyAppearance();
   sync=new ScrollSync(editor,$('preview-scroll'),$('preview'));
   previewEditor=new PreviewEditor($('preview'),editor,render,toast);
+  previewFormatting=new PreviewFormatting($('preview'),editor,render);
+  $('preview-edit-button').title='点击修改文字；直接划选预览文字即可调整字体、荧光等格式';
   stickerController=new StickerController($('preview'),()=>current,assets,()=>{markDirty();requestAnimationFrame(()=>sync.rebuild());},makeSticker,restoreSticker,()=>void showStickerRegions().catch(e=>toast(errorMessage(e),true)));
   bind('modal-close',closeModal);modal.addEventListener('cancel',e=>{e.preventDefault();const detail=document.getElementById('theme-detail');if(detail&&!detail.hidden)$('theme-detail-close').click();else closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
   $('library').hidden=readPreference('library-open','true')!=='true';
@@ -871,7 +861,7 @@ async function init(){
   bind('editor-theme',()=>{const value=$<HTMLSelectElement>('editor-theme').value;editor.theme(value);editorChrome(value);preference(night?'editor-theme-night':'editor-theme',value);},'change');
   bind('night-button',()=>{night=!night;preference('appearance',night?'night':'day');const id=readPreference(night?'editor-theme-night':'editor-theme',night?'dark':'light');const value=editorThemes[id]?id:(night?'dark':'light');$<HTMLSelectElement>('editor-theme').value=value;editor.theme(value);editorChrome(value);applyAppearance();});
   bind('preview-brightness',()=>{brightness=Number($<HTMLInputElement>('preview-brightness').value);preference('preview-brightness',String(brightness));applyAppearance();},'input');
-  bind('preview-edit-button',()=>{previewEditor.enabled=!previewEditor.enabled;$('preview-edit-button').setAttribute('aria-pressed',String(previewEditor.enabled));$('preview-edit-button').textContent=previewEditor.enabled?'完成修改':'编辑文字';render();if(previewEditor.enabled)toast('点击标题或正文修改文字。格式、公式、图片保持锁定；换行请在左侧修改。');});
+  bind('preview-edit-button',()=>{previewEditor.enabled=!previewEditor.enabled;$('preview-edit-button').setAttribute('aria-pressed',String(previewEditor.enabled));$('preview-edit-button').textContent=previewEditor.enabled?'完成修改':'编辑文字';render();if(previewEditor.enabled)toast('点击标题或正文修改文字；划选文字可调整字体、荧光等格式。换行请在左侧修改。');});
   for(const mode of ['edit','preview'])bind('mobile-'+mode,()=>{document.body.dataset.mobilePane=mode;for(const id of ['edit','preview'])$('mobile-'+id).setAttribute('aria-selected',String(id===mode));editor.view.requestMeasure();sync.rebuild();});
   const savedWidth=readPreference('preview-width','430');
   $<HTMLSelectElement>('preview-width').value=['375','430','794','wide'].includes(savedWidth)?savedWidth:'375';
@@ -907,10 +897,15 @@ async function init(){
       const key=type as 'bold'|'italic'|'underline'|'strike';applyMathStyle(editor,math,{...math.style,[key]:!math.style[key]},toast,(tex,display)=>renderMath(tex,display).error);return;
     }
     const selection=editor.view.state.selection.main;
-    if(['bold','italic','underline','wave','strike'].includes(type||'')&&editor.view.state.sliceDoc(selection.from,selection.to).includes('\n')){
-      const plan=selectedTextRuns(editor.view.state.doc.toString(),selection.from,selection.to),key=type as 'bold'|'italic'|'underline'|'wave'|'strike',enabled=plan.common[key]!==true;
-      const patch:InlineStyle={[key]:enabled?true:undefined};if(enabled&&key==='wave')patch.underline=undefined;if(enabled&&key==='underline')patch.wave=undefined;
-      applySelectedTextStyle(plan,patch);return;
+    if(!selection.empty&&['bold','italic','underline','wave','strike'].includes(type||'')){
+      const plan=selectedTextRuns(editor.view.state.doc.toString(),selection.from,selection.to);
+      // Read inherited styles even when a new selection starts inside a wrapper.
+      // Unstyled single-line emphasis keeps the familiar Markdown representation.
+      if(previewFormatting.active||plan.error||!plan.selected.length||editor.view.state.sliceDoc(selection.from,selection.to).includes('\n')||plan.selected.some(run=>run.styles.length)){
+        const key=type as 'bold'|'italic'|'underline'|'wave'|'strike',enabled=plan.common[key]!==true;
+        const patch:InlineStyle={[key]:enabled?true:undefined};if(enabled&&key==='wave')patch.underline=undefined;if(enabled&&key==='underline')patch.wave=undefined;
+        applySelectedTextStyle(plan,patch);return;
+      }
     }
     if(type==='bold')boldSelection(editor,toast);
     else if(type==='italic'){if(hasSelectedStyle(editor))toggleTextStyle(editor,'italic');else editor.wrap('*');}
@@ -951,7 +946,7 @@ async function init(){
   window.addEventListener('beforeunload',e=>{if(dirtyGeneration!==savedGeneration){e.preventDefault();e.returnValue='';}});
   document.addEventListener('visibilitychange',()=>{if(document.hidden&&dirtyArticles.size)void save();});
   mountPopoverHover(document.querySelectorAll<HTMLElement>('[data-inline-menu],#selection-block-button,.format-toolbar [data-format="heading"],#table-style-button,#image-layout-button,#divider-button,#math-button,#journal-block-button,#folio-block-button,#edition-block-button,#exam-block-button,#folio-font-button,#writing-tools-button'),target=>{
-    if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text)return false;const math=selectedMath(editor);if(math)return !math.error&&['color','size','highlight','effect'].includes(target.dataset.inlineMenu);if(!text.includes('\n'))return true;const plan=selectedTextRuns(editor.view.state.doc.toString(),s.from,s.to);return !plan.error&&plan.selected.length>0;}
+    if(target.dataset.inlineMenu){const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to);if(!text)return false;const math=selectedMath(editor);if(math)return !math.error&&['color','size','highlight','effect'].includes(target.dataset.inlineMenu);const plan=selectedTextRuns(editor.view.state.doc.toString(),s.from,s.to);return !plan.error&&plan.selected.length>0;}
     return target.id!=='image-layout-button'||/^:::gallery /m.test(current.markdown);
   });
   // The constructor already contains the restored document and its settings.

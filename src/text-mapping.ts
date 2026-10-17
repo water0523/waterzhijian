@@ -42,17 +42,21 @@ export function installTextMapping(md:MarkdownIt){
     if(!state.env.editable){join(state);return;}
     const lines=state.src.split('\n'),starts:number[]=[];let offset=0;
     for(const line of lines){starts.push(offset);offset+=line.length+1;}
-    const consumed=new Map<number,number>();
+    const consumed=new Map<number,number>();let tableLine:number|undefined;
     for(const block of state.tokens){
+      if(block.type==='tr_open')tableLine=block.map?.[0];
+      if(block.type==='tr_close')tableLine=undefined;
       if(block.type!=='inline'||!block.children)continue;
-      // Tables and generated footnote tokens may not have source maps. Their
-      // escaped text still needs the normal text_join conversion to render.
+      // Generated inline tokens may lack their own source maps. Their escaped
+      // text still needs the normal text_join conversion to render; table cells
+      // can use the row map and the consumed column to distinguish duplicates.
       for(const t of block.children)if(t.type==='text_special'){t.type='text';if(t.meta)t.meta.rawTo=t.meta.rawFrom+t.markup.length;}
-      if(!block.map)continue;
-      const positions:number[]=[];let sourceLine=block.map[0];
+      const map=block.map||(tableLine!==undefined?[tableLine,tableLine+1]:null);
+      if(!map)continue;
+      const positions:number[]=[];let sourceLine=map[0];
       for(const part of block.content.split('\n')){
         let found=false;
-        for(;sourceLine<block.map[1];sourceLine++){
+        for(;sourceLine<map[1];sourceLine++){
           const col=lines[sourceLine].indexOf(part,consumed.get(sourceLine)||0);
           if(col<0)continue;
           for(let n=0;n<part.length;n++)positions.push(starts[sourceLine]+col+n);

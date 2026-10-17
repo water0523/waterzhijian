@@ -81,6 +81,7 @@ export class MarkdownEditor {
   }
   private selectionTools(){
     const tools=document.getElementById('selection-tools');if(!tools)return;
+    if(tools.dataset.origin==='preview')return;
     if(document.getElementById('quick-popover')?.dataset.toolbar===tools.id)return;
     const selection=this.view.state.selection.main,coords=this.view.coordsAtPos(selection.head),bounds=this.view.scrollDOM.getBoundingClientRect();
     tools.hidden=(!this.view.hasFocus&&!tools.contains(document.activeElement))||selection.empty||!coords||coords.top<bounds.top||coords.top>bounds.bottom;
@@ -100,9 +101,9 @@ export class MarkdownEditor {
     const anchor=outerFrom+prefix.length;
     this.view.dispatch({changes:[{from:outerFrom,to:from,insert:prefix},{from:to,to:outerTo,insert:suffix}],selection:{anchor,head:anchor+to-from},userEvent:'input.format',annotations:isolateHistory.of('full')});
   }
-  formatTextRanges(specs:import('@codemirror/state').ChangeSpec[]){
+  formatTextRanges(specs:import('@codemirror/state').ChangeSpec[],focus=true){
     const selection=this.view.state.selection.main,changes=this.view.state.changes(specs),from=changes.mapPos(selection.from,1),to=changes.mapPos(selection.to,-1);
-    this.view.dispatch({changes,selection:{anchor:from,head:Math.max(from,to)},userEvent:'input.format',annotations:isolateHistory.of('full')});this.view.focus();
+    this.view.dispatch({changes,selection:{anchor:from,head:Math.max(from,to)},userEvent:'input.format',annotations:isolateHistory.of('full')});if(focus)this.view.focus();
   }
   insert(text:string,at?:number){const sel=this.view.state.selection.main;const from=at??sel.from;this.view.dispatch({changes:{from,to:at===undefined?sel.to:from,insert:text},selection:{anchor:from+text.length},scrollIntoView:true});this.view.focus();}
   wrap(before:string,after=before){
@@ -113,7 +114,7 @@ export class MarkdownEditor {
     this.view.focus();
   }
   goto(line:number){const l=this.view.state.doc.line(Math.max(1,Math.min(this.view.state.doc.lines,line)));this.view.dispatch({selection:{anchor:l.from},effects:EditorView.scrollIntoView(l.from,{y:'center'})});this.view.focus();}
-  undo(){undo(this.view);this.view.focus();} redo(){redo(this.view);this.view.focus();} search(){openSearchPanel(this.view);}
+  undo(focus=true){undo(this.view);if(focus)this.view.focus();} redo(focus=true){redo(this.view);if(focus)this.view.focus();} search(){openSearchPanel(this.view);}
 }
 
 export class ScrollSync {

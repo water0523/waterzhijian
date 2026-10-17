@@ -32,6 +32,16 @@ export function inlineCSS(style:InlineStyle){
   if(style.underline||style.wave||style.strike)rules.push('text-decoration:'+[(style.underline||style.wave)?'underline':'',style.strike?'line-through':'',style.wave?'wavy':'solid'].filter(Boolean).join(' '),'text-underline-offset:3px');
   return rules.join(';');
 }
+export function styleDecoratedInitials(root:HTMLElement){
+  for(const initial of root.querySelectorAll<HTMLElement>('.text-initial,.journal-initial,.magazine-initial')){
+    const spans:HTMLElement[]=[];
+    for(let parent=initial.parentElement;parent&&parent!==root;parent=parent.parentElement)if(parent.classList.contains('inline-style'))spans.unshift(parent);
+    // A chosen text size takes precedence over the automatic enlarged initial.
+    // Removing the float also avoids leaving an empty drop-cap-sized gap.
+    if(spans.some(span=>span.style.fontSize)){const parent=initial.parentElement!;initial.replaceWith(...initial.childNodes);parent.normalize();continue;}
+    for(const span of spans)for(const property of span.style){initial.style.setProperty(property,span.style.getPropertyValue(property));}
+  }
+}
 export function parseInlineStyle(source:string):InlineStyle|null {
   const style:InlineStyle={};const entries=source.trim().split(/\s+/);if(!source.trim())return null;
   for(const entry of entries){

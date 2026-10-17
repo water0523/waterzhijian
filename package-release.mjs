@@ -106,6 +106,11 @@ for(const channel of ['chrome','msedge']){
     if(channel==='chrome')await add('test-results/exam-chrome/exam-'+id+'-pages.png');
   }
 }
+for(const name of ['docs/plans/2026-10-17-reselect-text-styles.md','tests/reselect-styles.mjs','tests/preview-formatting.mjs'])await add(name);
+for(const channel of ['chrome','msedge']){
+  await add('test-results/reselect-'+channel+'/report.json');
+  for(const file of ['report.json','day.png','night.png','preview-only.png'])await add('test-results/preview-format-'+channel+'/'+file);
+}
 const data=zipSync(files,{level:9});const verified=unzipSync(data);
 for(const name of Object.keys(files))assert.deepEqual(verified[name],files[name]);
 await writeFile('dist/非水·成章-源码与使用说明.zip',data);
