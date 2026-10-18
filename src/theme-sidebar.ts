@@ -20,7 +20,7 @@ export function mountThemeSidebar(root:HTMLElement,host:Host){
     thumbnail.innerHTML=host.thumbnail(id);delete thumbnail.dataset.pendingTheme;thumbnail.removeAttribute('aria-busy');
     const window=thumbnail.querySelector<HTMLElement>('.theme-live-window');if(window)observer.observe(window);
   };
-  const previews=new IntersectionObserver(entries=>{for(const entry of entries)if(entry.isIntersecting){const thumbnail=entry.target as HTMLElement;hydrate(thumbnail);if(!thumbnail.dataset.pendingTheme)previews.unobserve(thumbnail);}},{root:results,rootMargin:'120px 0px'});
+  const previews=new IntersectionObserver(entries=>{for(const entry of entries){const thumbnail=entry.target as HTMLElement;if(entry.isIntersecting)hydrate(thumbnail);else if(!thumbnail.dataset.pendingTheme){thumbnail.dataset.pendingTheme=thumbnail.closest<HTMLElement>('[data-sidebar-card]')!.dataset.sidebarCard;thumbnail.innerHTML='<div class="theme-thumbnail-placeholder"></div>';}}},{root:results,rootMargin:'120px 0px'});
   const updateCurrent=()=>{const id=host.current();root.querySelector('.sidebar-theme-hint')!.textContent=host.enabled()?'悬停试看，移开恢复 · 点击应用':'知乎使用标准排版 · 切回公众号可应用主题';results.querySelectorAll<HTMLElement>('[data-sidebar-card]').forEach(card=>{const chosen=card.dataset.sidebarCard===id;card.classList.toggle('is-current',chosen);const choice=card.querySelector<HTMLButtonElement>('[data-sidebar-theme]')!;choice.setAttribute('aria-pressed',String(chosen));choice.disabled=!host.enabled();const badge=card.querySelector<HTMLElement>('.sidebar-theme-current')!;badge.hidden=!chosen;});};
   const render=()=>{
     needsRender=true;if(root.hidden)return;
@@ -64,6 +64,7 @@ export function mountThemeSidebar(root:HTMLElement,host:Host){
   root.querySelector('#sidebar-theme-details')!.addEventListener('click',()=>{host.cancel();host.details();});
   root.addEventListener('pointerleave',host.cancel);
   root.addEventListener('keydown',e=>{if(e.key==='Escape'){e.preventDefault();host.cancel();host.close();}});
+  new MutationObserver(()=>{if(root.hidden){for(const node of results.querySelectorAll<HTMLElement>('.sidebar-theme-thumbnail')){node.dataset.pendingTheme=node.closest<HTMLElement>('[data-sidebar-card]')!.dataset.sidebarCard;node.innerHTML='<div class="theme-thumbnail-placeholder"></div>';}}}).observe(root,{attributes:true,attributeFilter:['hidden']});
   render();
   return {refresh:render,reveal:()=>{if(needsRender)render();else{previews.disconnect();for(const thumbnail of results.querySelectorAll<HTMLElement>('[data-pending-theme]'))previews.observe(thumbnail);}},updateCurrent};
 }

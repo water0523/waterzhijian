@@ -7,7 +7,7 @@ const labels:Record<ElementName,string>={h1:'H1 · 一级标题',h2:'H2 · 二�
 const selectors:Record<ElementName,string>={h1:'h1',h2:'h2',h3:'h3',quote:'blockquote',caption:'.image-caption',table:'table:not([role=presentation])',list:'ul,ol',code:'pre',formula:'.math-display',poem:'.poem',divider:'hr:not(.footnotes-sep),.decorative-divider'};
 const numberSettings={size:['字号',10,48,.5,'px'],lineHeight:['行高',1,3.5,.05,'倍'],letterSpacing:['字间距',-1,8,.1,'px'],marginTop:['上间距',0,80,.5,'px'],marginBottom:['下间距',0,80,.5,'px'],padding:['内边距',0,40,.5,'px'],radius:['圆角',0,40,.5,'px'],borderWidth:['装饰线粗细',0,8,.5,'px']} as const;
 type NumericKey=keyof typeof numberSettings;
-type Host={article:()=>Article;preview:()=>HTMLElement;before:()=>void;change:()=>void};
+type Host={article:()=>Article;preview:()=>HTMLElement;before:()=>void;change:()=>void;trial?:(elements:Article['typography']['elements'])=>void};
 const savedSelection=readPreference('element-selection','h2');
 let selected=(Object.hasOwn(labels,savedSelection)?savedSelection:'h2') as ElementName;
 let tab='文字';
@@ -19,19 +19,20 @@ export function mountElementPanel(root:HTMLElement,host:Host){
   details.innerHTML=`<summary>标题与元素细调 <span id="element-override-count"></span></summary><p class="help">只作用于当前文章；未调整的项目继续跟随主题。</p><label for="element-choice">选择元素</label><select id="element-choice">${Object.entries(labels).map(([id,name])=>`<option value="${id}" ${selected===id?'selected':''}>${name}</option>`).join('')}</select><div class="element-tabs" role="group" aria-label="元素设置分类">${['文字','间距','边框'].map(t=>`<button type="button" data-element-tab="${t}" aria-pressed="${tab===t}">${t}</button>`).join('')}</div><p id="element-presence" class="help"></p><div id="element-fields"></div><div class="element-reset-actions"><button type="button" id="element-reset-current">此元素跟随主题</button><button type="button" id="element-reset-all">清除全部细调</button></div>`;
   root.append(details);
   const $=<T extends HTMLElement=HTMLElement>(id:string)=>details.querySelector<T>('#'+id)!;
-  let changedAt=0;
-  const style=()=>host.article().typography.elements?.[selected]||{};
+  let changedAt=0,draft:Article['typography']['elements']|undefined,hasDraft=false;
+  const style=()=>(hasDraft?draft:host.article().typography.elements)?.[selected]||{};
   const count=()=>{const n=Object.values(host.article().typography.elements||{}).reduce((sum,s)=>sum+Object.keys(s).length,0);$('element-override-count').textContent=n?`${n} 项`:'';$<HTMLButtonElement>('element-reset-current').disabled=!Object.keys(style()).length;$<HTMLButtonElement>('element-reset-all').disabled=!n;};
-  function publish(next:Article['typography']['elements']){
+  function publish(next:Article['typography']['elements'],preview=false){
+    if(preview&&host.trial){draft=next;hasDraft=true;host.trial(next);return;}hasDraft=false;draft=undefined;
     if(host.article().id!==owner.id)return;
     if(Date.now()-changedAt>1500)host.before();changedAt=Date.now();
     const typography={...host.article().typography};if(next&&Object.keys(next).length)typography.elements=next;else delete typography.elements;
     host.article().typography=typography;host.change();count();
   }
-  function update(key:keyof ElementStyle,value:unknown){
-    const next={...host.article().typography.elements},s={...style()};
+  function update(key:keyof ElementStyle,value:unknown,preview=false){
+    const next={...(hasDraft?draft:host.article().typography.elements)},s={...style()};
     if(value===undefined)delete s[key];else (s as Record<string,unknown>)[key]=value;
-    if(Object.keys(s).length)next[selected]=s;else delete next[selected];publish(next);
+    if(Object.keys(s).length)next[selected]=s;else delete next[selected];publish(next,preview);
     const field=$('element-fields').querySelector<HTMLElement>(`[data-field="${key}"]`);field?.classList.toggle('customized',Object.hasOwn(s,key));const clear=field?.querySelector<HTMLButtonElement>('[data-element-clear]');if(clear)clear.disabled=!Object.hasOwn(s,key);
   }
   function draw(){
@@ -61,11 +62,11 @@ export function mountElementPanel(root:HTMLElement,host:Host){
     enhanceColors($('element-fields'));count();
     $('element-fields').querySelectorAll<HTMLInputElement>('[data-element-number]').forEach(input=>{
       const key=input.dataset.elementNumber as NumericKey;let lastValid=Number(input.value);
-      const apply=()=>{if(input.value==='')return;const value=Number(input.value),[,min,max]=numberSettings[key];if(!Number.isFinite(value)||value<min||value>max)return;lastValid=value;update(key,value);for(const other of $('element-fields').querySelectorAll<HTMLInputElement>(`[data-element-number="${key}"]`))if(other!==input)other.value=String(value);};
-      input.oninput=apply;input.onblur=()=>{const [,min,max]=numberSettings[key],value=Number(input.value);if(input.value===''||!Number.isFinite(value)||value<min||value>max)input.value=String(style()[key]??lastValid);};
+      const apply=()=>{if(input.value==='')return;const value=Number(input.value),[,min,max]=numberSettings[key];if(!Number.isFinite(value)||value<min||value>max)return;lastValid=value;update(key,value,true);for(const other of $('element-fields').querySelectorAll<HTMLInputElement>(`[data-element-number="${key}"]`))if(other!==input)other.value=String(value);};
+      input.oninput=apply;input.onchange=()=>{if(hasDraft)publish(draft);};input.onblur=()=>{const [,min,max]=numberSettings[key],value=Number(input.value);if(input.value===''||!Number.isFinite(value)||value<min||value>max)input.value=String(style()[key]??lastValid);};
     });
     $('element-fields').querySelectorAll<HTMLSelectElement>('[data-element-select]').forEach(input=>input.onchange=()=>{const key=input.dataset.elementSelect as keyof ElementStyle;update(key,input.value===''?undefined:key==='weight'?Number(input.value):key==='italic'?input.value==='true':input.value);if(key==='borderSide'||key==='borderStyle'){draw();$<HTMLSelectElement>('element-'+key).focus();}});
-    $('element-fields').querySelectorAll<HTMLInputElement>('[data-element-color]').forEach(input=>input.oninput=()=>update(input.dataset.elementColor as keyof ElementStyle,input.value));
+    $('element-fields').querySelectorAll<HTMLInputElement>('[data-element-color]').forEach(input=>{input.oninput=()=>update(input.dataset.elementColor as keyof ElementStyle,input.value,true);input.onchange=()=>{if(hasDraft)publish(draft);};});
     $('element-fields').querySelectorAll<HTMLButtonElement>('[data-element-clear]').forEach(b=>b.onclick=()=>{update(b.dataset.elementClear as keyof ElementStyle,undefined);draw();});
   }
   $('element-choice').onchange=()=>{selected=$<HTMLSelectElement>('element-choice').value as ElementName;preference('element-selection',selected);draw();};

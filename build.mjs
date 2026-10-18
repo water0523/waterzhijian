@@ -16,7 +16,7 @@ const result=await build({...options,entryPoints:['src/app.ts'],plugins:[{name:'
  return {contents:'export default '+JSON.stringify(key)+';',loader:'js'};
 });}}]});
 const vendors=[];
-for(const name of ['math','word','highlight']){
+for(const name of ['math','word','highlight','backup']){
  const output=await build({...options,entryPoints:['src/'+name+'-engine.ts'],globalName:'__offlineExports'});
  const script='globalThis.__feishuiOfflineModules['+JSON.stringify(name)+']=(()=>{'+output.outputFiles[0].text+';return __offlineExports;})();';
  vendors.push({name,script,metafile:output.metafile});
@@ -32,9 +32,10 @@ for(const dir of [...packages].sort()){
 const logo='data:image/jpeg;base64,'+(await readFile('assets/brand-logo.jpg')).toString('base64');
 const template=(await readFile('index.template.html','utf8')).replaceAll('/*BRAND_LOGO*/',logo);
 const css=await readFile('src/app.css','utf8')+'\n'+await readFile('src/workspace.css','utf8')+'\n'+await readFile('src/studio.css','utf8')+'\n'+await readFile('src/workbench.css','utf8')+'\n'+await readFile('src/find-replace.css','utf8')+'\n'+await readFile('src/ui-skin.css','utf8');
+const workspaceCSS=await readFile('src/productivity.css','utf8');
 const script=result.outputFiles[0].text.replace(/<\/script/gi,'<\\/script');
 const payloads=vendors.map(v=>'<script type="application/x-feishui-module" data-encoding="gzip-base64" id="offline-module-'+v.name+'">'+Buffer.from(gzipSync(strToU8(v.script),{level:9,mtime:0})).toString('base64')+'</script>').join('\n')+'\n'+[...images].sort(([a],[b])=>a.localeCompare(b)).map(([key,data])=>'<script type="application/x-feishui-image" data-name="'+imageNames.get(key)+'" id="'+key+'">'+data+'</script>').join('\n');
-const html=template.replace('</body>',()=>'<script type="text/plain" id="third-party-notices">'+notices.replace(/<\/script/gi,'<\\/script')+'</script></body>').replace('/*APP_CSS*/',()=>css).replace('<script>/*APP_JS*/</script>',()=>payloads+'\n<script>'+script+'</script>');
+const html=template.replace('</body>',()=>'<script type="text/plain" id="third-party-notices">'+notices.replace(/<\/script/gi,'<\\/script')+'</script></body>').replace('/*APP_CSS*/',()=>css+'\n'+workspaceCSS).replace('<script>/*APP_JS*/</script>',()=>payloads+'\n<script>'+script+'</script>').replace(/\r\n?/g,'\n');
 await mkdir('dist',{recursive:true});
 await writeFile('dist/非水·成章-离线公众号排版器.html',html,'utf8');
 // Keep the original entry point so existing file-origin drafts remain accessible.

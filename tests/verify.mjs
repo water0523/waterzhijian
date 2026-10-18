@@ -1,3 +1,4 @@
+import './workspace-driver.mjs';
 import {chromium} from 'playwright';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
@@ -80,7 +81,7 @@ async function run(channel){
     await setText('# 错误公式\n\n$$\n\\frac{1}\n$$\n\n正常段落仍然显示。');assert.ok(await page.locator('#preview .math-error').count()>0);assert.ok((await page.locator('#preview').innerText()).includes('正常段落'));pass('公式错误提示不阻断全文');
     await setText('# 安全输入\n\n<script>window.pwned=1</script>\n\n[危险](javascript:alert(1))\n\n<img src=x onerror="window.pwned=2">');assert.equal(await page.evaluate(()=>window.pwned),undefined);assert.equal(await page.locator('#preview script,#preview [onerror],#preview a[href^="javascript:"]').count(),0);pass('原始 HTML 与危险链接不可执行');
 
-    const bad=path.resolve(`test-results/${channel}-bad.zip`);await writeFile(bad,'not a zip');const titleBefore=await page.locator('#document-title').innerText();await page.locator('#import-input').setInputFiles(bad);await page.waitForTimeout(150);assert.equal(await page.locator('#document-title').innerText(),titleBefore);assert.ok(await page.locator('#toast').evaluate(el=>el.classList.contains('error')));pass('损坏备份不修改当前文章');
+    const bad=path.resolve(`test-results/${channel}-bad.zip`);await writeFile(bad,'not a zip');const titleBefore=await page.locator('#document-title').innerText();await page.locator('#import-input').setInputFiles(bad);await page.waitForTimeout(150);assert.equal(await page.locator('#document-title').innerText(),titleBefore);assert.ok(await page.locator('#toast').evaluate(el=>!!el.querySelector('.toast-item.error')));pass('损坏备份不修改当前文章');
 
     const imageReference=manifest.articles[0].markdown.match(/asset:[a-zA-Z0-9-]+/)[0];
     let longText='# 长文性能与定位测试\n\n';

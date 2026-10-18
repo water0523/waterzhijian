@@ -148,7 +148,7 @@ export async function flattenStickers(node:HTMLElement):Promise<Flattened>{
 }
 
 export async function publicationHTML(node:HTMLElement,mode:'outline'|'rectangle'|'image'){
-  const snapshotHost=document.createElement('div');snapshotHost.style.cssText=`position:fixed;left:-30000px;top:0;width:${node.getBoundingClientRect().width}px;pointer-events:none`;snapshotHost.innerHTML=exportFragment(node);document.body.append(snapshotHost);node=snapshotHost.firstElementChild as HTMLElement;
+  const snapshotHost=document.createElement('div');snapshotHost.style.cssText=`position:fixed;left:-30000px;top:0;width:${node.offsetWidth}px;pointer-events:none`;snapshotHost.innerHTML=exportFragment(node);document.body.append(snapshotHost);node=snapshotHost.firstElementChild as HTMLElement;
   try{const hasFree=[...node.querySelectorAll<HTMLElement>('.sticker-item')].some(el=>getComputedStyle(el).cssFloat==='none');
   if(mode==='image'||hasFree)return (await flattenStickers(node)).html;
   const host=document.createElement('div');host.innerHTML=exportFragment(node);host.querySelector('.sticker-layer')?.remove();

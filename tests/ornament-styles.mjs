@@ -1,3 +1,4 @@
+import './workspace-driver.mjs';
 import {chromium} from 'playwright';
 import {build} from 'esbuild';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';

@@ -218,5 +218,7 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   ${o.tableStyle==='three-line'?`.article table{border:0;border-top:2px solid ${theme.ink};border-bottom:2px solid ${theme.ink};border-radius:0}.article table th,.article table td{border:0;background:transparent;color:${theme.ink}}.article table th{border-bottom:1px solid ${theme.ink}}.article table tr:nth-child(even) td{background:transparent}`:''}
   ${o.tableStyle==='striped'?`.article table{border:0}.article table th,.article table td{border:0;border-bottom:1px solid #dce1e5}.article table th{background:${a}18;color:${theme.ink}}.article table tr:nth-child(even) td{background:${a}0c}`:''}
   ${o.tableStyle==='grid'?`.article table{border:1px solid #aeb8bd}.article table th,.article table td{border:1px solid #aeb8bd}.article table th{background:#f0f3f6;color:${theme.ink}}`:''}
-  ${elementCSS(o.elements,true)}`;
+  ${elementCSS(o.elements,true)}
+  ${o.headingDecoration?`.article h2{background:transparent;border:0;box-shadow:none;border-radius:0;padding:8px 0}.article h2:before,.article h2:after{display:none}.article h2{${o.headingDecoration==='line'?'border-bottom:1px solid '+a:o.headingDecoration==='bar'?'border-left:3px solid '+a+';padding-left:12px':''}}`:''}
+  ${o.texture?`.article{background-image:${o.texture==='none'?'none':o.texture==='grid'?'linear-gradient('+a+'0b 1px,transparent 1px),linear-gradient(90deg,'+a+'0b 1px,transparent 1px)':'radial-gradient('+a+'18 .6px,transparent .8px)'};background-size:${o.texture==='grid'?'20px 20px':'7px 7px'}}`:''}`;
 }

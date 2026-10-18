@@ -23,8 +23,8 @@ export class PreviewEditor {
       if((e.ctrlKey||e.metaKey)&&['b','i','u'].includes(e.key.toLowerCase()))e.preventDefault();
       if((e.ctrlKey||e.metaKey)&&['z','y'].includes(e.key.toLowerCase())){
         e.preventDefault();this.active=null;
-        if(e.key.toLowerCase()==='y'||e.shiftKey)this.editor.redo();else this.editor.undo();
-        this.refresh();
+        if(e.key.toLowerCase()==='y'||e.shiftKey)this.editor.redo(false);else this.editor.undo(false);
+        this.refresh();this.restoreCaret();
       }
       if(e.key==='Escape'){e.preventDefault();target(e)?.blur();}
     });
@@ -40,6 +40,8 @@ export class PreviewEditor {
     root.addEventListener('drop',e=>{if(this.enabled)e.preventDefault();});
     root.addEventListener('click',e=>{if(this.enabled&&((e.target as HTMLElement).closest('a')||(target(e)&&(e.target as HTMLElement).closest('summary'))))e.preventDefault();},true);
   }
+  finish(){if(this.active)this.commit(this.active);this.enabled=false;this.active=null;this.attach();delete document.body.dataset.previewEditing;const b=document.getElementById('preview-edit-button');if(b){b.textContent='编辑文字';b.setAttribute('aria-pressed','false');}}
+  private restoreCaret(){const position=this.editor.view.state.selection.main.head,run=[...this.root.querySelectorAll<HTMLElement>('[contenteditable]')].find(n=>Number(n.dataset.editFrom)<=position&&Number(n.dataset.editTo)>=position);if(!run)return;run.focus({preventScroll:true});const text=run.firstChild;if(text){const r=document.createRange();r.setStart(text,Math.min(text.textContent?.length||0,Math.max(0,position-Number(run.dataset.editFrom))));r.collapse(true);getSelection()?.removeAllRanges();getSelection()?.addRange(r);}}
   attach(){
     this.active=null;
     this.root.classList.toggle('text-editing',this.enabled);
@@ -77,6 +79,7 @@ export class PreviewEditor {
       if(run===el){run.dataset.editTo=String(from+insert.length);continue;}
       if(Number(run.dataset.editFrom)>=to){run.dataset.editFrom=String(Number(run.dataset.editFrom)+delta);run.dataset.editTo=String(Number(run.dataset.editTo)+delta);}
     }
+    const selection=getSelection(),range=selection?.rangeCount?selection.getRangeAt(0):null,measure=document.createRange();let offset=text.length;if(range&&el.contains(range.startContainer)){measure.selectNodeContents(el);measure.setEnd(range.startContainer,range.startOffset);offset=measure.toString().length;}const position=from+Math.min(to-from,offset);this.editor.view.dispatch({selection:{anchor:position}});
     this.updating=true;
     try{this.editor.replaceText(from,to,insert);}finally{this.updating=false;}
   }

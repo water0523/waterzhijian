@@ -4,6 +4,7 @@ export interface Typography {
   paragraphGap?: number; padding?: number; accent?: string; indent?: boolean;
   tableStyle?: 'theme' | 'three-line' | 'striped' | 'grid';
   equationNumbers?: boolean;
+  headingDecoration?:'none'|'line'|'bar'; texture?:'none'|'paper'|'grid';
   elements?:Partial<Record<ElementName,ElementStyle>>;
 }
 export interface Asset {
@@ -14,12 +15,14 @@ export interface Asset {
 export type AssetAppearance=Pick<Asset,'width'|'align'|'alt'|'caption'|'figureLabel'|'source'>;
 export type AssetSettings=Record<string,AssetAppearance>;
 export interface Sticker { id:string; assetId:string; line:number; x:number; offsetY:number; width:number; rotation:number; layout?:'free'|'wrap-left'|'wrap-right' }
-export interface Revision { label?:string; at: number; title: string; titleMode?:'auto'|'manual'; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[]; assetSettings?:AssetSettings; linkMode?:'direct'|'end' }
+export interface Revision { label?:string; customTitle?:string; at: number; title: string; titleMode?:'auto'|'manual'; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[]; assetSettings?:AssetSettings; linkMode?:'direct'|'end' }
 export interface Article {
   version: 1; id: string; title: string; markdown: string; theme: string;
   typography: Typography; assets: string[]; created: number; updated: number;
   deleted: boolean; revisions: Revision[]; revisionDeletes?:string[]; stickers?:Sticker[]; folder?:string;
-  /** Legacy backup compatibility; the workbench derives names from H1. */
+  /** An explicit user override; absent means follow the first H1. */
+  customTitle?:string;
+  /** Legacy backup compatibility. */
   titleMode?:'auto'|'manual';
   storeRevision?:string; assetSettings?:AssetSettings;
   linkMode?:'direct'|'end';

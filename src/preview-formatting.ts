@@ -36,7 +36,7 @@ export class PreviewFormatting {
   attach(){if(!this.active)this.clear();}
   private textNodes(){
     const walker=document.createTreeWalker(this.root,NodeFilter.SHOW_TEXT),nodes:Text[]=[];let node;
-    while(node=walker.nextNode())if(node.textContent)nodes.push(node as Text);
+    while(node=walker.nextNode())if(node.textContent&&!(node.parentElement?.closest('[data-editor-only]')))nodes.push(node as Text);
     return nodes;
   }
   private sourcePoint(node:Text,offset:number){
@@ -66,7 +66,7 @@ export class PreviewFormatting {
   private position(){
     const selection=getSelection();if(!selection?.rangeCount||!this.active)return;
     const range=selection.getRangeAt(0);if(!this.root.contains(range.commonAncestorContainer))return;
-    const box=range.getBoundingClientRect(),scroll=this.root.closest('.preview-scroll')||this.root.parentElement!,bounds=scroll.getBoundingClientRect();
+    const box=range.getBoundingClientRect(),scroll=document.getElementById('preview-scroll')||this.root.parentElement!,bounds=scroll.getBoundingClientRect();
     this.tools.hidden=box.bottom<bounds.top||box.top>bounds.bottom;if(this.tools.hidden)return;
     this.tools.style.left=Math.max(8,Math.min(innerWidth-this.tools.offsetWidth-8,box.left))+'px';
     const above=box.top-this.tools.offsetHeight-8;

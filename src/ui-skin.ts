@@ -1,6 +1,6 @@
 import atlasReference from '../assets/witch/elaina-atlas.webp';
 import skyReference from '../assets/witch/sky-workspace.webp';
-import hatReference from '../assets/witch/hat-corner.webp';
+import hatReference from '../assets/witch/hat-corner-depth.webp';
 import {embeddedImage} from './offline-modules';
 import {readPreference,preference} from './storage';
 import {uiIcon} from './ui-icons';

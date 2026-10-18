@@ -11,7 +11,7 @@ export function recordFingerprint(value:unknown){
 }
 export const baselineFor=(id:string)=>baselines.get(id)??null;
 export function sameDraft(a:Article,b:Article){
-  const draft=(v:Article)=>[v.title,v.titleMode??'manual',v.markdown,v.theme,v.typography,v.assets,v.stickers||[],v.folder||'',v.deleted,v.assetSettings||{},v.linkMode||'direct'];
+  const draft=(v:Article)=>[v.customTitle||'',v.title,v.titleMode??'manual',v.markdown,v.theme,v.typography,v.assets,v.stickers||[],v.folder||'',v.deleted,v.assetSettings||{},v.linkMode||'direct'];
   return JSON.stringify(draft(a))===JSON.stringify(draft(b));
 }
 export interface Commit {inputId:string;article:Article;original?:Article}

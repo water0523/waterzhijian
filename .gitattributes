@@ -1,6 +1,7 @@
 * text=auto eol=lf
 *.png binary
 *.zip binary
-docs/index.html -text
-dist/*.html -text
+# Generated HTML embeds Markdown hard-break strings with meaningful spaces.
+docs/index.html -text whitespace=-blank-at-eol
+dist/*.html -text whitespace=-blank-at-eol
 dist/*.txt -text

@@ -1,3 +1,4 @@
+import {backupWorker} from './offline-modules';
 import {zipSync,unzipSync,strToU8,strFromU8} from 'fflate';
 import {uid,fontStacks,type Article,type Asset,type AssetSettings,type Typography,type Sticker} from './model';
 import {themes,builtInIds,themesForArticles,themeLibraryDocument} from './themes';
@@ -13,7 +14,7 @@ export const extension=(mime:string)=>({'image/png':'png','image/jpeg':'jpg','im
 export function bytesFromData(data:string){const raw=atob(data.split(',')[1]);return Uint8Array.from(raw,c=>c.charCodeAt(0));}
 function dataFromBytes(bytes:Uint8Array,mime:string){let raw='';for(let i=0;i<bytes.length;i+=8192)raw+=String.fromCharCode(...bytes.subarray(i,i+8192));return `data:${mime};base64,${btoa(raw)}`;}
 export function assetRefs(markdown:string){return [...new Set([...markdown.matchAll(/asset:([a-zA-Z0-9-]+)/g)].map(m=>m[1]))];}
-export function createBackup(articles:Article[],assets:Map<string,Asset>,folders:string[]=[],all=false):Uint8Array{
+function backupFiles(articles:Article[],assets:Map<string,Asset>,folders:string[]=[],all=false){
   const files:Record<string,Uint8Array>={};
   const ids=new Set(articles.flatMap(a=>[...assetRefs(a.markdown),...(a.stickers||[]).map(s=>s.assetId),...a.revisions.flatMap(r=>[...assetRefs(r.markdown),...(r.stickers||[]).map(s=>s.assetId)])]));
   const assetList:Omit<Asset,'data'>[]=[];
@@ -28,7 +29,10 @@ export function createBackup(articles:Article[],assets:Map<string,Asset>,folders
     }
     files[`articles/${safeName(a.title)}-${a.id.slice(0,8)}.md`]=strToU8(lines.join('\n').replace(/asset:([a-zA-Z0-9-]+)/g,(_m,id)=>`../assets/${id}.${extension(assets.get(id)?.mime||'image/png')}`));
   }
-  const packed=zipSync(files,{level:6});readBackup(packed);return packed;
+  return files;
+}
+export function createBackup(articles:Article[],assets:Map<string,Asset>,folders:string[]=[],all=false):Uint8Array{
+  const packed=zipSync(backupFiles(articles,assets,folders,all),{level:6});readBackup(packed);return packed;
 }
 function validTypography(t:any):Typography{
   if(!t||typeof t!=='object')return {};
@@ -39,6 +43,8 @@ function validTypography(t:any):Typography{
   if(/^#[a-f\d]{6}$/i.test(t.accent))out.accent=t.accent;
   if(typeof t.indent==='boolean')out.indent=t.indent;
   if(typeof t.equationNumbers==='boolean')out.equationNumbers=t.equationNumbers;
+  if(['none','line','bar'].includes(t.headingDecoration))out.headingDecoration=t.headingDecoration;
+  if(['none','paper','grid'].includes(t.texture))out.texture=t.texture;
   if(['theme','three-line','striped','grid'].includes(t.tableStyle))out.tableStyle=t.tableStyle;
   if(t.elements!==undefined)out.elements=validateElements(t.elements,'文章元素样式');
   return out;
@@ -94,11 +100,11 @@ export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[]
     if(a.folder&&!folders.includes(a.folder))folders.push(a.folder);
     if(a.linkMode!==undefined&&!['direct','end'].includes(a.linkMode))throw new Error('文章链接设置无效');
     const stickers=stickerImport(a.stickers);
-    return {version:1,id:articleIds.get(String(a.id))!,provenance:a.provenance&&['copy','conflict','recovery'].includes(a.provenance.kind)?{kind:a.provenance.kind,sourceId:articleIds.get(String(a.provenance.sourceId))||String(a.provenance.sourceId||''),at:Number(a.provenance.at)||Date.now()}:undefined,revisionDeletes:Array.isArray(a.revisionDeletes)?a.revisionDeletes.filter((k:unknown)=>typeof k==='string'&&/^[a-f0-9]{1,32}$/.test(k)):[],title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:[...new Set([...assetRefs(markdown),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(a.assetSettings),linkMode:a.linkMode,created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
+    return {version:1,id:articleIds.get(String(a.id))!,provenance:a.provenance&&['copy','conflict','recovery'].includes(a.provenance.kind)?{kind:a.provenance.kind,sourceId:articleIds.get(String(a.provenance.sourceId))||String(a.provenance.sourceId||''),at:Number(a.provenance.at)||Date.now()}:undefined,revisionDeletes:Array.isArray(a.revisionDeletes)?a.revisionDeletes.filter((k:unknown)=>typeof k==='string'&&/^[a-f0-9]{1,32}$/.test(k)):[],customTitle:typeof a.customTitle==='string'?a.customTitle.trim().slice(0,200)||undefined:undefined,title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:[...new Set([...assetRefs(markdown),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(a.assetSettings),linkMode:a.linkMode,created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
       revisions:(Array.isArray(a.revisions)?a.revisions:[]).map((r:any)=>{
         if(typeof r.markdown!=='string')throw new Error('恢复版本损坏');
         if(r.linkMode!==undefined&&!['direct','end'].includes(r.linkMode))throw new Error('恢复版本链接设置无效');
-        const text=rewrite(r.markdown),stickers=stickerImport(r.stickers);return {label:typeof r.label==='string'?r.label.slice(0,80):undefined,at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:checkedTheme(r.theme),typography:validTypography(r.typography),assets:[...new Set([...assetRefs(text),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(r.assetSettings),linkMode:r.linkMode};
+        const text=rewrite(r.markdown),stickers=stickerImport(r.stickers);return {customTitle:typeof r.customTitle==='string'?r.customTitle.trim().slice(0,200)||undefined:undefined,label:typeof r.label==='string'?r.label.slice(0,80):undefined,at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:checkedTheme(r.theme),typography:validTypography(r.typography),assets:[...new Set([...assetRefs(text),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(r.assetSettings),linkMode:r.linkMode};
       })};
   });
   return {articles:articleOutput,assets:assetOutput,folders,articleIds,themes:themeLibrary.themes,hiddenThemes:themeLibrary.hidden};
@@ -126,4 +132,9 @@ export async function svgToPNG(svg:SVGElement,scale=3):Promise<Blob>{
 
 export function createBackupParts(articles:Article[],assets:Map<string,Asset>,folders:string[]=[],all=false):Uint8Array[]{
  try{return [createBackup(articles,assets,folders,all)];}catch(error){if(articles.length<=1)throw error;const middle=Math.ceil(articles.length/2);return [...createBackupParts(articles.slice(0,middle),assets,folders,all),...createBackupParts(articles.slice(middle),assets,folders,all)];}
+}
+
+export async function createBackupPartsAsync(articles:Article[],assets:Map<string,Asset>,folders:string[],all:boolean,signal:AbortSignal):Promise<Uint8Array[]>{
+ if(signal.aborted)throw new DOMException('已取消备份','AbortError');const files=backupFiles(articles,assets,folders,all),engine=backupWorker();
+ try{const bytes=await new Promise<Uint8Array>((resolve,reject)=>{const abort=()=>{engine.close();reject(new DOMException('已取消备份','AbortError'));};signal.addEventListener('abort',abort,{once:true});engine.worker.onmessage=e=>{signal.removeEventListener('abort',abort);if(e.data.error)reject(new Error(e.data.error));else resolve(e.data.bytes);};engine.worker.onerror=e=>{signal.removeEventListener('abort',abort);reject(new Error(e.message||'备份引擎启动失败'));};engine.worker.postMessage(files);});await new Promise<void>(resolve=>setTimeout(resolve,0));if(signal.aborted)throw new DOMException('已取消备份','AbortError');try{readBackup(bytes);return [bytes];}catch(error){if(articles.length<=1)throw error;const middle=Math.ceil(articles.length/2);return [...await createBackupPartsAsync(articles.slice(0,middle),assets,folders,all,signal),...await createBackupPartsAsync(articles.slice(middle),assets,folders,all,signal)];}}finally{engine.close();}
 }

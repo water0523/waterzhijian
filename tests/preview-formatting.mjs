@@ -1,3 +1,4 @@
+import './workspace-driver.mjs';
 import {chromium} from 'playwright';
 import {mkdir,writeFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';

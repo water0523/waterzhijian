@@ -26,3 +26,5 @@ export function embeddedImage(reference:string):string{
   if(!data?.startsWith('data:image/'))throw new Error('内置示例图片缺失，请重新下载完整编辑器');
   payload!.dataset.loaded='true';imageCache.set(reference,data);return data;
 }
+
+export function backupWorker(){const payload=document.getElementById('offline-module-backup');if(!payload?.textContent)throw new Error('离线备份引擎缺失，请重新下载完整编辑器');const code=payload.dataset.encoding==='gzip-base64'?strFromU8(gunzipSync(Uint8Array.from(atob(payload.textContent),c=>c.charCodeAt(0)))):payload.textContent;const url=URL.createObjectURL(new Blob(['globalThis.__feishuiOfflineModules={};\n'+code],{type:'text/javascript'}));const worker=new Worker(url);payload.dataset.loaded='true';return {worker,close:()=>{worker.terminate();URL.revokeObjectURL(url);}};}

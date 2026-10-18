@@ -40,7 +40,7 @@ dialog:has(.ui-skin-choices){width:min(1000px,calc(100vw - 48px))}
 .ui-skin-mini-witch-immersive{background:#d4dcfd}.ui-skin-mini-witch-immersive .ui-mini-header{background:#ffffff45}
 .ui-skin-mini-witch-light .ui-mini-sidebar,.ui-skin-mini-witch-immersive .ui-mini-sidebar{background:linear-gradient(#b7a3e9 0 10%,#f9f8ffdc 10% 100%)}
 .ui-mini-character{position:absolute;bottom:-2%;left:2%;width:31%;z-index:1}
-.ui-mini-hat{position:absolute;right:-1%;top:12%;width:25%;z-index:1}.ui-mini-hat img{width:100%;display:block}
+.ui-mini-hat{position:absolute;right:-1%;top:8%;width:30%;z-index:1;filter:drop-shadow(-2px 3px 2px #33234f55)}.ui-mini-hat img{width:100%;display:block}
 .ui-skin-description{display:block;padding:14px 8px 9px}.ui-skin-description>strong{display:block;font-size:14px;line-height:1.6;letter-spacing:.2px}
 .ui-skin-description>small{display:block;margin:6px 0 13px;font-size:11px;line-height:1.8;min-height:40px;color:var(--ui-muted)}
 .ui-skin-current{display:inline-block;padding:3px 9px;border-radius:5px;background:var(--ui-wash);font-size:10px;color:var(--ui-muted)}
@@ -105,11 +105,11 @@ dialog:has(.ui-skin-choices){width:min(1000px,calc(100vw - 48px))}
 :root[data-ui-skin=witch-immersive] .witch-sky-scene{opacity:1}
 :root[data-ui-skin=witch-immersive] #app .app-header{background:linear-gradient(90deg,#f9faffdf,#f8f9ff5c 46%,#f9faffc9);border-color:#c8caec;box-shadow:0 2px 10px #6d7cd719}
 :root[data-ui-skin=witch-immersive] #app :is(#library,.theme-sidebar){background:linear-gradient(180deg,#fbfbfff2,#f9f9ffed 70%,#f5f3ffe3);border-color:#c9c9eb;box-shadow:inset 0 1px 0 #fff,0 3px 16px #6a6bc019}
-:root[data-ui-skin=witch-immersive] #app .workspace-toolbar{background:#fafbffdc;padding-right:118px}
+:root[data-ui-skin=witch-immersive] #app .workspace-toolbar{background:#fafbffdc;padding-right:156px}
 :root[data-ui-skin=witch-immersive] #app .preview-pane{box-shadow:0 3px 20px #6065ba22}
 :root[data-ui-skin=witch-immersive] #app #preview-scroll{background:linear-gradient(135deg,#e8eaff,#f5f3ff 45%,#e7ecff)}
 :root[data-ui-skin=witch-immersive] .witch-edge-ornaments{display:block;position:absolute;inset:0;z-index:3;overflow:hidden}
-.witch-edge-ornaments .witch-corner-hat{width:107px;height:76px;right:2px;top:65px;transform:rotate(13deg);filter:drop-shadow(0 4px 3px #4e448a20);opacity:.94}
+.witch-edge-ornaments .witch-corner-hat{width:156px;height:106px;right:6px;top:62px;transform:perspective(700px) rotateY(-10deg) rotateZ(5deg);transform-origin:70% 45%;isolation:isolate;filter:none;opacity:1}.witch-edge-ornaments .witch-corner-hat img{position:relative;z-index:1;filter:drop-shadow(1px 3px 2px #281a3935) drop-shadow(-6px 12px 9px #33234f32)}.witch-edge-ornaments .witch-corner-hat:before{content:"";position:absolute;left:18%;right:5%;bottom:4%;height:19%;border-radius:50%;background:#3524543d;transform:rotate(-8deg) scaleY(.6);filter:blur(9px)}
 .witch-edge-compass{position:absolute;width:32px;right:3px;bottom:3px;opacity:.7}
 .witch-star{position:absolute;color:#b59a69;text-shadow:0 1px 1px #fff9;line-height:1;font-family:Georgia,serif}
 .witch-star-one{left:45px;top:83px;font-size:31px}.witch-star-two{left:50px;bottom:114px;font-size:18px}.witch-star-three{left:58%;bottom:3px;font-size:30px}
@@ -123,9 +123,9 @@ dialog:has(.ui-skin-choices){width:min(1000px,calc(100vw - 48px))}
 :root[data-ui-skin^=witch] body[data-appearance=night] #app :is(#library,.theme-sidebar,.workspace-toolbar){background:var(--witch-glass);border-color:var(--ui-border);box-shadow:var(--ui-shadow)}
 :root[data-ui-skin^=witch] body[data-appearance=night] #app #preview-scroll{background:linear-gradient(135deg,#292b48,#25253d 60%,#2e2a48)}
 :root[data-ui-skin^=witch] body[data-appearance=night] .witch-library-art>.witch-portrait{opacity:.82}
-:root[data-ui-skin^=witch] body[data-appearance=night] .witch-corner-hat{filter:brightness(.88) drop-shadow(0 2px 4px #0003)}
-@media(max-width:1439px){#app .app-header{padding:0 16px;gap:16px}#app .theme-sidebar{margin-left:4px}.witch-edge-ornaments .witch-corner-hat{width:80px;height:59px;top:65px;right:-10px;opacity:.7}:root[data-ui-skin=witch-immersive] #app .workspace-toolbar{padding-right:86px}}
+:root[data-ui-skin^=witch] body[data-appearance=night] .witch-corner-hat img{filter:brightness(.91) drop-shadow(1px 3px 2px #0703129c) drop-shadow(-7px 13px 11px #0603138c)}
+@media(max-width:1439px){#app .app-header{padding:0 16px;gap:16px}#app .theme-sidebar{margin-left:4px}.witch-edge-ornaments .witch-corner-hat{width:120px;height:82px;top:62px;right:-12px;opacity:1}:root[data-ui-skin=witch-immersive] #app .workspace-toolbar{padding-right:118px}}
 @media(max-width:1250px){#app #ui-settings-button{padding:0 8px}#app #ui-settings-button>span{display:none}#app .workspace-toolbar,:root[data-ui-skin=witch-immersive] #app .workspace-toolbar{padding:3px 5px}#app .workspace{padding:10px 10px 0}#app .app-header{gap:12px}#app .header-actions{gap:5px}.witch-edge-ornaments .witch-corner-hat{display:none}#app .workspace-toolbar .tool-button{padding:5px 6px}}
-@media(max-height:850px){:root[data-ui-skin=witch-immersive] .witch-library-art{height:66px;min-height:24px}.witch-library-art>.witch-portrait{width:138px}#app .app-header{height:76px}.witch-edge-ornaments .witch-corner-hat{top:59px}.witch-star-one{top:76px}}
+@media(max-height:850px){:root[data-ui-skin=witch-immersive] .witch-library-art{height:66px;min-height:24px}.witch-library-art>.witch-portrait{width:138px}#app .app-header{height:76px}.witch-edge-ornaments .witch-corner-hat{top:54px}.witch-star-one{top:76px}}
 @media(max-width:1150px){#app .format-toolbar button{font-size:10px;padding:3px 4px;min-width:23px}#app .format-toolbar{gap:1px;padding:3px 5px}#app .toolbar-right{gap:3px}#app .header-social-links{padding-left:4px}#app .header-social-link{width:27px}#app .workspace-toolbar{flex-wrap:wrap;row-gap:0;min-height:38px}}
 @media(prefers-reduced-motion:no-preference){.ui-skin-choice{transition:border-color .15s,box-shadow .15s}:root[data-ui-skin^=witch][data-witch-assets=ready] .witch-library-art{animation:witch-arrive .3s ease-out both}@keyframes witch-arrive{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:none}}}

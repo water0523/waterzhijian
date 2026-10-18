@@ -1,3 +1,4 @@
+import {mappedInlineTokens} from './render';
 import {syntaxTree} from '@codemirror/language';
 import type {MarkdownEditor} from './editor';
 import {hasSelectedStyle,toggleTextStyle} from './formatting';
@@ -132,6 +133,8 @@ export function boldSelection(editor:MarkdownEditor,notify:(message:string)=>voi
   const selected=source.slice(selection.from,selection.to);
   if(hasSelectedStyle(editor)){toggleTextStyle(editor,'bold');return;}
   const existing=source.slice(Math.max(0,selection.from-2),selection.from)==='**'&&source.slice(selection.to,selection.to+2)==='**';
-  if(existing||!(/[\d%$]/.test(selected)||/^\s|\s$|^[^\p{L}\p{N}]|[^\p{L}\p{N}]$/u.test(selected)))editor.wrap('**');
+  const candidate=source.slice(0,selection.from)+'**'+selected+'**'+source.slice(selection.to);
+  const native=mappedInlineTokens(candidate).flat().some(t=>t.type==='strong_open'&&t.meta?.fontStyle?.from===selection.from&&t.meta.fontStyle.to===selection.to+4);
+  if(existing||native)editor.wrap('**');
   else {if(selected.includes('\n')){notify('含特殊字符的加粗请逐个源码段落操作。');return;}editor.wrap('[',']{bold}');}
 }

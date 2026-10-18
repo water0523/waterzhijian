@@ -1,3 +1,5 @@
+import {slashInsertSource} from './slash-insert';
+import {readPreference} from './storage';
 import {Prec,type Extension} from '@codemirror/state';
 import {keymap} from '@codemirror/view';
 import {syntaxTree} from '@codemirror/language';
@@ -61,5 +63,5 @@ export function latexCompletionSource(context:CompletionContext){
 }
 
 export function latexCompletionExtension():Extension{
-  return [autocompletion({override:[latexCompletionSource],activateOnTypingDelay:65,interactionDelay:40,defaultKeymap:false,icons:false,maxRenderedOptions:40,tooltipClass:()=> 'latex-completion-menu'}),Prec.highest(keymap.of([{key:'Tab',run:acceptCompletion},...completionKeymap]))];
+  return [autocompletion({override:[ctx=>readPreference('latex-completion','true')==='true'?latexCompletionSource(ctx):null,slashInsertSource],activateOnTypingDelay:65,interactionDelay:0,defaultKeymap:false,icons:false,maxRenderedOptions:40,tooltipClass:()=> 'latex-completion-menu'}),Prec.highest(keymap.of([{key:'Tab',run:acceptCompletion},...completionKeymap]))];
 }

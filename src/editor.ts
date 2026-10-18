@@ -1,4 +1,4 @@
-import {EditorState,Compartment,type Extension} from '@codemirror/state';
+import {EditorState,Compartment,Transaction,type Extension} from '@codemirror/state';
 import {EditorView,keymap,lineNumbers,highlightActiveLine,highlightActiveLineGutter,drawSelection,dropCursor,rectangularSelection} from '@codemirror/view';
 import {defaultKeymap,history,historyKeymap,indentWithTab,undo,redo,isolateHistory} from '@codemirror/commands';
 import {markdown} from '@codemirror/lang-markdown';
@@ -53,27 +53,28 @@ function themeExtension(id:string){
   ]))];
 }
 export class MarkdownEditor {
-  historyAction?: (direction:number)=>void;typingChange=false;beforeSelection?:{anchor:number;head:number};
+  onHTMLPaste?:(html:string,plain:string,from:number,to:number)=>boolean;historyAction?: (direction:number)=>void;typingChange=false;beforeSelection?:{anchor:number;head:number};
   view:EditorView; themeSlot=new Compartment(); private completionSlot=new Compartment(); latexCompletionEnabled=true; private suppress=false; private extensions:Extension[]; private themeId:string;
   constructor(parent:HTMLElement,text:string,theme:string,onChange:(text:string)=>void,onImages:(files:File[],position:number)=>void,onSave:()=>void,latexCompletion=true){
     this.themeId=theme;this.latexCompletionEnabled=latexCompletion;
     this.extensions=[
-      lineNumbers(),history(),drawSelection(),dropCursor(),rectangularSelection(),indentOnInput(),bracketMatching(),highlightActiveLine(),highlightActiveLineGutter(),markdown(),highlightSelectionMatches(),EditorView.lineWrapping,
+      lineNumbers(),history(),EditorState.transactionExtender.of(()=>this.historyAction?{annotations:Transaction.addToHistory.of(false)}:null),drawSelection(),dropCursor(),rectangularSelection(),indentOnInput(),bracketMatching(),highlightActiveLine(),highlightActiveLineGutter(),markdown(),highlightSelectionMatches(),EditorView.lineWrapping,
       EditorState.phrases.of({'Find':'查找','Replace':'替换','next':'下一个','previous':'上一个','all':'全部','match case':'区分大小写','regexp':'正则表达式','by word':'全词匹配','replace':'替换','replace all':'全部替换','close':'关闭','Go to line':'跳转到行'}),
       this.themeSlot.of(themeExtension(theme)),
-      this.completionSlot.of(latexCompletion?latexCompletionExtension():[]),
+      this.completionSlot.of(latexCompletionExtension()),
       keymap.of([{key:'Mod-z',run:()=>{this.undo();return true;}},{key:'Mod-Shift-z',run:()=>{this.redo();return true;}},{key:'Mod-y',run:()=>{this.redo();return true;}},{key:'Mod-s',run:()=>{onSave();return true;}},...defaultKeymap,...historyKeymap,...searchKeymap,indentWithTab]),
       EditorView.updateListener.of(update=>{if(update.docChanged&&!this.suppress){this.beforeSelection=update.startState.selection.main;this.typingChange=update.transactions.some(t=>t.isUserEvent('input.type'));onChange(update.state.doc.toString());this.beforeSelection=undefined;}}),
       EditorView.updateListener.of(update=>{if(update.selectionSet||update.docChanged||update.focusChanged||update.viewportChanged)requestAnimationFrame(()=>this.selectionTools());}),
-      EditorView.domEventHandlers({beforeinput:(event)=>{if(this.historyAction&&['historyUndo','historyRedo'].includes(event.inputType)){event.preventDefault();this.historyAction(event.inputType==='historyUndo'?-1:1);return true;}return false;},paste:(event,view)=>{
+      EditorView.domEventHandlers({keydown:(event)=>{if(this.historyAction&&!event.isComposing&&(event.ctrlKey||event.metaKey)&&!event.altKey&&['z','y'].includes(event.key.toLowerCase())){event.preventDefault();this.historyAction(event.shiftKey||event.key.toLowerCase()==='y'?1:-1);return true;}return false;},beforeinput:(event)=>{if(this.historyAction&&['historyUndo','historyRedo'].includes(event.inputType)){event.preventDefault();this.historyAction(event.inputType==='historyUndo'?-1:1);return true;}return false;},paste:(event,view)=>{
         const images=[...(event.clipboardData?.files||[])].filter(f=>f.type.startsWith('image/'));
-        if(images.length){event.preventDefault();onImages(images,view.state.selection.main.head);return true;}return false;
+        if(images.length){event.preventDefault();onImages(images,view.state.selection.main.head);return true;}const html=event.clipboardData?.getData('text/html');if(html&&this.onHTMLPaste?.(html,event.clipboardData?.getData('text/plain')||'',view.state.selection.main.from,view.state.selection.main.to)){event.preventDefault();return true;}return false;
       },drop:(event,view)=>{
         const images=[...(event.dataTransfer?.files||[])].filter(f=>f.type.startsWith('image/'));
         if(images.length){event.preventDefault();onImages(images,view.posAtCoords({x:event.clientX,y:event.clientY})??view.state.selection.main.head);return true;}return false;
       },dragover:event=>{if(event.dataTransfer?.types.includes('Files')){event.preventDefault();return true;}return false;}})
     ];
     this.view=new EditorView({parent,state:EditorState.create({doc:text,extensions:this.extensions})});
+    this.view.dom.addEventListener('keydown',event=>{if(this.historyAction&&!event.isComposing&&(event.ctrlKey||event.metaKey)&&!event.altKey&&['z','y'].includes(event.key.toLowerCase())){event.preventDefault();event.stopImmediatePropagation();this.historyAction(event.shiftKey||event.key.toLowerCase()==='y'?1:-1);}},true);
     document.getElementById('selection-tools')?.addEventListener('mousedown',e=>e.preventDefault());
     document.getElementById('selection-tools')?.addEventListener('focusout',()=>requestAnimationFrame(()=>this.selectionTools()));
     document.querySelector('.format-toolbar')?.addEventListener('mousedown',e=>{if((e.target as HTMLElement).closest('button'))e.preventDefault();});
@@ -89,8 +90,15 @@ export class MarkdownEditor {
     if(!tools.hidden&&coords){tools.style.left=Math.max(8,Math.min(window.innerWidth-tools.offsetWidth-8,coords.left))+'px';tools.style.top=Math.max(bounds.top,coords.top-tools.offsetHeight-7)+'px';}
   }
   setText(text:string,resetHistory=false){this.suppress=true;if(resetHistory){this.view.setState(EditorState.create({doc:text,extensions:this.extensions}));this.theme(this.themeId);this.setLatexCompletion(this.latexCompletionEnabled);}else this.view.dispatch({changes:{from:0,to:this.view.state.doc.length,insert:text},selection:{anchor:0}});this.suppress=false;this.view.scrollDOM.scrollTop=0;}
+  restoreDocument(text:string,cursor?:{anchor:number;head:number}){
+    const before=this.view.state.doc.toString();let from=0,a=before.length,b=text.length;
+    while(from<a&&from<b&&before[from]===text[from])from++;
+    while(a>from&&b>from&&before[a-1]===text[b-1]){a--;b--;}
+    const clamp=(n:number)=>Math.max(0,Math.min(text.length,n)),s=cursor||this.view.state.selection.main;
+    this.suppress=true;try{this.view.dispatch({changes:from===a&&from===b?undefined:{from,to:a,insert:text.slice(from,b)},selection:{anchor:clamp(s.anchor),head:clamp(s.head)},annotations:Transaction.addToHistory.of(false)});}finally{this.suppress=false;}
+  }
   theme(id:string){this.themeId=id;this.view.dispatch({effects:this.themeSlot.reconfigure(themeExtension(id))});}
-  setLatexCompletion(enabled:boolean){closeCompletion(this.view);clearSnippet(this.view);this.latexCompletionEnabled=enabled;this.view.dispatch({effects:this.completionSlot.reconfigure(enabled?latexCompletionExtension():[])});}
+  setLatexCompletion(enabled:boolean){closeCompletion(this.view);clearSnippet(this.view);this.latexCompletionEnabled=enabled;this.view.dispatch({effects:this.completionSlot.reconfigure(latexCompletionExtension())});}
   replaceText(from:number,to:number,insert:string){this.view.dispatch({changes:{from,to,insert},userEvent:'input.preview'});}
   formatSelection(from:number,to:number,outerFrom:number,outerTo:number,attributes:string){
     const prefix=attributes?'[':'',suffix=attributes?']{'+attributes+'}':'',anchor=outerFrom+prefix.length;

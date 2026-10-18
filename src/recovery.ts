@@ -34,6 +34,7 @@ export function clearCheckpoint(id:string){
 }
 function validArticle(a:any):a is Article{
   if(!(a?.version===1&&typeof a.id==='string'&&/^[a-z\d-]+$/i.test(a.id)&&typeof a.markdown==='string'&&typeof a.title==='string'&&typeof a.theme==='string'&&a.typography&&typeof a.typography==='object'&&!Array.isArray(a.typography)&&Array.isArray(a.assets)&&a.assets.every((id:unknown)=>typeof id==='string')&&Number.isFinite(a.updated)))return false;
+  if(a.customTitle!==undefined&&(typeof a.customTitle!=='string'||a.customTitle.length>200))return false;
   if(a.stickers!==undefined&&(!Array.isArray(a.stickers)||!a.stickers.every((s:any)=>s&&typeof s.id==='string'&&typeof s.assetId==='string'&&[s.line,s.x,s.offsetY,s.width,s.rotation].every(Number.isFinite))))return false;
   if(a.assetSettings!==undefined&&(!a.assetSettings||typeof a.assetSettings!=='object'||Array.isArray(a.assetSettings)||!Object.values(a.assetSettings).every((s:any)=>s&&Number.isFinite(s.width)&&['left','center','right'].includes(s.align)&&typeof s.alt==='string'&&typeof s.caption==='string')))return false;
   return true;

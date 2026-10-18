@@ -1,0 +1,4 @@
+export function operationProgress(title:string){
+ const root=document.createElement('section');root.className='operation-progress';root.setAttribute('role','status');root.innerHTML='<strong></strong><p></p><progress></progress><button>取消</button>';root.querySelector('strong')!.textContent=title;document.body.append(root);const controller=new AbortController();root.querySelector('button')!.onclick=()=>{controller.abort();root.querySelector('p')!.textContent='已取消，原数据保持不变';};
+ return {signal:controller.signal,update:(message:string,done?:number,total?:number)=>{root.querySelector('p')!.textContent=message;const p=root.querySelector('progress')!;if(total){p.max=total;p.value=done||0;}else p.removeAttribute('value');},check:()=>{if(controller.signal.aborted)throw new DOMException('操作已取消','AbortError');},frame:()=>new Promise<void>(resolve=>requestAnimationFrame(()=>setTimeout(resolve,0))),close:()=>root.remove()};
+}

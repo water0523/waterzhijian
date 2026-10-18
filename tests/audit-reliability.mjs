@@ -1,3 +1,4 @@
+import './workspace-driver.mjs';
 import {build} from 'esbuild';import assert from 'node:assert/strict';import {chromium} from 'playwright';import {mkdir,writeFile} from 'node:fs/promises';import {pathToFileURL} from 'node:url';import path from 'node:path';
 globalThis.localStorage={getItem:()=>null,setItem:()=>{}};
 const b=await build({stdin:{contents:"export * from './src/files';export * from './src/model';export * from './src/image-occurrence';export * from './src/article-session';",resolveDir:process.cwd()},bundle:true,platform:'node',format:'esm',write:false}),lib=await import('data:text/javascript;base64,'+Buffer.from(b.outputFiles[0].text).toString('base64'));
