@@ -1,0 +1,5 @@
+import {mappedInlineTokens} from './render';
+export interface ImageOccurrence{from:number;to:number;url:string;alt:string;title:string;raw:string}
+export function imageOccurrences(source:string):ImageOccurrence[]{return mappedInlineTokens(source).flat().filter(t=>t.type==='image'&&t.meta?.protectedRange).map(t=>{const {from,to}=t.meta.protectedRange;return {from,to,url:t.attrGet('src')||'',alt:t.content,title:t.attrGet('title')||'',raw:source.slice(from,to)};});}
+export function occurrenceFor(source:string,node:HTMLElement){const from=Number(node.dataset.imageFrom),to=Number(node.dataset.imageTo);return imageOccurrences(source).find(o=>o.from===from&&o.to===to&&o.url===node.dataset.source);}
+export function replaceOccurrence(source:string,image:ImageOccurrence,url:string){if(source.slice(image.from,image.to)!==image.raw)throw new Error('图片位置已变化，请重新选择。');const alt=image.alt.replace(/[\\\[\]]/g,'\\$&').replace(/[\r\n]/g,' ');return source.slice(0,image.from)+`![${alt}](${url}${image.title?' '+JSON.stringify(image.title):''})`+source.slice(image.to);}

@@ -79,7 +79,7 @@ export async function recoverDrafts(articles:Map<string,Article>){
     const duplicate=recovered.find(a=>sameDraft(a,incoming));if(duplicate){remember(duplicate.id,key);continue;}
     const safeBase=draft.base===baselineFor(draft.id)&&!recovered.some(a=>a.id===draft.id);
     if(!safeBase||(saved?.deleted&&!incoming.deleted)){
-      incoming.id=uid();incoming.title+=' · 恢复稿';incoming.titleMode='manual';incoming.created=Date.now();
+      incoming.provenance={kind:'recovery',sourceId:incoming.id,at:Date.now()};incoming.id=uid();incoming.title+=' · 恢复稿';incoming.titleMode='manual';incoming.created=Date.now();
     }
     articles.set(incoming.id,incoming);recovered.push(incoming);remember(incoming.id,key);
   }

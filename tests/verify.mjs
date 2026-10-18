@@ -115,4 +115,4 @@ async function run(channel){
     results.push({browser:channel,checks,passed:false,error:e.stack,runtimeErrors});throw e;
   }finally{await browser.close();await writeFile('test-results/report.json',JSON.stringify(results,null,2));}
 }
-for(const channel of ['chrome','msedge'])await run(channel);
+for(const channel of (process.env.TEST_BROWSER?[process.env.TEST_BROWSER]:['chrome','msedge']))await run(channel);

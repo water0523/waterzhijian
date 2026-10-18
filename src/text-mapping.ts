@@ -5,6 +5,8 @@ import type {StyleSourceRange} from './inline-style';
 // Keep source offsets while parsing, rather than searching the rendered article
 // for repeated words. Only literal text receives an editable range.
 export function installTextMapping(md:MarkdownIt){
+  const imageRule=(md.inline.ruler as any).__rules__.find((r:any)=>r.name==='image').fn;
+  md.inline.ruler.at('image',(state,silent)=>{const from=state.pos,start=state.tokens.length,ok=imageRule(state,silent);if(ok&&!silent&&state.env.editable){const token=state.tokens.slice(start).find(t=>t.type==='image');if(token)token.meta={...token.meta,rawElementFrom:from,rawElementTo:state.pos};}return ok;});
   const parser=md.inline as any, Base=parser.State;
   parser.State=class extends Base {
     delimiterPosition=-1;delimiterOffset=0;

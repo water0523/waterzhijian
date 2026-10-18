@@ -4,6 +4,7 @@ import {themes,builtInIds,themesForArticles,themeLibraryDocument} from './themes
 import {parseThemeFile,libraryDocument,validateElements} from './theme-schema';
 import type {ThemeDefinition} from './theme-types';
 import {trackDownload} from './download-location';
+export const BackupPolicy={compressedBytes:100*1024*1024,expandedBytes:200*1024*1024,articles:1000,assets:5000,markdownChars:5000000} as const;
 export const safeName=(s:string)=>s.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/,'').slice(0,90)||'未命名文章';
 export function download(data:BlobPart,name:string,type='application/octet-stream'){
   const url=URL.createObjectURL(new Blob([data],{type}));const a=document.createElement('a');a.href=url;a.download=name;trackDownload(url,name);a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);
@@ -18,7 +19,7 @@ export function createBackup(articles:Article[],assets:Map<string,Asset>,folders
   const assetList:Omit<Asset,'data'>[]=[];
   for(const id of ids){const asset=assets.get(id);if(!asset)continue;const {data,...rest}=asset;assetList.push(rest);files[`assets/${id}.${extension(asset.mime)}`]=bytesFromData(data);}
   const themeLibrary=all?themeLibraryDocument():libraryDocument(themesForArticles(articles),[]);
-  const manifest={format:'paper-studio',version:1,exportedAt:Date.now(),articles,assets:assetList,folders:[...new Set([...folders,...articles.map(a=>a.folder).filter(Boolean)])],themeLibrary};
+  const manifest={format:'paper-studio',version:articles.some(a=>a.revisions.some(r=>r.label))?2:1,exportedAt:Date.now(),articles,assets:assetList,folders:[...new Set([...folders,...articles.map(a=>a.folder).filter(Boolean)])],themeLibrary};
   files['manifest.json']=strToU8(JSON.stringify(manifest,null,2));
   for(const a of articles){
     const lines=a.markdown.split('\n');
@@ -27,7 +28,7 @@ export function createBackup(articles:Article[],assets:Map<string,Asset>,folders
     }
     files[`articles/${safeName(a.title)}-${a.id.slice(0,8)}.md`]=strToU8(lines.join('\n').replace(/asset:([a-zA-Z0-9-]+)/g,(_m,id)=>`../assets/${id}.${extension(assets.get(id)?.mime||'image/png')}`));
   }
-  return zipSync(files,{level:6});
+  const packed=zipSync(files,{level:6});readBackup(packed);return packed;
 }
 function validTypography(t:any):Typography{
   if(!t||typeof t!=='object')return {};
@@ -42,13 +43,14 @@ function validTypography(t:any):Typography{
   if(t.elements!==undefined)out.elements=validateElements(t.elements,'文章元素样式');
   return out;
 }
-export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[];folders:string[];themes:ThemeDefinition[];hiddenThemes:string[]}{
-  if(buffer.length>100*1024*1024)throw new Error('备份超过 100 MB，请拆分为单篇备份');
+export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[];folders:string[];themes:ThemeDefinition[];hiddenThemes:string[];articleIds:Map<string,string>}{
+  if(buffer.length>BackupPolicy.compressedBytes)throw new Error('备份超过 100 MB，请拆分为单篇备份');
   let total=0;
-  const entries=unzipSync(buffer,{filter:file=>{total+=file.originalSize;if(total>200*1024*1024)throw new Error('解压后超过 200 MB，已停止导入');return true;}});
+  const entries=unzipSync(buffer,{filter:file=>{total+=file.originalSize;if(total>BackupPolicy.expandedBytes)throw new Error('解压后超过 200 MB，已停止导入');return true;}});
   if(!entries['manifest.json'])throw new Error('这不是本工具导出的文章备份，请导入 .md 或带 manifest.json 的 ZIP');
   const m=JSON.parse(strFromU8(entries['manifest.json']));
-  if(m.format!=='paper-studio'||m.version!==1||!Array.isArray(m.articles)||!Array.isArray(m.assets)||m.articles.length>1000||m.assets.length>5000)throw new Error('备份格式或版本不支持');
+  if(m.format!=='paper-studio'||![1,2].includes(m.version)||!Array.isArray(m.articles)||!Array.isArray(m.assets))throw new Error('备份格式或版本不支持');
+  if(m.articles.length>BackupPolicy.articles)throw new Error('单包最多 1000 篇文章，请使用整库分包备份');if(m.assets.length>BackupPolicy.assets)throw new Error('单包最多 5000 张图片，请分包备份');
   const themeLibrary=m.themeLibrary===undefined?{themes:[],hidden:[]}:parseThemeFile(JSON.stringify(m.themeLibrary),builtInIds);
   const knownThemes=new Set([...themes.map(t=>t.id),...themeLibrary.themes.map(t=>t.id)]);
   const checkedTheme=(id:unknown)=>{if(typeof id==='string'&&knownThemes.has(id))return id;if(typeof id==='string'&&id.startsWith('custom-'))throw new Error('备份缺少自定义主题定义：'+id);return builtInIds[0];};
@@ -84,21 +86,22 @@ export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[]
       return {id:uid(),assetId:mapping.get(s.assetId)!,line:Math.max(0,Math.floor(s.line)),x:Math.max(0,Math.min(.9,s.x)),offsetY:Math.max(-1000,Math.min(3000,s.offsetY)),width:Math.max(.08,Math.min(.85,s.width)),rotation:Math.max(-180,Math.min(180,s.rotation)),layout:['wrap-left','wrap-right'].includes(s.layout)?s.layout:'free'};
     });
   };
+  const articleIds=new Map<string,string>();for(const a of m.articles){if(!a||typeof a.id!=='string'||articleIds.has(a.id))throw new Error('备份文章编号无效或重复');articleIds.set(a.id,uid());}
   const articleOutput:Article[]=m.articles.map((a:any)=>{
-    if(!a||a.version!==1||typeof a.markdown!=='string'||a.markdown.length>5000000||typeof a.title!=='string')throw new Error('备份包含无效文章');
+    if(!a||a.version!==1||typeof a.markdown!=='string'||a.markdown.length>BackupPolicy.markdownChars||typeof a.title!=='string')throw new Error('备份包含无效文章');
     const markdown=rewrite(a.markdown);
     if(a.folder!==undefined&&a.folder!==''&&!validFolder(a.folder))throw new Error('文章文件夹无效');
     if(a.folder&&!folders.includes(a.folder))folders.push(a.folder);
     if(a.linkMode!==undefined&&!['direct','end'].includes(a.linkMode))throw new Error('文章链接设置无效');
     const stickers=stickerImport(a.stickers);
-    return {version:1,id:uid(),title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:[...new Set([...assetRefs(markdown),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(a.assetSettings),linkMode:a.linkMode,created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
-      revisions:(Array.isArray(a.revisions)?a.revisions:[]).slice(-20).map((r:any)=>{
+    return {version:1,id:articleIds.get(String(a.id))!,provenance:a.provenance&&['copy','conflict','recovery'].includes(a.provenance.kind)?{kind:a.provenance.kind,sourceId:articleIds.get(String(a.provenance.sourceId))||String(a.provenance.sourceId||''),at:Number(a.provenance.at)||Date.now()}:undefined,revisionDeletes:Array.isArray(a.revisionDeletes)?a.revisionDeletes.filter((k:unknown)=>typeof k==='string'&&/^[a-f0-9]{1,32}$/.test(k)):[],title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:[...new Set([...assetRefs(markdown),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(a.assetSettings),linkMode:a.linkMode,created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
+      revisions:(Array.isArray(a.revisions)?a.revisions:[]).map((r:any)=>{
         if(typeof r.markdown!=='string')throw new Error('恢复版本损坏');
         if(r.linkMode!==undefined&&!['direct','end'].includes(r.linkMode))throw new Error('恢复版本链接设置无效');
-        const text=rewrite(r.markdown),stickers=stickerImport(r.stickers);return {at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:checkedTheme(r.theme),typography:validTypography(r.typography),assets:[...new Set([...assetRefs(text),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(r.assetSettings),linkMode:r.linkMode};
+        const text=rewrite(r.markdown),stickers=stickerImport(r.stickers);return {label:typeof r.label==='string'?r.label.slice(0,80):undefined,at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:checkedTheme(r.theme),typography:validTypography(r.typography),assets:[...new Set([...assetRefs(text),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(r.assetSettings),linkMode:r.linkMode};
       })};
   });
-  return {articles:articleOutput,assets:assetOutput,folders,themes:themeLibrary.themes,hiddenThemes:themeLibrary.hidden};
+  return {articles:articleOutput,assets:assetOutput,folders,articleIds,themes:themeLibrary.themes,hiddenThemes:themeLibrary.hidden};
 }
 export async function fileToAsset(file:File):Promise<Asset>{
   if(!['image/png','image/jpeg','image/gif','image/webp'].includes(file.type))throw new Error('支持 PNG、JPEG、GIF、WebP 图片；其他格式请先转换');
@@ -119,4 +122,8 @@ export async function svgToPNG(svg:SVGElement,scale=3):Promise<Blob>{
     const canvas=document.createElement('canvas');canvas.width=Math.min(8192,Math.ceil(width*scale));canvas.height=Math.min(8192,Math.ceil(height*scale));const ctx=canvas.getContext('2d')!;ctx.fillStyle='#fff';ctx.fillRect(0,0,canvas.width,canvas.height);ctx.drawImage(img,0,0,canvas.width,canvas.height);
     return await new Promise<Blob>((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error('PNG 导出失败')),'image/png'));
   }finally{URL.revokeObjectURL(url);}
+}
+
+export function createBackupParts(articles:Article[],assets:Map<string,Asset>,folders:string[]=[],all=false):Uint8Array[]{
+ try{return [createBackup(articles,assets,folders,all)];}catch(error){if(articles.length<=1)throw error;const middle=Math.ceil(articles.length/2);return [...createBackupParts(articles.slice(0,middle),assets,folders,all),...createBackupParts(articles.slice(middle),assets,folders,all)];}
 }

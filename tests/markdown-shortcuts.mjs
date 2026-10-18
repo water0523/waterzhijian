@@ -6,7 +6,7 @@ import assert from 'node:assert/strict';
 const channel=process.env.SHORTCUT_BROWSER||'chrome',checks=[],errors=[];
 await mkdir('test-results',{recursive:true});
 const browser=await chromium.launch({channel,headless:true}),context=await browser.newContext({offline:true,viewport:{width:1600,height:1000}}),page=await context.newPage();
-await context.addInitScript(()=>{localStorage.setItem('paper-library-open','false');localStorage.setItem('paper-theme-sidebar-open','false');});page.on('pageerror',e=>errors.push(e.message));
+await context.addInitScript(()=>{localStorage.setItem('paper-shortcut-profile','original');localStorage.setItem('paper-library-open','false');localStorage.setItem('paper-theme-sidebar-open','false');});page.on('pageerror',e=>errors.push(e.message));
 const source=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('paper-recovery')).markdown),settle=()=>page.waitForTimeout(180);
 const set=async(text='alpha')=>{await page.keyboard.press('Escape');await page.mouse.move(0,0);await page.locator('.cm-content').focus();await page.keyboard.press('Control+a');await page.keyboard.insertText(text);await settle();await page.keyboard.press('Control+a');};
 const check=s=>{checks.push(s);console.log(channel+': '+s);};

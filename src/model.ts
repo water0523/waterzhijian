@@ -14,15 +14,16 @@ export interface Asset {
 export type AssetAppearance=Pick<Asset,'width'|'align'|'alt'|'caption'|'figureLabel'|'source'>;
 export type AssetSettings=Record<string,AssetAppearance>;
 export interface Sticker { id:string; assetId:string; line:number; x:number; offsetY:number; width:number; rotation:number; layout?:'free'|'wrap-left'|'wrap-right' }
-export interface Revision { at: number; title: string; titleMode?:'auto'|'manual'; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[]; assetSettings?:AssetSettings; linkMode?:'direct'|'end' }
+export interface Revision { label?:string; at: number; title: string; titleMode?:'auto'|'manual'; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[]; assetSettings?:AssetSettings; linkMode?:'direct'|'end' }
 export interface Article {
   version: 1; id: string; title: string; markdown: string; theme: string;
   typography: Typography; assets: string[]; created: number; updated: number;
-  deleted: boolean; revisions: Revision[]; stickers?:Sticker[]; folder?:string;
+  deleted: boolean; revisions: Revision[]; revisionDeletes?:string[]; stickers?:Sticker[]; folder?:string;
   /** Legacy backup compatibility; the workbench derives names from H1. */
   titleMode?:'auto'|'manual';
   storeRevision?:string; assetSettings?:AssetSettings;
   linkMode?:'direct'|'end';
+  provenance?:{kind:'copy'|'conflict'|'recovery';sourceId:string;at:number};
 }
 export const uid = () => crypto.randomUUID();
 export const freshArticle = (title = '未命名文章', markdown = ''): Article => ({

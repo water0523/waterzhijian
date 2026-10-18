@@ -1,4 +1,5 @@
 import {uid,type Article,type Asset} from './model';
+import {retainRevisions} from './revision-history';
 let database:IDBDatabase|undefined;
 const baselines=new Map<string,string>();
 // These fingerprints detect a stale window, including writes by older releases
@@ -48,11 +49,10 @@ export async function persist(articles:Article[],assets:Asset[]):Promise<SaveRes
         let article=structuredClone(input),original:Article|undefined;
         const baseline=baselineFor(input.id),stale=stored?recordFingerprint(stored)!==baseline:baseline!==null;
         if(stale&&stored&&sameDraft(stored,input)){
-          const history=[...stored.revisions,...input.revisions],seen=new Set<string>();
-          article.revisions=history.sort((a,b)=>a.at-b.at).filter(r=>{const key=JSON.stringify(r);if(seen.has(key))return false;seen.add(key);return true;}).slice(-20);
+          article.revisionDeletes=[...new Set([...(stored.revisionDeletes||[]),...(input.revisionDeletes||[])])];article.revisions=retainRevisions([...stored.revisions,...input.revisions],article.revisionDeletes);
           article.updated=Math.max(stored.updated,input.updated);
         }else if(stale){
-          original=stored;article.id=uid();article.title+=' · '+(stored?'冲突副本':'恢复稿');article.titleMode='manual';article.created=Date.now();
+          original=stored;article.provenance={kind:stored?'conflict':'recovery',sourceId:article.id,at:Date.now()};article.id=uid();article.title+=' · '+(stored?'冲突副本':'恢复稿');article.titleMode='manual';article.created=Date.now();
           if(stored)for(const id of stored.assets){const r=images.get(id);r.onsuccess=()=>{if(r.result)foreignAssets.push(r.result);};}
         }
         article.storeRevision=uid();store.put(article);commits.push({inputId:input.id,article,original});

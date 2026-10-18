@@ -6,7 +6,15 @@
   "scripts": {
     "build": "node build.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node tests/verify.mjs"
+    "test": "node tests/verify.mjs",
+    "test:quick": "node scripts/run-tests.mjs quick",
+    "test:writing": "node scripts/run-tests.mjs writing",
+    "test:export": "node scripts/run-tests.mjs export",
+    "test:all": "node scripts/run-tests.mjs all",
+    "test:results": "node scripts/maintain-results.mjs --list",
+    "test:ui": "node scripts/run-tests.mjs ui",
+    "test:core": "node scripts/run-tests.mjs core",
+    "report:acceptance": "node scripts/create-acceptance-report.mjs"
   },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",

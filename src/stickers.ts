@@ -14,15 +14,15 @@ export function updateStickerLines(stickers:Sticker[]|undefined,before:string,af
 export class StickerController {
   private enabled=true;
   setEnabled(value:boolean){this.enabled=value;if(!value){this.toolbar.hidden=true;this.selected=null;}}
-  selected:string|null=null;private selectedImage:string|null=null;private wrapDrop:{line:number;layout:'wrap-left'|'wrap-right'}|null=null;
+  selected:string|null=null;private selectedImage:string|null=null;private imageNode:HTMLElement|undefined;private wrapDrop:{line:number;layout:'wrap-left'|'wrap-right'}|null=null;
   private toolbar:HTMLElement;private drag:{id:string;clientX:number;clientY:number;x:number;top:number;resize:boolean;width:number;scroll:number}|null=null;
-  constructor(private node:HTMLElement,private getArticle:()=>Article,private assets:Map<string,Asset>,private change:()=>void,private convert:(assetId:string)=>void,private restore:(id:string)=>void,private exportRegion:()=>void){
+  constructor(private node:HTMLElement,private getArticle:()=>Article,private assets:Map<string,Asset>,private change:()=>void,private convert:(assetId:string,node?:HTMLElement)=>void,private restore:(id:string)=>void,private exportRegion:()=>void){
     node.style.position='relative';node.style.display='flow-root';
     this.toolbar=document.createElement('div');this.toolbar.className='sticker-toolbar';this.toolbar.hidden=true;node.closest('.preview-pane')!.append(this.toolbar);
     node.addEventListener('click',event=>{
       if(!this.enabled)return;
       const image=(event.target as HTMLElement).closest<HTMLElement>('.image-wrap[data-asset]');
-      if(image?.dataset.asset){this.selected=null;this.selectedImage=image.dataset.asset;this.showImageTools();}
+      if(image?.dataset.asset){this.selected=null;this.selectedImage=image.dataset.asset;this.imageNode=image;this.showImageTools();}
       else if(!(event.target as HTMLElement).closest('.sticker-item')){this.selected=null;this.selectedImage=null;this.toolbar.hidden=true;this.drawSelection();}
     });
   }
@@ -86,7 +86,7 @@ export class StickerController {
   }
   reposition(){for(const s of this.getArticle().stickers||[]){const item=this.node.querySelector<HTMLElement>(`[data-sticker="${s.id}"]`);if(item)this.place(item,s);}}
   private drawSelection(){this.node.querySelectorAll<HTMLElement>('.sticker-item').forEach(el=>el.classList.toggle('selected',el.dataset.sticker===this.selected));}
-  private showImageTools(){this.toolbar.hidden=false;this.toolbar.innerHTML='<span class="sticker-tool-label">已选中图片</span><button id="make-sticker" class="button primary">切换贴纸 / 文字环绕</button><button class="sticker-dismiss" aria-label="关闭图片工具">×</button>';this.toolbar.querySelector('#make-sticker')!.addEventListener('click',()=>{if(this.selectedImage)this.convert(this.selectedImage);});this.bindClose();}
+  private showImageTools(){this.toolbar.hidden=false;this.toolbar.innerHTML='<span class="sticker-tool-label">已选中图片</span><button id="make-sticker" class="button primary">切换贴纸 / 文字环绕</button><button class="sticker-dismiss" aria-label="关闭图片工具">×</button>';this.toolbar.querySelector('#make-sticker')!.addEventListener('click',()=>{if(this.selectedImage)this.convert(this.selectedImage,this.imageNode);});this.bindClose();}
   select(id:string){this.selected=id;this.selectedImage=null;this.showStickerTools();this.drawSelection();}
   private bindClose(){this.toolbar.querySelector('.sticker-dismiss')!.addEventListener('click',()=>{this.selected=null;this.toolbar.hidden=true;this.drawSelection();});}
   private updateInputs(){const s=this.getArticle().stickers?.find(s=>s.id===this.selected);if(!s)return;const width=this.toolbar.querySelector<HTMLInputElement>('#sticker-size');if(width)width.value=String(Math.round(s.width*100));}
@@ -148,9 +148,11 @@ export async function flattenStickers(node:HTMLElement):Promise<Flattened>{
 }
 
 export async function publicationHTML(node:HTMLElement,mode:'outline'|'rectangle'|'image'){
-  const hasFree=[...node.querySelectorAll<HTMLElement>('.sticker-item')].some(el=>getComputedStyle(el).cssFloat==='none');
+  const snapshotHost=document.createElement('div');snapshotHost.style.cssText=`position:fixed;left:-30000px;top:0;width:${node.getBoundingClientRect().width}px;pointer-events:none`;snapshotHost.innerHTML=exportFragment(node);document.body.append(snapshotHost);node=snapshotHost.firstElementChild as HTMLElement;
+  try{const hasFree=[...node.querySelectorAll<HTMLElement>('.sticker-item')].some(el=>getComputedStyle(el).cssFloat==='none');
   if(mode==='image'||hasFree)return (await flattenStickers(node)).html;
   const host=document.createElement('div');host.innerHTML=exportFragment(node);host.querySelector('.sticker-layer')?.remove();
   if(mode==='rectangle')host.querySelectorAll<HTMLElement>('.sticker-item').forEach(el=>{el.style.shapeOutside='none';el.style.shapeMargin='0';el.style.shapeImageThreshold='0';});
   return host.innerHTML;
+  }finally{snapshotHost.remove();}
 }

@@ -53,6 +53,7 @@ function themeExtension(id:string){
   ]))];
 }
 export class MarkdownEditor {
+  historyAction?: (direction:number)=>void;typingChange=false;beforeSelection?:{anchor:number;head:number};
   view:EditorView; themeSlot=new Compartment(); private completionSlot=new Compartment(); latexCompletionEnabled=true; private suppress=false; private extensions:Extension[]; private themeId:string;
   constructor(parent:HTMLElement,text:string,theme:string,onChange:(text:string)=>void,onImages:(files:File[],position:number)=>void,onSave:()=>void,latexCompletion=true){
     this.themeId=theme;this.latexCompletionEnabled=latexCompletion;
@@ -61,10 +62,10 @@ export class MarkdownEditor {
       EditorState.phrases.of({'Find':'查找','Replace':'替换','next':'下一个','previous':'上一个','all':'全部','match case':'区分大小写','regexp':'正则表达式','by word':'全词匹配','replace':'替换','replace all':'全部替换','close':'关闭','Go to line':'跳转到行'}),
       this.themeSlot.of(themeExtension(theme)),
       this.completionSlot.of(latexCompletion?latexCompletionExtension():[]),
-      keymap.of([{key:'Mod-s',run:()=>{onSave();return true;}},...defaultKeymap,...historyKeymap,...searchKeymap,indentWithTab]),
-      EditorView.updateListener.of(update=>{if(update.docChanged&&!this.suppress)onChange(update.state.doc.toString());}),
+      keymap.of([{key:'Mod-z',run:()=>{this.undo();return true;}},{key:'Mod-Shift-z',run:()=>{this.redo();return true;}},{key:'Mod-y',run:()=>{this.redo();return true;}},{key:'Mod-s',run:()=>{onSave();return true;}},...defaultKeymap,...historyKeymap,...searchKeymap,indentWithTab]),
+      EditorView.updateListener.of(update=>{if(update.docChanged&&!this.suppress){this.beforeSelection=update.startState.selection.main;this.typingChange=update.transactions.some(t=>t.isUserEvent('input.type'));onChange(update.state.doc.toString());this.beforeSelection=undefined;}}),
       EditorView.updateListener.of(update=>{if(update.selectionSet||update.docChanged||update.focusChanged||update.viewportChanged)requestAnimationFrame(()=>this.selectionTools());}),
-      EditorView.domEventHandlers({paste:(event,view)=>{
+      EditorView.domEventHandlers({beforeinput:(event)=>{if(this.historyAction&&['historyUndo','historyRedo'].includes(event.inputType)){event.preventDefault();this.historyAction(event.inputType==='historyUndo'?-1:1);return true;}return false;},paste:(event,view)=>{
         const images=[...(event.clipboardData?.files||[])].filter(f=>f.type.startsWith('image/'));
         if(images.length){event.preventDefault();onImages(images,view.state.selection.main.head);return true;}return false;
       },drop:(event,view)=>{
@@ -115,7 +116,7 @@ export class MarkdownEditor {
   }
   goto(line:number){const l=this.view.state.doc.line(Math.max(1,Math.min(this.view.state.doc.lines,line)));this.view.dispatch({selection:{anchor:l.from},effects:EditorView.scrollIntoView(l.from,{y:'center'})});this.view.focus();}
   selectRange(from:number,to:number){this.view.dispatch({selection:{anchor:from,head:to},effects:EditorView.scrollIntoView(from,{y:'center'})});}
-  undo(focus=true){undo(this.view);if(focus)this.view.focus();} redo(focus=true){redo(this.view);if(focus)this.view.focus();} search(){openSearchPanel(this.view);}
+  undo(focus=true){if(this.historyAction)this.historyAction(-1);else undo(this.view);if(focus)this.view.focus();} redo(focus=true){if(this.historyAction)this.historyAction(1);else redo(this.view);if(focus)this.view.focus();} search(){openSearchPanel(this.view);}
 }
 
 export class ScrollSync {

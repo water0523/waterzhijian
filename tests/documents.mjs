@@ -7,7 +7,7 @@ import {unzipSync,strFromU8} from 'fflate';
 await mkdir('test-results/document-temp',{recursive:true});
 process.env.TEMP=process.env.TMP=process.env.TMPDIR=path.resolve('test-results/document-temp');
 const reports=[];
-for(const channel of ['chrome','msedge']){
+for(const channel of (process.env.TEST_BROWSER?[process.env.TEST_BROWSER]:['chrome','msedge'])){
  const browser=await chromium.launch({channel,headless:true,downloadsPath:process.env.TEMP});
  const context=await browser.newContext({offline:true,viewport:{width:1440,height:1000},permissions:['clipboard-read','clipboard-write'],acceptDownloads:true});
  const cdp=await browser.newBrowserCDPSession();const {browserContextIds}=await cdp.send('Target.getBrowserContexts');await cdp.send('Browser.setDownloadBehavior',{behavior:'allowAndName',browserContextId:browserContextIds[0],downloadPath:process.env.TEMP,eventsEnabled:true});

@@ -166,7 +166,7 @@ md.renderer.rules.image=(ts,i,_o,env)=>{
     env.missing.push(src);return `<span class="missing-image">请通过「图片」添加本地图片：${escapeHTML(alt||src)}</span>`;
   }
   const description=[figureLabel,caption].filter(Boolean).join(' · ');
-  return `<span class="image-wrap" data-asset="${assetId}" data-source="${escapeHTML(src)}" style="text-align:${align}"><img src="${escapeHTML(url)}" alt="${escapeHTML(alt||env.assets.get(assetId)?.alt||'')}" style="width:${width}%;max-width:100%" loading="eager">${description?`<span class="image-caption" style="display:block;text-indent:0">${escapeHTML(description)}</span>`:''}${source?`<span class="image-source" style="display:block;text-indent:0">来源：${escapeHTML(source)}</span>`:''}</span>`;
+  return `<span class="image-wrap" data-asset="${assetId}" data-source="${escapeHTML(src)}" ${t.meta?.protectedRange?`data-image-from="${t.meta.protectedRange.from}" data-image-to="${t.meta.protectedRange.to}"`:''} style="text-align:${align}"><img src="${escapeHTML(url)}" alt="${escapeHTML(alt||env.assets.get(assetId)?.alt||'')}" style="width:${width}%;max-width:100%" loading="eager">${description?`<span class="image-caption" style="display:block;text-indent:0">${escapeHTML(description)}</span>`:''}${source?`<span class="image-source" style="display:block;text-indent:0">来源：${escapeHTML(source)}</span>`:''}</span>`;
 };
 const originalFence=md.renderer.rules.fence!;
 md.renderer.rules.fence=(ts,i,o,env,self)=>originalFence(ts,i,o,env,self).replace('<pre',`<pre data-line="${ts[i].map?.[0]||0}" data-end="${ts[i].map?.[1]||0}"`);
