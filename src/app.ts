@@ -798,7 +798,7 @@ function showWritingTools(anchor:HTMLElement){
   bind('writing-check',()=>{closePopover();showWritingCheck();});bind('writing-tidy',()=>{closePopover();showWritingTidy();});bind('writing-history',()=>{closePopover();showHistory(current);});
   bind('writing-checkpoint',async()=>{closePopover();await manualVersion();});
   panel.querySelectorAll<HTMLElement>('[data-writing-outline]').forEach(button=>button.onclick=()=>{const outline=writingOutlines[Number(button.dataset.writingOutline)];closePopover();addArticle(outline.name,outline.text,outline.theme);toast('已在新文章中打开写作骨架，原稿保留在文章库。');});
-  const ai=document.createElement('button');ai.id='writing-rewrite';ai.innerHTML='<strong>DeepSeek 选区改写</strong><small>仅发送选区与少量上下文，先比较再应用</small>';panel.querySelector('.writing-tool-list')!.append(ai);ai.onclick=startRewrite;
+  const ai=document.createElement('button');ai.id='writing-rewrite';ai.innerHTML='<strong>AI 选区改写</strong><small>本地 Qwen / 云端 API，先比较再应用</small>';panel.querySelector('.writing-tool-list')!.append(ai);ai.onclick=startRewrite;
 }
 function startRewrite(){const selection=editor.view.state.selection.main,article=current,before=editor.view.state.doc.toString();showRewrite({open:openModal,close:closeModal,notify:toast,unchanged:()=>current===article&&editor.view.state.doc.toString()===before,apply:text=>{snapshot(article,true);editor.replaceText(selection.from,selection.to,text);editor.view.focus();}},before,selection.from,selection.to);}
 function showWritingCheck(){
