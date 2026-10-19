@@ -30,6 +30,7 @@ export function mountPopoverHover(targets:Iterable<HTMLElement>,canOpen:(target:
   }
 }
 export function openPopover(target:HTMLElement,title:string,html:string,options:{width?:number}={}){
+  const menu=target.closest<HTMLDetailsElement>('.toolbar-menu');if(menu)menu.open=true;
   closePopover();anchor=target;target.setAttribute('aria-expanded','true');
   const panel=document.createElement('section');panel.id='quick-popover';panel.className='quick-popover';panel.setAttribute('aria-label',title);panel.dataset.anchor=target.id;
   panel.dataset.toolbar=toolbarFor(target)?.id||'';

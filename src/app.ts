@@ -1,6 +1,7 @@
 import {operationProgress} from './operation-progress';
 import {mountStyleTweaks,refreshStyleSources} from './style-tweaks';
 import {compactToolbar} from './toolbar-layout';
+import {enhanceComponentDiscovery} from './component-browser';
 import {LayoutManager} from './layout-manager';
 import {mountWorkspaceFeatures} from './workspace-features';
 import {mountWritingDesk} from './writing-desk';
@@ -208,11 +209,12 @@ function setWorkspaceView(mode:'compare'|'preview'){
   editor.view.requestMeasure();sync.rebuild();
 }
 function setPreviewWidth(value:string){
-  const width=['375','430','794','wide'].includes(value)?value:'430',line=sync.capture();
+  const width=value==='wide'?'adaptive':['375','430','794','adaptive'].includes(value)?value:'430',line=sync.capture();
   $<HTMLSelectElement>('preview-width').value=width;preference('preview-width',width);
-  const max=width==='wide'?'760px':width+'px';$('preview').style.maxWidth=max;
+  const max=width==='adaptive'?'none':width+'px';$('preview').style.maxWidth=max;
   document.querySelector<HTMLElement>('.preview-caption')!.style.maxWidth=max;
-  $('preview-narrow').setAttribute('aria-pressed',String(['375','430'].includes(width)));$('preview-wide').setAttribute('aria-pressed',String(['794','wide'].includes(width)));
+  window.dispatchEvent(new Event('paper-preview-width'));
+  $('preview-narrow').setAttribute('aria-pressed',String(['375','430'].includes(width)));$('preview-wide').setAttribute('aria-pressed',String(['794','adaptive'].includes(width)));
   requestAnimationFrame(()=>{sync.rebuild();sync.restore(line);});
 }
 let renderedArticleId='',renderedContentKey='',parsedDocumentKey='';let cachedParse:RenderResult|undefined;let statisticsKey='';
@@ -552,7 +554,7 @@ const formulas=[
   ['自动编号 · 单个公式','\\begin{equation}\nE=mc^2\n\\end{equation}',true],
   ['彩色公式','\\textcolor{RoyalBlue}{E}=\\textcolor{BrickRed}{mc^2}',true]
 ] as const;
-function showFormulas(event?:Event){const panel=openPopover((event?.currentTarget as HTMLElement)||$('math-button'),'把思考，写成公式',`<p class="modal-subtitle">点击插入后可直接修改。行内使用 $…$，独立公式使用 $$…$$。</p><div class="formula-grid">${formulas.map(([name,tex,display],i)=>`<button class="formula-card" data-formula="${i}"><strong>${name}</strong><div class="formula-example">${renderMath(tex,display).html}</div></button>`).join('')}</div>`);panel.querySelectorAll<HTMLElement>('[data-formula]').forEach(el=>el.onclick=()=>{const [,tex,display]=formulas[Number(el.dataset.formula)];closePopover();editor.insert(display?`\n\n$$\n${tex}\n$$\n\n`:`$${tex}$`);});}
+function showFormulas(event?:Event){const panel=openPopover((event?.currentTarget as HTMLElement)||$('math-button'),'把思考，写成公式',`<p class="modal-subtitle">点击插入后可直接修改。行内使用 $…$，独立公式使用 $$…$$。</p><div class="formula-grid">${formulas.map(([name,tex,display],i)=>`<button class="formula-card" data-formula="${i}"><strong>${name}</strong><div class="formula-example">${renderMath(tex,display).html}</div></button>`).join('')}</div>`,{width:820});panel.classList.add('formula-picker');panel.querySelectorAll<HTMLElement>('[data-formula]').forEach(el=>el.onclick=()=>{const [,tex,display]=formulas[Number(el.dataset.formula)];closePopover();editor.insert(display?`\n\n$$\n${tex}\n$$\n\n`:`$${tex}$`);});}
 function showSamples(){
   openModal('从一个小小的示例开始','<p class="modal-subtitle">示例将作为新文章打开，保留你正在编辑的草稿。</p><div class="option-list"><button class="option-card" data-sample="science"><strong>01 / 一束光，如何告诉我们宇宙的故事？</strong><small>科普文章 · 公式 · 表格 · 脚注</small></button><button class="option-card" data-sample="math"><strong>02 / 在符号之间，理解变化</strong><small>数学公式 · 矩阵 · 多行推导 · 编号</small></button><button class="option-card" data-sample="poetry"><strong>03 / 风经过的地方</strong><small>诗歌 · 散文 · 保留诗行与空行</small></button><button class="option-card" data-sample="journal-indigo"><strong>04 / 深空靛蓝 · 信息与热的期刊长读</strong><small>导读首字下沉 · 双语章节 · 定律 / 公式释义 / 推导 · 科学插图</small></button><button class="option-card" data-sample="journal-jade"><strong>05 / 松石青翠 · 同一篇文章，另一种气质</strong><small>松石绿配色 · 多字体层次 · 三线表 · 要点与参考文献</small></button></div>');
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<button class="option-card" data-sample="folio"><strong>06 / 山窗听雪 · 一纸山水清欢</strong><small>古籍题记 · 三种正文气质 · 横排诗笺 / 阶梯新诗 · 朱批笺注 · 水墨装裱</small></button>');
@@ -572,7 +574,7 @@ function showSamples(){
 }
 function showFolioElements(anchor:HTMLElement){
   const descriptions:Record<FolioKind,string>={masthead:'卷期、岁次与节气物候',byline:'作者、图像与校勘署名',preface:'四角回纹与文心小印',prose:'下沉首字与起首章',ci:'词牌、小序、居中诗行',scroll:'旧稿兼容的横排诗词',classical:'文言正文与行间朱批',gloss:'可收起的字词考据',modern:'阶梯缩进与行号标尺',letter:'楷体尺牍与落款',hanging:'单幅水墨与题画诗',handscroll:'横向长卷与分段题跋',album:'双联图片册页',colophon:'木记牌记与藏书票'};
-  const panel=openPopover(anchor,'古籍文学元素',`<p class="help">点击插入可编辑的 Markdown。展卷、眉批与抽屉保留在预览，复制 / 导出时使用完整横排兼容内容。</p><div class="journal-insert-choices">${Object.entries(folioNames).filter(([kind])=>kind!=='scroll').map(([kind,name])=>`<button data-folio-block="${kind}"><strong>${name||({byline:'署名栏',prose:'散文精排'} as Record<string,string>)[kind]}</strong><small>${descriptions[kind as FolioKind]}</small></button>`).join('')}</div><p class="help" style="margin-top:16px">作用于当前选区 · 未选文字时插入示例文字</p><div class="quick-choices">${Object.entries(literaryRoles).map(([role,name])=>`<button data-folio-role="${role}">${name}</button>`).join('')}<button data-folio-inline="dots">字下着重号</button><button data-folio-inline="gold">泥金金句</button></div>`);
+  const panel=openPopover(anchor,'古籍文学元素',`<p class="help">点击插入可编辑的 Markdown。展卷、眉批与抽屉保留在预览，复制 / 导出时使用完整横排兼容内容。</p><div class="journal-insert-choices">${Object.entries(folioNames).filter(([kind])=>kind!=='scroll').map(([kind,name])=>`<button data-folio-block="${kind}"><strong>${name||({byline:'署名栏',prose:'散文精排'} as Record<string,string>)[kind]}</strong><small>${descriptions[kind as FolioKind]}</small></button>`).join('')}</div><p class="help" style="margin-top:16px">作用于当前选区 · 未选文字时插入示例文字</p><div class="quick-choices">${Object.entries(literaryRoles).map(([role,name])=>`<button data-folio-role="${role}">${name}</button>`).join('')}<button data-folio-inline="dots">字下着重号</button><button data-folio-inline="gold">泥金金句</button></div>`,{width:740});
   panel.querySelectorAll<HTMLElement>('[data-folio-block]').forEach(button=>button.onclick=()=>{
     const kind=button.dataset.folioBlock as FolioKind,s=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(s.from,s.to);
     const bodies:Partial<Record<FolioKind,string>>={masthead:'岁次 / 季节 · 节气 · 物候',byline:'撰文 / 作者 · 图像 / 来源',ci:'[这里写下词前小序。]{role=preface}\n\n:::poem center\n第一行诗\n第二行诗\n:::',scroll:':::poem left\n第一行诗\n第二行诗\n:::',modern:':::poem left\n把一句话，轻轻放下\n    让下一行留一点空白\n      再向前一步\n:::',classical:'这里写下文言原文。[朱批：这里写下评点。]{role=note}',hanging:'在这里粘贴一张插图，再在素材面板填写图注。\n\n[这里写下题画诗。]{role=painting}',handscroll:'在这里粘贴横向长卷。\n\n> **第一景**\n> 这里写下题跋。\n\n> **第二景**\n> 这里写下题跋。',album:'在这里一次粘贴两张图片，选择「双列」排版。',colophon:'撰文 / 作者 · 图像 / 来源 · 校勘 / 编辑\n\n这里写下本辑信息与出处。'};
@@ -596,7 +598,7 @@ function showJournalBlocks(anchor:HTMLElement){
     ['references','参考文献','清晰的文末资料列表',':::references\n[1] 作者，*资料名称*，年份。\n\n[2] 作者，*资料名称*，年份。\n:::'],
     ['subtitle','英文副标题','插在已有章节标题的下一行',':::subtitle THE ENGLISH SECTION TITLE']
   ];
-  const panel=openPopover(anchor,'期刊排版元素',`<p class="help">深空靛蓝 / 松石青翠配套样式；其他主题也可使用。点击插入后在 Markdown 中改字。公式继续使用离线 SVG 渲染。</p><div class="journal-insert-choices">${examples.map(([id,name,description])=>`<button data-journal-block="${id}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div>`);
+  const panel=openPopover(anchor,'期刊排版元素',`<p class="help">深空靛蓝 / 松石青翠配套样式；其他主题也可使用。点击插入后在 Markdown 中改字。公式继续使用离线 SVG 渲染。</p><div class="journal-insert-choices">${examples.map(([id,name,description])=>`<button data-journal-block="${id}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div>`,{width:740});
   panel.querySelectorAll<HTMLElement>('[data-journal-block]').forEach(button=>button.onclick=()=>{const sample=examples.find(e=>e[0]===button.dataset.journalBlock)!;closePopover();editor.insert('\n\n'+sample[3]+'\n\n');});
   enhanceComponentPreviews(panel,'journal-block',journalPreviewSample,()=>showJournalBlocks(anchor));
 }
@@ -612,6 +614,7 @@ function enhanceComponentPreviews(panel:HTMLElement,attribute:string,source:stri
   preview.innerHTML='<span class="component-mini-window" aria-hidden="true"><article class="component-preview-article">'+node.outerHTML+'</article></span><small>放大预览 ↗</small>';wrapper.append(preview,button);
   preview.onclick=()=>{openModal('组件效果预览',`<p class="modal-subtitle">跟随当前文章的主题色与排版设置。这里展示示例内容，插入后可继续修改。</p><div class="component-full-scroll" tabindex="0"><style>${style.textContent}</style><article class="component-preview-article component-full-article">${node.outerHTML}</article></div><div class="component-preview-actions"><button id="component-back" class="button outline">返回选择</button><button id="component-insert" class="button primary">插入当前文章</button></div>`);bind('component-back',()=>{closeModal();back();document.querySelector<HTMLElement>('[data-component-preview="'+cls+'"]')?.focus();});bind('component-insert',()=>{closeModal();button.click();});};
  }
+ if(['journal-block','folio-block','edition-block'].includes(attribute))enhanceComponentDiscovery(panel,attribute);
 }
 function showAnimeElements(anchor:HTMLElement){
  const panel=openPopover(anchor,'动漫手记元素',`<p class="help">樱粉魔法 / 抹茶猫猫共用标签，先预览再插入。彩蛋始终展开，分镜顺序阅读，适合公众号。</p><div class="journal-insert-choices">${Object.entries(animeComponentExamples).map(([kind,[name,description]])=>`<button data-anime-block="anime-${kind}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div>`);
@@ -628,7 +631,7 @@ function showExamElements(anchor:HTMLElement){
  enhanceComponentPreviews(panel,'exam-block',examComponentSample,()=>showExamElements(anchor));
 }
 function showEditionElements(anchor:HTMLElement,group:Edition=(['digest','press','gewu'].includes(themeById(current.theme).baseId||current.theme)?(themeById(current.theme).baseId||current.theme):'digest') as Edition){
- const options=editionCatalog[group],panel=openPopover(anchor,'模板专属元素',`<div class="theme-tabs">${Object.entries(editionTitles).filter(([id])=>editionSamples[id]).map(([id,name])=>`<button data-edition-group="${id}" class="${group===id?'active':''}">${name}</button>`).join('')}</div><p class="help">先预览再插入；示例文字、数据、图片与署名可自行替换。</p><div class="journal-insert-choices">${Object.entries(options).map(([kind,title])=>`<button data-edition-block="${group+'-'+kind}"><strong>${title||({byline:'署名栏',deck:'文章导语',photo:'摄影框',polaroid:'拍立得',tags:'学科标签',figure:'插图框',caption:'表格图注',pullquote:'破版大引文'} as Record<string,string>)[kind]||kind}</strong><small>点击插入 · 可编辑 Markdown</small></button>`).join('')}</div>`);
+ const options=editionCatalog[group],panel=openPopover(anchor,'模板专属元素',`<div class="theme-tabs">${Object.entries(editionTitles).filter(([id])=>editionSamples[id]).map(([id,name])=>`<button data-edition-group="${id}" class="${group===id?'active':''}">${name}</button>`).join('')}</div><p class="help">先预览再插入；示例文字、数据、图片与署名可自行替换。</p><div class="journal-insert-choices">${Object.entries(options).map(([kind,title])=>`<button data-edition-block="${group+'-'+kind}"><strong>${title||({byline:'署名栏',deck:'文章导语',photo:'摄影框',polaroid:'拍立得',tags:'学科标签',figure:'插图框',caption:'表格图注',pullquote:'破版大引文'} as Record<string,string>)[kind]||kind}</strong><small>点击插入 · 可编辑 Markdown</small></button>`).join('')}</div>`,{width:740});
  panel.querySelectorAll<HTMLElement>('[data-edition-group]').forEach(b=>b.onclick=()=>showEditionElements(anchor,b.dataset.editionGroup as Edition));
  const sample=editionSamples[group];
  panel.querySelectorAll<HTMLElement>('[data-edition-block]').forEach(b=>b.onclick=async()=>{const key=b.dataset.editionBlock!,text=editionComponentSource(sample,key),s=editor.view.state.selection.main,selected=editor.view.state.sliceDoc(s.from,s.to),before=editor.view.state.doc.toString(),articleId=current.id;const incoming=editionAssets().filter(a=>text.includes('asset:'+a.id)&&!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(current.id!==articleId||before!==editor.view.state.doc.toString()){toast('文章已变化，请重新选择插入位置。',true);return;}closePopover();editor.insert('\n\n'+(selected?':::'+key+'\n'+selected+'\n:::':text)+'\n\n');});
@@ -680,7 +683,15 @@ async function exportHTML(){
   const readingWidth=exported.stickers?.some(s=>!s.layout||s.layout==='free')?exportWidth:720;
   download(`<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(exported.title)}</title><style>body{margin:0;background:#f2f3ef}.reading-page{max-width:${readingWidth}px;margin:24px auto}@media(max-width:${readingWidth}px){.reading-page{margin:0}}</style></head><body><main class="reading-page">${html}</main></body></html>`,safeName(exported.title)+'.html','text/html;charset=utf-8');if(origin?.isConnected)closeModal();toast('独立 HTML 已导出，可离线阅读');
 }
-function showExport(){openModal('把文章，好好保存',`<div class="export-location-heading"><p class="modal-subtitle">浏览器草稿方便继续写作，文件备份适合长期保存与换电脑恢复。</p><button id="export-download-location" class="button outline">${uiIcon('folder')}下载位置</button></div>${exportOptionsHTML()}`,'SAVE & EXPORT');bind('export-download-location',()=>showDownloadLocation());bind('export-backup',()=>{exportBackup();closeModal();});bind('export-html',exportHTML);bind('export-longimage',showLongImage);bind('export-pdf',showPDF);bind('export-word',exportWord);bind('export-md',()=>{if(assetRefs(current.markdown).length||current.stickers?.length)exportBackup();else{download(current.markdown,safeName(current.title)+'.md','text/markdown;charset=utf-8');toast('Markdown 已导出');}closeModal();});bind('export-all',()=>{exportBackup(true);closeModal();});}
+function pickImport(kind:'all'|'markdown'|'backup'='all'){closePopover();const input=$<HTMLInputElement>('import-input');input.accept=kind==='markdown'?'.md,.markdown,.txt':kind==='backup'?'.zip':'.md,.markdown,.txt,.zip';input.click();}
+function showFileMenu(section:'home'|'backup'|'import'='home'){
+ const back=section==='home'?'':'<button id="file-back" class="file-back">← 返回文件</button>';
+ const content=section==='backup'?'<p class="help">ZIP 保留正文、原图、主题、排版和历史，可带到其他电脑恢复。</p>'+exportOptionsHTML('backup'):section==='import'?'<div class="local-actions"><button id="file-import-markdown">'+uiIcon('document')+'<span><strong>导入 Markdown 文章</strong><small>.md、.markdown、.txt，可多选</small></span></button><button id="file-import-backup">'+uiIcon('folder')+'<span><strong>恢复 ZIP 备份</strong><small>文章备份、整库备份，含主题与图片</small></span></button></div>':'<div class="local-actions file-categories"><button id="local-backup">'+uiIcon('folder')+'<span><strong>备份</strong><small>当前文章 / 整个文章库</small></span></button><button id="local-import">'+uiIcon('import')+'<span><strong>导入</strong><small>Markdown 文章 / ZIP 备份</small></span></button><button id="local-export">'+uiIcon('export')+'<span><strong>导出</strong><small>HTML / PNG / PDF / Word / Markdown</small></span></button></div>';
+ openPopover($('local-button'),section==='home'?'文件':section==='backup'?'文件 · 备份':'文件 · 导入',back+content);
+ if(section==='home'){bind('local-backup',()=>showFileMenu('backup'));bind('local-import',()=>showFileMenu('import'));bind('local-export',()=>{closePopover();showExport();});}
+ else{bind('file-back',()=>showFileMenu());if(section==='backup'){bind('export-backup',()=>{closePopover();exportBackup();});bind('export-all',()=>{closePopover();exportBackup(true);});}else{bind('file-import-markdown',()=>pickImport('markdown'));bind('file-import-backup',()=>pickImport('backup'));}}
+}
+function showExport(){openModal('文件 · 导出',`<div class="export-location-heading"><button id="export-file-back" class="file-back">← 返回文件</button><button id="export-download-location" class="button outline">${uiIcon('folder')}下载位置</button></div><p class="modal-subtitle">选择发布或阅读格式；完整原稿和历史请使用「文件 → 备份」。PDF 选项内也可直接打印。</p>${exportOptionsHTML('export')}`,'SAVE & EXPORT');bind('export-file-back',()=>{closeModal();showFileMenu();});bind('export-download-location',()=>showDownloadLocation());bind('export-html',exportHTML);bind('export-longimage',showLongImage);bind('export-pdf',showPDF);bind('export-word',exportWord);bind('export-md',()=>{if(assetRefs(current.markdown).length||current.stickers?.length)exportBackup();else{download(current.markdown,safeName(current.title)+'.md','text/markdown;charset=utf-8');toast('Markdown 已导出');}closeModal();});}
 
 function documentReady(){
   render();const blockers=currentPublishIssues().filter(i=>i.severity==='error');if(blockers.length){showWritingCheck();toast('有 '+blockers.length+' 项必须处理的问题，请定位修复后再导出。',true);return false;}return true;
@@ -913,7 +924,7 @@ async function init(){
   $('new-article').innerHTML=uiIcon('plus')+'<span>新建文章</span>';$('import-button').innerHTML=uiIcon('import')+'<span>导入 Markdown / 备份</span>';$('library-search-icon').innerHTML=uiIcon('search');
   $('preview-narrow').innerHTML=uiIcon('phone');$('preview-wide').innerHTML=uiIcon('monitor');
   bind('preview-narrow',()=>setPreviewWidth('430'));bind('preview-wide',()=>setPreviewWidth('wide'));
-  bind('local-button',()=>{const panel=openPopover($('local-button'),'文件',`<p class="help">文章与图片保存在当前浏览器。备份文件可带到其他电脑恢复。</p><div class="local-actions"><button id="local-save-article">${uiIcon('document')}备份当前文章</button><button id="local-save-library">${uiIcon('folder')}备份整个文章库</button><button id="local-import">${uiIcon('import')}导入 Markdown / 备份</button><button id="local-export">${uiIcon('export')}导出 PDF / Word / 图片</button><button id="local-print">${uiIcon('document')}打印 / PDF</button></div>`);bind('local-export',()=>{closePopover();showExport();});bind('local-print',()=>{closePopover();showPDF();});bind('local-save-article',()=>{closePopover();exportBackup();});bind('local-save-library',()=>{closePopover();exportBackup(true);});bind('local-import',()=>{closePopover();$('import-input').click();});});
+  bind('local-button',()=>showFileMenu());
   const fullscreenButton=$<HTMLButtonElement>('fullscreen-button');let fullscreenBusy=false;
   const syncFullscreen=()=>{
     const active=Boolean(document.fullscreenElement),label=active?'退出全屏':'全屏展开';
@@ -957,8 +968,8 @@ async function init(){
   bind('preview-edit-button',()=>{if(previewEditor.enabled)previewEditor.finish();else{clearThemePreview();commitStyleTrial();previewEditor.enabled=true;}document.body.dataset.previewEditing=String(previewEditor.enabled);$('preview-edit-button').setAttribute('aria-pressed',String(previewEditor.enabled));$('preview-edit-button').textContent=previewEditor.enabled?'完成修改':'编辑文字';render();if(previewEditor.enabled)toast('点击标题或正文修改文字；划选文字可调整字体、荧光等格式。换行请在左侧修改。');});
   for(const mode of ['edit','preview'])bind('mobile-'+mode,()=>{document.body.dataset.mobilePane=mode;for(const id of ['edit','preview'])$('mobile-'+id).setAttribute('aria-selected',String(id===mode));editor.view.requestMeasure();sync.rebuild();});
   const savedWidth=readPreference('preview-width','430');
-  $<HTMLSelectElement>('preview-width').value=['375','430','794','wide'].includes(savedWidth)?savedWidth:'375';
-  $('preview').style.maxWidth=savedWidth==='wide'?'760px':(['375','430'].includes(savedWidth)?savedWidth:'375')+'px';
+  $<HTMLSelectElement>('preview-width').value=savedWidth==='wide'?'adaptive':['375','430','794','adaptive'].includes(savedWidth)?savedWidth:'375';
+  $('preview').style.maxWidth=$<HTMLSelectElement>('preview-width').value==='adaptive'?'none':$<HTMLSelectElement>('preview-width').value+'px';
   const savedShare=Number(readPreference('split-share','49'));$('split-workspace').style.setProperty('--editor-share',(Number.isFinite(savedShare)?Math.max(25,Math.min(75,savedShare)):49)+'%');
   bind('format-rewrite-button',()=>showFormatRewrite({current:()=>current.theme,article:()=>current.markdown,open:openModal,notify:toast}));
   bind('clear-heading-numbers',()=>{
@@ -981,7 +992,7 @@ async function init(){
   const examButton=document.createElement('button');examButton.id='exam-block-button';examButton.textContent='试卷元素 ▾';examButton.hidden=true;examButton.title='预览与插入卷头、题目、选项、答题区和参考答案';$('edition-block-button').after(examButton);examButton.onclick=()=>showExamElements(examButton);
   const animeButton=document.createElement('button');animeButton.id='anime-block-button';animeButton.textContent='动漫元素 ▾';animeButton.hidden=true;animeButton.title='预览与插入胶带引文、角色气泡、拍立得、公式与设定档案';examButton.after(animeButton);animeButton.onclick=()=>showAnimeElements(animeButton);
   bind('publisher',()=>{clearThemePreview(false);publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
-  bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>$('import-input').click());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
+  bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>pickImport());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
   document.querySelectorAll<HTMLElement>('[data-format]').forEach(el=>el.onclick=()=>{
     const type=el.dataset.format;
     if(['bold','italic','underline','strike','wave'].includes(type||''))closePopover();

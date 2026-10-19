@@ -9,7 +9,8 @@ function patch(page){if(seen.has(page))return page;seen.add(page);let navigating
   if(selector==='#style-close'){await rawClick('#writing-panel-close');return true;}
   if(selector==='#style-button'){await page.keyboard.press('Alt+3');return true;}
   if(selector==='#assets-button'){await page.keyboard.press('Alt+4');return true;}
-  if(selector==='#format-rewrite-button'){await page.keyboard.press('Alt+5');await rawClick('#panel-format-rewrite');return true;}
+  if(selector==='#format-rewrite-button'){if(await rawLocator(selector).isVisible())await rawClick(selector);else{await page.keyboard.press('Alt+5');await rawClick('#panel-format-rewrite');}return true;}
+  if(['#export-backup','#export-all'].includes(selector)&&!await rawLocator(selector).isVisible()){if(await rawLocator('#modal').evaluate(n=>n.open))await rawClick('#modal-close');await rawClick('#local-button');await rawClick('#local-backup');await rawClick(selector);return true;}
   if(selector==='#export-toggle'){await rawClick('#local-button');await rawClick('#local-export');return true;}
   if(selector==='#ui-settings-button'){await page.keyboard.press('Alt+6');await rawClick('#panel-skin');return true;}
   if(selector==='#modal-close'&&!await rawLocator('#modal').evaluate(n=>n.open)){if(await rawLocator('#writing-panel').isVisible())await rawClick('#writing-panel-close');return true;}
