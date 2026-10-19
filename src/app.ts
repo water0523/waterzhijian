@@ -101,6 +101,7 @@ const legacyReferences=readPreference('references-enabled','false')==='true';
 const referencesEnabled=()=>current.linkMode?current.linkMode==='end':legacyReferences;
 function historyMove(direction:number){
  const fromPreview=previewFormatting?.active,scroll=editor.view.scrollDOM.scrollTop,reading=sync?.capture()||0;
+ formatPainter?.cancel();
  if(!articleHistory.move(current,direction))return;toast(direction<0?'已撤销修改':'已重做修改',false,{label:direction<0?'重做':'撤销',run:()=>historyMove(-direction)});articleHistory.restoring=true;
  try{const cursor=articleHistory.cursor(current);editor.restoreDocument(current.markdown,cursor);markDirty();render();if(fromPreview&&cursor)previewFormatting.restore(Math.min(cursor.anchor,cursor.head),Math.max(cursor.anchor,cursor.head));if(styleOpen())renderStylePanel();requestAnimationFrame(()=>{editor.view.scrollDOM.scrollTop=scroll;sync.rebuild();sync.restore(reading);});}finally{articleHistory.restoring=false;}
 }
@@ -898,7 +899,7 @@ async function init(){
   const requestedEditorTheme=readPreference(night?'editor-theme-night':'editor-theme',night?'dark':'light'),editorTheme=editorThemes[requestedEditorTheme]?requestedEditorTheme:(night?'dark':'light');
   $<HTMLSelectElement>('editor-theme').innerHTML=Object.entries(editorThemes).map(([id,t])=>`<option value="${id}">${t.name}</option>`).join('');$<HTMLSelectElement>('editor-theme').value=editorThemes[editorTheme]?editorTheme:'dark';
   articleHistory.seed(current);
-  editor=new MarkdownEditor($('editor'),current.markdown,editorTheme,text=>{formatPainter?.cancel();updateStickerLines(current.stickers,current.markdown,text);current.markdown=text;markDirty(current,editor.typingChange?'typing':'command');queueRender();},(files,pos)=>void addImages(files,pos).catch(e=>toast(errorMessage(e),true)),()=>exportBackup(),readPreference('latex-completion','true')==='true');
+  editor=new MarkdownEditor($('editor'),current.markdown,editorTheme,text=>{formatPainter?.documentChanged();updateStickerLines(current.stickers,current.markdown,text);current.markdown=text;markDirty(current,editor.typingChange?'typing':'command');queueRender();},(files,pos)=>void addImages(files,pos).catch(e=>toast(errorMessage(e),true)),()=>exportBackup(),readPreference('latex-completion','true')==='true');
   const title=$('document-title');let titleOwner:Article|undefined,titleStart='';
   title.addEventListener('focus',()=>{titleOwner=current;titleStart=title.textContent||'';});
   title.addEventListener('blur',()=>{const owner=titleOwner;titleOwner=undefined;if(!owner||owner!==current){syncArticleTitle(current);return;}const value=(title.textContent||'').replace(/[\r\n\t]+/g,' ').trim().slice(0,200),next=value||undefined;if(value!==titleStart&&next!==owner.customTitle){owner.customTitle=next;markDirty(owner);renderLibrary();}syncArticleTitle(owner);});

@@ -62,6 +62,24 @@ try{
   await page.click('#undo-button');await settle();assert.equal(await source(),fixture);await page.click('#redo-button');await settle();assert.equal(await source(),painted);
   record('Markdown sample paints preview mouse selection once, replaces stale properties, protects edges and source, preserves selection and supports one undo/redo');
 
+  const continuous='# 连续刷\n\n[样本]{font=kai size=22 color=#2563eb marker=#a371d8 bold}\n\n前缀 [目标甲]{color=#dc2626 highlight=#fff29b} 后缀\n\n目标乙\n\n目标丙\n\n未刷文字\n\n> 引用文字';
+  await set(continuous);await previewSelect('样本');const brushPosition=await brush.boundingBox();await brush.dblclick();
+  const lockedPosition=await brush.boundingBox();assert.equal(lockedPosition.x,brushPosition.x);assert.equal(lockedPosition.y,brushPosition.y);
+  assert.equal(await page.locator('body').getAttribute('data-format-painter'),'locked');assert.equal(await source(),continuous);assert.match(await page.locator('#format-painter-status').innerText(),/已锁定/);
+  const pinned=await style('样本');await previewDrag('目标甲');const firstStroke=await source();assert.deepEqual(await style('目标甲'),pinned);assert.equal(await page.locator('body').getAttribute('data-format-painter'),'locked');
+  await cmSelect('目标乙');const secondStroke=await source();assert.notEqual(secondStroke,firstStroke);assert.deepEqual(await style('目标乙'),pinned);assert.equal(await page.locator('body').getAttribute('data-format-painter'),'locked');
+  await cmSelect('未刷文字\n\n> 引用文字');assert.equal(await source(),secondStroke);assert.equal(await page.locator('body').getAttribute('data-format-painter'),'locked');
+  await previewDrag('目标丙');const thirdStroke=await source();assert.deepEqual(await style('目标丙'),pinned);assert.match(await page.locator('#format-painter-status').innerText(),/已刷 3 处/);assert.ok(thirdStroke.includes('[样本]{font=kai size=22 color=#2563eb marker=#a371d8 bold}'));assert.ok(thirdStroke.includes('未刷文字\n\n> 引用文字'));
+  await page.keyboard.press('Control+z');await settle();assert.equal(await source(),secondStroke);assert.equal(await brush.getAttribute('aria-pressed'),'false');
+  await page.click('#undo-button');await settle();assert.equal(await source(),firstStroke);await page.click('#redo-button');await settle();assert.equal(await source(),secondStroke);
+  record('native double click pins one sample across three preview/Markdown strokes, rejects incompatible targets without unlocking and keeps each stroke independently undoable');
+
+  await previewSelect('样本');await brush.click();assert.equal(await page.locator('body').getAttribute('data-format-painter'),'ready');await brush.dblclick();assert.equal(await page.locator('body').getAttribute('data-format-painter'),'locked');await page.keyboard.press('Escape');assert.equal(await brush.getAttribute('aria-pressed'),'false');
+  await previewSelect('样本');await brush.dblclick();await brush.click();assert.equal(await brush.getAttribute('aria-pressed'),'false');
+  await previewSelect('样本');await brush.dblclick();await page.click('#format-painter-status button');assert.equal(await brush.getAttribute('aria-pressed'),'false');
+  await previewSelect('样本');await brush.dblclick();await page.locator('.cm-content').focus();await page.keyboard.insertText('手动修改');await settle();assert.equal(await brush.getAttribute('aria-pressed'),'false');
+  record('double click upgrades an armed brush; Escape, single click, cancel button and unrelated editing exit locked mode');
+
   await set('# 双向取样\n\n**样本**\n\n目标甲。\n\n目标乙。');await previewSelect('样本');await brush.click();await cmSelect('目标甲。\n\n目标乙。');
   const cross=await source();assert.match(cross,/\[目标甲。\]\{bold\}\n\n\[目标乙。\]\{bold\}/);assert.ok(cross.includes('**样本**'));assert.equal(await brush.getAttribute('aria-pressed'),'false');
   record('preview sample paints keyboard selection across ordinary paragraphs and keeps Markdown heading structure');
@@ -92,13 +110,14 @@ try{
     await page.keyboard.press('Alt+6');await page.click('#panel-skin');await page.click(`[data-ui-skin-choice="${skin}"]`);if(skin!=='water')await page.waitForFunction(()=>document.documentElement.dataset.witchAssets==='ready');await page.click('#modal-close');await page.click('#writing-panel-close');
     for(const night of [false,true]){
       if((await page.locator('body').getAttribute('data-appearance')==='night')!==night)await page.click('#night-button');
-      await set('# 界面示例\n\n[样本]{color=#2563eb marker=#a371d8 bold}\n\n这里选中文字，应用同一套格式。');await previewSelect('样本');await brush.click();
+      await set('# 界面示例\n\n[样本]{color=#2563eb marker=#a371d8 bold}\n\n这里选中文字，应用同一套格式。');await previewSelect('样本');await brush.dblclick();
       assert.equal(await brush.evaluate(b=>b.nextElementSibling?.dataset.format),'bold');assert.ok(await page.locator('#format-painter-status').isVisible());
+      assert.equal(await page.locator('body').getAttribute('data-format-painter'),'locked');assert.match(await page.locator('#format-painter-status').innerText(),/已锁定/);
       assert.ok(await brush.evaluate(b=>{const s=getComputedStyle(b);return parseFloat(s.width)>=32&&s.color!==s.backgroundColor;}));
       await page.screenshot({path:`${dir}/${skin}-${night?'night':'day'}.png`});await page.keyboard.press('Escape');
     }
   }
-  record('format painter icon and persistent ready/cancel status fit all three desktop skins in day and night');
+  record('format painter icon and persistent locked/cancel status fit all three desktop skins in day and night');
   assert.deepEqual(errors,[]);assert.deepEqual(network,[]);
 }catch(error){await page.screenshot({path:`${dir}/failure.png`});throw error;}
 finally{await writeFile(`${dir}/report.json`,JSON.stringify({channel,version:browser.version(),checks,errors,network},null,2));await browser.close();}
