@@ -80,3 +80,9 @@ body[data-appearance=night] .quick-popover{background:#1f2f3b;color:#d3dce3;bord
 .rewrite-diff .diff-line{display:block;padding:8px 12px}.rewrite-diff .diff-line code{display:block;white-space:pre-wrap;overflow-wrap:anywhere}
 
 #modal .rewrite-columns textarea,#modal #rewrite-instruction,#modal .rewrite-settings :is(select,input:not([type=checkbox])){background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-border)}#modal .rewrite-actions{background:var(--ui-surface);bottom:0}#modal #rewrite-status{color:var(--ui-ink)}.rewrite-settings .help{font-size:12px;line-height:1.8}
+
+/* One-shot inline format painter, shared by all skins and appearances. */
+#app #format-painter-button[aria-pressed=true]{background:var(--ui-active);color:var(--ui-blue);box-shadow:inset 0 0 0 1px var(--ui-blue)}
+#format-painter-status{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-shrink:0;margin:0 0 8px;padding:5px 10px;border:1px solid var(--ui-border);border-radius:8px;background:var(--ui-surface);color:var(--ui-ink);font-size:12px;line-height:1.6}
+#format-painter-status button{min-height:32px;padding:3px 10px;border-radius:6px;color:var(--ui-blue)}
+body[data-format-painter=ready] :is(.cm-content,#preview [data-edit-from]){cursor:crosshair}

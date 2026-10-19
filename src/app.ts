@@ -1,6 +1,7 @@
 import {operationProgress} from './operation-progress';
 import {mountStyleTweaks,refreshStyleSources} from './style-tweaks';
 import {compactToolbar} from './toolbar-layout';
+import {mountFormatPainter} from './format-painter';
 import {enhanceComponentDiscovery} from './component-browser';
 import {LayoutManager} from './layout-manager';
 import {mountWorkspaceFeatures} from './workspace-features';
@@ -75,6 +76,7 @@ let editor:MarkdownEditor,sync:ScrollSync;
 let stickerController:StickerController;
 let previewEditor:PreviewEditor;
 let previewFormatting:PreviewFormatting;
+let formatPainter:ReturnType<typeof mountFormatPainter>|undefined;
 let findReplace:FindReplace;
 let night=readPreference('appearance','day')==='night';
 let fontInspection=readPreference('font-inspection','false')==='true';
@@ -282,6 +284,7 @@ function render(){
   }catch(e){$('render-state').textContent='渲染失败，正文已保留';toast(errorMessage(e),true);}
 }
 function switchArticle(id:string,resetEditor=true){
+  formatPainter?.cancel();
   cancelStyleTrial();writingDesk?.cancelInspection();previewEditor?.finish();delete document.body.dataset.previewEditing;clearThemePreview(false);
   closePopover();
   const next=articles.get(id);if(!next||next.deleted)return;
@@ -895,7 +898,7 @@ async function init(){
   const requestedEditorTheme=readPreference(night?'editor-theme-night':'editor-theme',night?'dark':'light'),editorTheme=editorThemes[requestedEditorTheme]?requestedEditorTheme:(night?'dark':'light');
   $<HTMLSelectElement>('editor-theme').innerHTML=Object.entries(editorThemes).map(([id,t])=>`<option value="${id}">${t.name}</option>`).join('');$<HTMLSelectElement>('editor-theme').value=editorThemes[editorTheme]?editorTheme:'dark';
   articleHistory.seed(current);
-  editor=new MarkdownEditor($('editor'),current.markdown,editorTheme,text=>{updateStickerLines(current.stickers,current.markdown,text);current.markdown=text;markDirty(current,editor.typingChange?'typing':'command');queueRender();},(files,pos)=>void addImages(files,pos).catch(e=>toast(errorMessage(e),true)),()=>exportBackup(),readPreference('latex-completion','true')==='true');
+  editor=new MarkdownEditor($('editor'),current.markdown,editorTheme,text=>{formatPainter?.cancel();updateStickerLines(current.stickers,current.markdown,text);current.markdown=text;markDirty(current,editor.typingChange?'typing':'command');queueRender();},(files,pos)=>void addImages(files,pos).catch(e=>toast(errorMessage(e),true)),()=>exportBackup(),readPreference('latex-completion','true')==='true');
   const title=$('document-title');let titleOwner:Article|undefined,titleStart='';
   title.addEventListener('focus',()=>{titleOwner=current;titleStart=title.textContent||'';});
   title.addEventListener('blur',()=>{const owner=titleOwner;titleOwner=undefined;if(!owner||owner!==current){syncArticleTitle(current);return;}const value=(title.textContent||'').replace(/[\r\n\t]+/g,' ').trim().slice(0,200),next=value||undefined;if(value!==titleStart&&next!==owner.customTitle){owner.customTitle=next;markDirty(owner);renderLibrary();}syncArticleTitle(owner);});
@@ -906,6 +909,7 @@ async function init(){
   sync=new ScrollSync(editor,$('preview-scroll'),$('preview'));
   previewEditor=new PreviewEditor($('preview'),editor,render,toast);
   previewFormatting=new PreviewFormatting($('preview'),editor,render);
+  formatPainter=mountFormatPainter({editor,articleId:()=>current.id,apply:applySelectedTextStyle,notify:toast});
   findReplace=new FindReplace({editor,preview:$('preview'),articleId:()=>current.id,reveal:()=>setWorkspaceView('compare'),render,notify:toast,renderSample:(root,markdown)=>{root.innerHTML=renderMarkdown(markdown,assets).html;if(publisher==='wechat')decorateTheme(root,themeById(current.theme));}});
   $('search-button').textContent='⌕ 查找替换';$('search-button').title='查找文字或格式，支持替换与批量修改（Ctrl+F / Ctrl+H）';$('search-button').setAttribute('aria-expanded','false');
   $('preview-edit-button').title='点击修改文字；直接划选预览文字即可调整字体、荧光等格式';
