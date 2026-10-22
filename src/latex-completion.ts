@@ -1,11 +1,13 @@
 import {slashInsertSource} from './slash-insert';
 import {readPreference} from './storage';
+import {extraLatexEntries,type LatexEntry} from './latex-catalog';
+import {offlineModule} from './offline-modules';
 import {Prec,type Extension} from '@codemirror/state';
 import {keymap} from '@codemirror/view';
 import {syntaxTree} from '@codemirror/language';
 import {acceptCompletion,autocompletion,completionKeymap,snippetCompletion,type Completion,type CompletionContext} from '@codemirror/autocomplete';
 
-type Entry={command:string;detail:string;symbol?:string;example?:string;template?:string;aliases?:string[]};
+type Entry=LatexEntry;
 const structures:Entry[]=[
   {command:'frac',detail:'分式',example:'\\frac{a}{b}',template:String.raw`\frac{#{1:a}}{#{2:b}}#{0}`},
   {command:'sqrt',detail:'平方根',symbol:'√',example:'\\sqrt{x}',template:String.raw`\sqrt{#{1:x}}#{0}`,aliases:['sqar']},
@@ -43,9 +45,21 @@ const operators=[
 const symbols=[
   ['infty','∞','无穷'],['partial','∂','偏导数'],['nabla','∇','梯度'],['times','×','乘号'],['cdot','·','点乘'],['div','÷','除号'],['pm','±','正负'],['mp','∓','负正'],['leq','≤','小于等于'],['geq','≥','大于等于'],['neq','≠','不等于'],['approx','≈','约等于'],['equiv','≡','恒等'],['propto','∝','正比'],['to','→','趋向'],['rightarrow','→','右箭头'],['leftarrow','←','左箭头'],['Rightarrow','⇒','推出'],['Leftrightarrow','⇔','等价'],['in','∈','属于'],['notin','∉','不属于'],['subset','⊂','子集'],['subseteq','⊆','子集或相等'],['cup','∪','并集'],['cap','∩','交集'],['emptyset','∅','空集'],['forall','∀','任意'],['exists','∃','存在'],['ldots','…','横向省略号'],['cdots','⋯','居中省略号'],['angle','∠','角'],['perp','⊥','垂直'],['parallel','∥','平行']
 ].map(([command,symbol,detail])=>({command,symbol,detail}));
-const entries:Entry[]=[...structures,...greek,...operators,...symbols];
+export const latexEntries:Entry[]=[...structures,...greek,...operators,...symbols,...extraLatexEntries];
+const entries=latexEntries,byLabel=new Map(entries.map(entry=>['\\'+entry.command,entry]));
+// The same default text is used for the candidate preview and snippet insertion.
+export const latexPreviewSource=(entry:Entry)=>entry.template?entry.template.replace(/#\{\d+(?::([^{}]*))?\}/g,(_,value)=>value||''):'\\'+entry.command;
+function preview(entry:Entry,large=false){
+ const node=document.createElement('span');node.className=large?'latex-preview latex-preview-large':'latex-preview';node.dataset.latexPreview=entry.command;node.setAttribute('aria-hidden','true');
+ requestAnimationFrame(()=>{if(!node.isConnected)return;try{const result=offlineModule<typeof import('./math-engine')>('math').renderMath(latexPreviewSource(entry),false);if(result.error)throw Error(result.error);node.innerHTML=result.html;node.dataset.rendered='true';}catch{node.textContent='预览暂不可用';}});
+ return node;
+}
+function information(entry:Entry){
+ const node=document.createElement('div');node.className='latex-completion-info';const code=document.createElement('code'),help=document.createElement('p');
+ code.textContent=latexPreviewSource(entry);help.textContent=entry.template?'Enter / Tab 插入；Tab 切换待填内容，Shift + Tab 返回。公式写在 $…$ 或 $$…$$ 中。':'Enter / Tab 插入命令。公式写在 $…$ 或 $$…$$ 中。';node.append(preview(entry,true),code,help);return node;
+}
 const choices=new Map<Entry,Completion>(entries.map(entry=>{
-  const completion:Completion={label:'\\'+entry.command,displayLabel:entry.example||'\\'+entry.command,detail:[entry.symbol,entry.detail].filter(Boolean).join(' · '),type:entry.template?'function':'constant',info:entry.template?'Enter / Tab 插入；Tab 切换待填内容，Shift + Tab 返回。公式写在 $…$ 或 $$…$$ 中。':'Enter / Tab 插入命令。公式写在 $…$ 或 $$…$$ 中。'};
+  const completion:Completion={label:'\\'+entry.command,displayLabel:entry.example||'\\'+entry.command,type:entry.template?'function':'constant',info:()=>information(entry)};
   return [entry,entry.template?snippetCompletion(entry.template,completion):completion];
 }));
 
@@ -63,5 +77,5 @@ export function latexCompletionSource(context:CompletionContext){
 }
 
 export function latexCompletionExtension():Extension{
-  return [autocompletion({override:[ctx=>readPreference('latex-completion','true')==='true'?latexCompletionSource(ctx):null,slashInsertSource],activateOnTypingDelay:65,interactionDelay:0,defaultKeymap:false,icons:false,maxRenderedOptions:40,tooltipClass:()=> 'latex-completion-menu'}),Prec.highest(keymap.of([{key:'Tab',run:acceptCompletion},...completionKeymap]))];
+  return [autocompletion({override:[ctx=>readPreference('latex-completion','true')==='true'?latexCompletionSource(ctx):null,slashInsertSource],activateOnTypingDelay:65,interactionDelay:0,defaultKeymap:false,icons:false,maxRenderedOptions:24,tooltipClass:()=> 'latex-completion-menu',addToOptions:[{position:60,render:completion=>{const entry=byLabel.get(completion.label);return entry?preview(entry):null;}}]}),Prec.highest(keymap.of([{key:'Tab',run:acceptCompletion},...completionKeymap]))];
 }

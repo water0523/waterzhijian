@@ -50,7 +50,8 @@ export function renderMath(source:string,display:boolean,startNumber=0,equationN
     const {tex,mathDocument}=engines[mode]??=createEngine(mode);
     tex.reset(startNumber);
     const node=mathDocument.convert(source,{display,em:16,ex:8,containerWidth:327});
-    const html=adaptor.outerHTML(node);
+    // Keep Han glyphs in a CJK-capable family inside the SVG, including exports.
+    const html=adaptor.outerHTML(node).replace(/<text\b([^>]*)>([^<]*)<\/text>/g,(tag,attributes:string,text:string)=>/\p{Script=Han}/u.test(text)?'<text'+attributes.replace(/\sfont-family="[^"]*"/,'')+' font-family="SimSun,STSong,Songti SC,Noto Serif CJK SC,serif">'+text+'</text>':tag);
     const match=html.match(/data-mjx-error="([^"]*)"/);
     const unknown=/data-mml-node="mtext"[^>]*fill="red"/.test(html)||html.includes('data-mjx-error');
     result=match||unknown?{html:'',error:match?.[1]||'无法识别的公式命令'}:{html,nextNumber:(tex.parseOptions.tags as unknown as {counter:number}).counter};
