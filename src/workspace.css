@@ -87,3 +87,6 @@ body[data-appearance=night] .quick-popover{background:#1f2f3b;color:#d3dce3;bord
 #format-painter-status span{min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-transform:none;letter-spacing:normal}
 #format-painter-status button{flex-shrink:0;min-height:32px;padding:3px 6px;border-radius:6px;color:var(--ui-blue)}
 body[data-format-painter] :is(.cm-content,#preview [data-edit-from]){cursor:crosshair}
+
+#command-palette header input{min-width:0;flex:1}#command-palette header select{max-width:110px;min-height:32px;background:var(--ui-surface);color:var(--ui-ink);border-color:var(--ui-border)}
+#command-palette footer{display:flex;align-items:center;gap:12px;flex-wrap:wrap}#command-more{min-height:32px;padding:4px 10px;color:var(--ui-blue);border:1px solid var(--ui-border);border-radius:6px}.command-empty{padding:16px;color:var(--ui-muted)}
