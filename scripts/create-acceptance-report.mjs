@@ -8,6 +8,7 @@ let md='# 本轮验收结果\n\n日期：'+new Date().toLocaleString('zh-CN',{ti
 for(const r of chosen)md+=`| ${r.channel} | ${r.suite} | ${r.checks.length} | ${r.browserVersion||'未记录'} |\n`;
 md+=`\n两浏览器各覆盖 ${testSuites.all.length} 份登记脚本（去重计数），类型检查及差异空白检查通过。每份脚本包含多项断言，脚本数量不冒充独立功能数量。已运行原有综合入口，以及登记的专项集合；没有宣称运行目录中全部历史脚本。\n\n`;
 md+='本次命令导航覆盖：全部结果分批浏览与键盘跨批选择、多关键词和分类联合搜索、标题优先、异常最近记录恢复、中文输入组合期间防止误执行、空结果、执行失败反馈与焦点回归，以及真实离线程序的面板命令执行。\n\n';
+md+='本次沉浸旅途插画修复：冷启动时收起文章库、轻装切换沉浸时隐藏侧栏，随后打开均有真实解码的角色插画；日夜配色、1600/1280/1100 窗口、保存刷新和侧栏关闭重开正常，复用同一图集地址。默认天蓝启动仍无插画 src，全程离线。\n\n';
 md+='AI 改写覆盖：默认本机 QwenLocal、云端 / 本地兼容 API、接口地址与凭证隔离、受限同源连接页、独立会话清理、流式失败 / 截断 / 取消、迟到响应拒绝、选区应用与一次撤销，以及三套 UI 日夜配色。云 API 仅使用模拟响应，不调用付费服务。\n\n';
 md+='本次格式刷覆盖：加粗前固定图标，Markdown / 预览双向取样及真实鼠标划选，跨同类正文键盘选择，单击应用一次后退出、双击锁定连续刷多处并计数，跨预览 / Markdown 保持同一份样本、逐处撤销，格式刷自身变更不打断锁定；替换旧字体、颜色、荧光与修饰，普通样本清除局部格式且保留选区外原生强调；一次撤销 / 重做、保存重开、混合样本和公式 / 结构边界拒绝、Esc / 再次点击 / 取消 / 改文 / 切稿退出，三套界面日夜状态。\n\n';
 md+='本次选择体验覆盖：公式预选扩大并取消横向滚动，五个插入按钮移到链接与字体前，格式改写恢复到同步滚动左侧，插入和更多菜单盖在预览栏上方；三个组件库按场景筛选、用途搜索、空结果恢复、放大预览返回保留筛选、实际插入与撤销；文件按备份 / 导入 / 导出三级流程细化；375 / 430 / 794 固定真实宽度，自适应铺满分栏，旧宽幅偏好迁移、鼠标拖动及方向键调整均验证。三套界面均覆盖电脑窗口与日夜模式。\n\n';
@@ -24,3 +25,4 @@ for(const channel of localEvidence)for(const ext of ['json','png'])await copyFil
 for(const channel of ['chrome','msedge']){await copyFile(`test-results/workspace-selection-${channel}/report.json`,`${dir}/visuals/workspace-selection-${channel}.json`);for(const name of ['formulas','journal-block','folio-block','edition-block','witch-immersive-1440-night-insert-menu-button','witch-immersive-1440-night-toolbar-more','witch-light-day-journal-block-button','water-1280-day-toolbar-more'])await copyFile(`test-results/workspace-selection-${channel}/${name}.png`,`${dir}/visuals/selection-${channel}-${name}.png`);}
 
 for(const channel of ['chrome','msedge']){await copyFile(`test-results/format-painter-${channel}/report.json`,`${dir}/visuals/format-painter-${channel}.json`);for(const skin of ['water','witch-light','witch-immersive'])for(const mode of ['day','night'])await copyFile(`test-results/format-painter-${channel}/${skin}-${mode}.png`,`${dir}/visuals/format-painter-${channel}-${skin}-${mode}.png`);}
+for(const channel of ['chrome','msedge']){await copyFile(`test-results/skin-illustration-${channel}/report.json`,`${dir}/visuals/skin-illustration-${channel}.json`);for(const width of [1600,1280,1100])for(const mode of ['day','night'])await copyFile(`test-results/skin-illustration-${channel}/library-${width}-${mode}.png`,`${dir}/visuals/library-portrait-${channel}-${width}-${mode}.png`);}

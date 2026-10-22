@@ -26,7 +26,12 @@ export function mountUISkin(host:Host){
  const libraryArt=document.createElement('div');libraryArt.className='witch-library-art';libraryArt.setAttribute('aria-hidden','true');libraryArt.setAttribute('data-editor-only','true');libraryArt.innerHTML=sprite('portrait')+'<span class="witch-library-caption">把沿途的灵感，写进下一页。</span>';document.querySelector('.library-footer')!.before(libraryArt);
  const footer=document.createElement('span');footer.className='witch-footer-art';footer.setAttribute('aria-hidden','true');footer.setAttribute('data-editor-only','true');footer.innerHTML=sprite('books')+sprite('quill');document.querySelector('.workspace-footer')!.append(footer);
  for(const [id,kind]of [['rail-documents','bookIcon'],['theme-sidebar-toggle','starIcon']] as const)document.getElementById(id)!.insertAdjacentHTML('afterbegin',sprite(kind,'witch-rail-icon'));
- const load=async(scope:ParentNode=document)=>{const images=[...scope.querySelectorAll<HTMLImageElement>('[data-witch-image]')].filter(img=>img.getClientRects().length>0);await Promise.all(images.map(async img=>{const url=await assetURL(img.dataset.witchImage as keyof typeof references);if(img.src!==url)img.src=url;await img.decode();}));};
+ // A closed library (or the light skin) hides some sprites at activation time.
+ // Prepare their images too: opening a panel later must not require a skin
+ // switch to fill in a missing src. Shared asset promises still load each
+ // embedded image once. Light mode leaves the immersive hat unused, while
+ // settings thumbnails can preview every skin. Default startup loads none.
+ const load=async(scope:ParentNode=document)=>{const images=[...scope.querySelectorAll<HTMLImageElement>('[data-witch-image]')].filter(img=>scope!==document||img.dataset.witchImage!=='hat'||selected==='witch-immersive');await Promise.all(images.map(async img=>{const url=await assetURL(img.dataset.witchImage as keyof typeof references);if(img.src!==url)img.src=url;await img.decode();}));};
  const updateChoices=()=>{document.querySelectorAll<HTMLButtonElement>('[data-ui-skin-choice]').forEach(button=>{const active=button.dataset.uiSkinChoice===selected;button.setAttribute('aria-pressed',String(active));button.querySelector('.ui-skin-current')!.textContent=active?'使用中':'点击使用';});};
  const apply=(skin:UISkin,save=false)=>{
   selected=skin;root.dataset.uiSkin=skin;const ticket=++generation;if(skin!=='water')root.dataset.witchAssets='loading';
