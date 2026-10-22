@@ -1,4 +1,8 @@
 const paths:Record<string,string>={
+ calendar:'M4 5h16v16H4V5Zm0 5h16M8 2v6m8-6v6M8 14h2m4 0h2m-8 4h2m4 0h2',
+ clock:'M12 7v5l3 2m6-2a9 9 0 1 1-18 0 9 9 0 0 1 18 0',
+ spark:'m12 2 2.5 7.5L22 12l-7.5 2.5L12 22l-2.5-7.5L2 12l7.5-2.5L12 2Z',
+ 'arrow-left':'m14 6-6 6 6 6', 'arrow-right':'m10 6 6 6-6 6',
  paintbrush:'M4 3h16v7H4V3Zm4 0v4m8-4v4M6 10v4h4v6a2 2 0 0 0 4 0v-6h4v-4',
  bold:'M7 4h6a4 4 0 0 1 0 8H7V4Zm0 8h7a4 4 0 0 1 0 8H7v-8',italic:'M10 4h9M5 20h9M15 4 9 20',underline:'M6 3v8a6 6 0 0 0 12 0V3M4 21h16',strike:'M18 5c-4-3-11-2-11 2 0 2 3 3 5 3m-6 7c3 4 11 4 11-1 0-2-2-3-4-3M3 12h18',link:'m9 15 6-6m-7 4-2 2a4 4 0 0 0 6 6l3-3m-4-9 2-2a4 4 0 0 1 6 6l-3 3',image:'M3 4h18v16H3V4Zm0 11 5-5 5 6 3-3 5 6M16 8h.1',table:'M3 4h18v16H3V4Zm0 5h18M3 14h18M9 4v16m6-16v16',code:'m8 6-6 6 6 6m8-12 6 6-6 6m-3-15-2 18',math:'M19 4H6l7 8-7 8h13',undo:'M9 4 3 10l6 6M3 10h11a7 7 0 0 1 7 7v3',redo:'m15 4 6 6-6 6m6-6H10a7 7 0 0 0-7 7v3',quote:'M4 5h6v7H5c0 4 2 5 4 5M14 5h6v7h-5c0 4 2 5 4 5',heading:'M4 4v16M16 4v16M4 12h12m3 4h3m-1-2v6',
 

@@ -16,7 +16,7 @@ import type {ThemeDefinition} from './theme-types';
 import {showThemeManager,chooseThemeFile} from './theme-manager';
 import {decorateTheme,themeDesign} from './theme-design';
 import {renderMarkdown,renderMath,exportFragment,firstArticleHeading,countWritingWords,type RenderResult} from './render';
-import {readWritingLog,writingDays} from './writing-log';
+import {readWritingLog,writingDays,writingDay} from './writing-log';
 import {freshArticle,escapeHTML as esc,uid,fontNames,type Article,type Asset,type Typography,type Revision} from './model';
 import {openStore,loadStore,persist,preference,readPreference} from './storage';
 import {download,safeName,createBackup,readBackup,fileToAsset,assetRefs,svgToPNG,bytesFromData,extension} from './files';
@@ -321,7 +321,7 @@ function renderLibrary(){
   $('folder-list').innerHTML=[['*','全部文章'],['','未分类'],...folders.map(n=>[n,n])].map(([id,name])=>`<div class="folder-row"><button data-folder="${esc(id)}" class="${id===libraryFolder&&!libraryRecent?'active':''}"><span>${uiIcon(id==='*'?'document':'folder')}${esc(name)}</span><small>${active.filter(a=>id==='*'||(a.folder||'')===id).length}</small></button>${id&&id!=='*'?`<button data-folder-edit="${esc(id)}" aria-label="管理${esc(name)}" title="重命名 / 删除文件夹">···</button>`:''}</div>`).join('');
   if(!trash)for(const item of $('article-list').querySelectorAll<HTMLElement>('[data-id]')){const a=articles.get(item.dataset.id!)!;if(a.folder)item.querySelector('small')!.append(' · '+a.folder);}
   const writingLog=readWritingLog(),days=writingDays(7).map(day=>({from:new Date(day+'T12:00:00').getTime(),count:writingLog[day]?.net||0})),max=Math.max(1,...days.map(d=>Math.abs(d.count)));
-  $('library-stats').innerHTML=`<div><strong>写作统计</strong><span>${active.length} 篇文章 · ${active.reduce((n,a)=>n+words(a.markdown),0).toLocaleString()} 字</span></div><div class="writing-spark" aria-label="最近七天写作净增字数">${days.map(d=>`<i style="height:${4+Math.round(Math.abs(d.count)/max*25)}px" title="${new Date(d.from).toLocaleDateString('zh-CN')} · 净增 ${d.count.toLocaleString()} 字"></i>`).join('')}</div>`;
+  $('library-stats').innerHTML=`<div><strong>写作日历与成就 ↗</strong><span data-stat-today>今日 ${writingLog[writingDay()]?.net||0} 字 · 查看时间与积累</span></div><div class="writing-spark" aria-label="最近七天写作净增字数">${days.map(d=>`<i style="height:${4+Math.round(Math.max(0,d.count)/max*25)}px" title="${new Date(d.from).toLocaleDateString('zh-CN')} · 净增 ${d.count.toLocaleString()} 字"></i>`).join('')}</div>`;
 }
 function folderEditor(target:HTMLElement,name?:string){
   openPopover(target,name?'管理文件夹':'新建文件夹',`<p class="help">只支持一级文件夹。删除文件夹会把文章移回未分类。</p><input id="folder-name" class="field" maxlength="40" aria-label="文件夹名称" placeholder="例如：科普、文学" value="${esc(name||'')}"><div class="quick-actions">${name?'<button id="folder-delete" class="button outline">删除文件夹</button>':''}<button id="folder-save" class="button primary">${name?'保存名称':'创建'}</button></div>`);
