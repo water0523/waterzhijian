@@ -1,5 +1,5 @@
 import {preference,readPreference} from './storage';
-import {writingDay,type WritingLog,type WritingLogEntry} from './writing-log';
+import {writingDay,readJournalAwards,saveJournalAwards,type WritingLog,type WritingLogEntry} from './writing-log';
 
 export const emptyWritingDay=():WritingLogEntry=>({net:0,added:0,seconds:0,dwellSeconds:0});
 export function heatLevel(entry:WritingLogEntry=emptyWritingDay()){
@@ -42,13 +42,16 @@ export function normalizeWritingAchievements(raw:unknown,now=new Date()):Record<
  return unlocked;
 }
 export function readWritingAchievements(now=new Date()):Record<string,string>{
- try{return normalizeWritingAchievements(JSON.parse(readPreference('writing-achievements','{}')),now);}catch{return Object.create(null) as Record<string,string>;}
+ let unlocked:Record<string,string>=Object.create(null);try{unlocked=normalizeWritingAchievements(JSON.parse(readPreference('writing-achievements','{}')),now);}catch{}
+ for(const [id,day] of Object.entries(normalizeWritingAchievements(readJournalAwards(),now)))if(!unlocked[id]||day<unlocked[id])unlocked[id]=day;
+ return unlocked;
 }
 export function syncWritingAchievements(log:WritingLog,now=new Date()){
  const unlocked=readWritingAchievements(now),newly:string[]=[];
  const progress=writingProgress(log,now);
  for(const a of writingAchievements)if(!unlocked[a.id]&&a.value(progress)>=a.goal){unlocked[a.id]=writingDay(now);newly.push(a.id);}
- if(newly.length)preference('writing-achievements',JSON.stringify(unlocked));
+ saveJournalAwards(unlocked);
+ const mirror=JSON.stringify(unlocked);if(readPreference('writing-achievements','{}')!==mirror)preference('writing-achievements',mirror);
  return {unlocked,newly,progress};
 }
 export function monthDays(month:string){

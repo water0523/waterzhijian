@@ -1,6 +1,6 @@
-import {readWritingLog,normalizeWritingLog,writingDay,type WritingLog} from './writing-log';
+import {readWritingLog,normalizeWritingLog,writingDay,writingSaveStatus,mergeWritingRecords,flushWritingLog,type WritingLog} from './writing-log';
 import {heatLevel,monthDays,monthWriting,writingDuration,writingAchievements,syncWritingAchievements,normalizeWritingAchievements,readWritingAchievements,emptyWritingDay} from './writing-progress';
-import {preference,readPreference} from './storage';
+import {downloadWritingRecords} from './writing-backup';
 import {uiIcon} from './ui-icons';
 import {escapeHTML as esc} from './model';
 
@@ -22,6 +22,7 @@ export function mountWritingCalendar(h:Host){
   const expanded=root!.querySelector<HTMLDetailsElement>('.writing-method')?.open,scroller=root!.closest('dialog')||root!.parentElement!,scroll=scroller.scrollTop;
   const offset=(new Date(month+'-01T12:00:00').getDay()+6)%7,ringLength=2*Math.PI*72,arc=ringLength/days.length;
   root!.innerHTML=`<div class="writing-journal-intro"><div><small>WRITING JOURNAL</small><h3>每一天，都是一页积累。</h3><p>颜色记录投入，文字留下回响。</p></div><div class="journal-files"><button data-calendar-control="export">${uiIcon('export')}导出记录</button><button data-calendar-control="import">${uiIcon('import')}导入记录</button><input id="writing-log-file" type="file" accept="application/json,.json" hidden></div></div>
+   ${writingSaveStatus().state==='error'?`<div class="journal-save-warning" role="status"><strong>统计尚未完成保存</strong><p>${esc(writingSaveStatus().reason)}。当前日历包含尚未保存的记录，请重试或导出备份。</p><button data-calendar-control="retry-save">重试保存</button><button data-calendar-control="export">导出完整记录</button></div>`:''}
    <section class="journal-overview" aria-label="本月写作统计"><div class="journal-ring"><svg viewBox="0 0 180 180" aria-hidden="true">${days.map((day,i)=>`<circle cx="90" cy="90" r="72" fill="none" stroke-width="${day===selected?12:8}" data-heat="${heatLevel(log[day])}" stroke-dasharray="${arc-3} ${ringLength-arc+3}" stroke-dashoffset="${-i*arc}" transform="rotate(-90 90 90)"/>`).join('')}<text x="90" y="86" text-anchor="middle" class="journal-ring-number">${sum.days}<tspan class="journal-ring-unit"> 天</tspan></text><text x="90" y="110" text-anchor="middle" class="journal-ring-label">本月写作</text></svg></div>
    <div class="journal-overview-body"><div class="journal-period">${monthLabel(month)}<span>当前连续写作 <b data-current-streak>${progress.streak}</b> 天</span></div><div class="journal-metrics"><div><span>净增字数</span><strong data-month-net>${signed(sum.net)}<small>字</small></strong></div><div><span>活跃写作</span><strong data-month-active>${writingDuration(sum.seconds)}</strong></div><div><span>前台停留</span><strong data-month-dwell>${writingDuration(sum.dwellSeconds)}</strong></div></div><p>环图一格对应一天，与下方日历使用相同热度。</p></div></section>
    <div class="journal-calendar-layout"><section class="journal-calendar-section" aria-label="月度热力日历"><div class="journal-calendar-heading"><h4>${monthLabel(month)}</h4><div><button data-calendar-control="previous" title="上个月" aria-label="上个月">${uiIcon('arrow-left')}</button><button data-calendar-control="today">今天</button><button data-calendar-control="next" title="下个月" aria-label="下个月" ${month>=today.slice(0,7)?'disabled':''}>${uiIcon('arrow-right')}</button></div></div><div class="journal-weekdays" aria-hidden="true">${['一','二','三','四','五','六','日'].map(x=>'<span>'+x+'</span>').join('')}</div><div class="journal-days" role="group" aria-label="${monthLabel(month)}，方向键选择日期，Home / End 选择本月首末日">${'<span class="journal-day-blank" aria-hidden="true"></span>'.repeat(offset)}${days.map(day=>`<button data-writing-day="${day}" data-heat="${heatLevel(log[day])}" aria-pressed="${selected===day}" ${day===today?'aria-current="date"':''} aria-label="${dayDescription(day,log)}" title="${dayDescription(day,log)}" tabindex="${selected===day?0:-1}" ${day>today?'disabled':''}><span>${Number(day.slice(8))}</span>${day===today?'<small>今</small>':''}</button>`).join('')}</div><div class="journal-legend"><span>少</span>${[0,1,2,3,4].map(i=>'<i data-heat="'+i+'" title="热度 '+i+'/4"></i>').join('')}<span>多</span><small>点击日期查看详情</small></div></section>
@@ -41,18 +42,15 @@ export function mountWritingCalendar(h:Host){
    if(control==='today'){month=writingDay().slice(0,7);selectDay(writingDay());return;}
    if(control==='previous'||control==='next'){const date=new Date(month+'-01T12:00:00');date.setMonth(date.getMonth()+(control==='next'?1:-1));const next=writingDay(date).slice(0,7);if(next>writingDay().slice(0,7)||next<'0001-01')return;month=next;selectDay(month===writingDay().slice(0,7)?writingDay():month+'-01');return;}
    if(control==='export'){
-    h.flush();const data={format:'feishui-writing-journal',version:1,exportedAt:new Date().toISOString(),log:readWritingLog(),achievements:readWritingAchievements()};
-    const url=URL.createObjectURL(new Blob([JSON.stringify(data,null,2)],{type:'application/json'})),a=document.createElement('a');a.href=url;a.download='非水成章-写作记录-'+writingDay()+'.json';a.click();setTimeout(()=>URL.revokeObjectURL(url),10000);return;
+    h.flush();downloadWritingRecords();return;
    }
+   if(control==='retry-save'){await h.flush();await flushWritingLog(true);draw();return;}
    if(control==='import'){root!.querySelector<HTMLInputElement>('#writing-log-file')!.click();return;}
    if(control==='cancel-import'){importPending=undefined;root!.querySelector('.journal-import-preview')!.replaceChildren();return;}
    if(control==='confirm-import'&&importPending){
-    h.flush();const log=readWritingLog(),unlocked=readWritingAchievements();let count=0;
-    for(const [day,entry] of Object.entries(importPending.log))if(!log[day]){log[day]=entry;count++;}
+    h.flush();const incoming=importPending,origin=root,unlocked=readWritingAchievements();
     for(const [id,date] of Object.entries(importPending.achievements))if(!unlocked[id]||date<unlocked[id])unlocked[id]=date;
-    const serialized=JSON.stringify(log),badges=JSON.stringify(unlocked);preference('writing-log',serialized);preference('writing-achievements',badges);
-    if(readPreference('writing-log','')!==serialized||readPreference('writing-achievements','')!==badges){h.notify('记录未能完整保存，请先导出本机记录备份。',true);return;}
-    importPending=undefined;draw();window.dispatchEvent(new Event('paper-writing-log'));h.notify('已补入 '+count+' 天记录，同日记录保留本机数值。');
+    importPending=undefined;const saved=await mergeWritingRecords(incoming.log,unlocked);syncWritingAchievements(readWritingLog());if(root!==origin||!currentRoot())return;draw();h.notify(saved?'记录已合并并保存，同日记录保留本机数值。':'记录已合并到当前窗口，请重试保存或导出备份。',!saved);
    }
   };
   root.onkeydown=e=>{
