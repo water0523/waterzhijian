@@ -27,4 +27,6 @@ export function embeddedImage(reference:string):string{
   payload!.dataset.loaded='true';imageCache.set(reference,data);return data;
 }
 
-export function backupWorker(){const payload=document.getElementById('offline-module-backup');if(!payload?.textContent)throw new Error('离线备份引擎缺失，请重新下载完整编辑器');const code=payload.dataset.encoding==='gzip-base64'?strFromU8(gunzipSync(Uint8Array.from(atob(payload.textContent),c=>c.charCodeAt(0)))):payload.textContent;const url=URL.createObjectURL(new Blob(['globalThis.__feishuiOfflineModules={};\n'+code],{type:'text/javascript'}));const worker=new Worker(url);payload.dataset.loaded='true';return {worker,close:()=>{worker.terminate();URL.revokeObjectURL(url);}};}
+function embeddedWorker(name:'backup'|'metadata'){const payload=document.getElementById('offline-module-'+name);if(!payload?.textContent)throw new Error('离线后台引擎缺失，请重新下载完整编辑器');const code=payload.dataset.encoding==='gzip-base64'?strFromU8(gunzipSync(Uint8Array.from(atob(payload.textContent),c=>c.charCodeAt(0)))):payload.textContent;const url=URL.createObjectURL(new Blob(['globalThis.__feishuiOfflineModules={};\n'+code],{type:'text/javascript'}));let worker:Worker;try{worker=new Worker(url);}catch(error){URL.revokeObjectURL(url);throw error;}payload.dataset.loaded='true';return {worker,close:()=>{worker.terminate();URL.revokeObjectURL(url);}};}
+export function backupWorker(){return embeddedWorker('backup');}
+export function metadataWorker(){return embeddedWorker('metadata');}

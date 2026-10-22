@@ -189,26 +189,27 @@ export function renderMarkdown(source:string,assets:Map<string,Asset>,editable=f
   return {html,errors:env.errors,missing:[...new Set(env.missing)],external:[...new Set(env.external)]};
 }
 export function firstArticleHeading(source:string):string|null{
-  const tokens=md.parse(source,{});
-  const heading=tokens.findIndex(t=>t.type==='heading_open'&&t.tag==='h1'&&t.level===0);
-  if(heading<0)return null;
-  const text=(tokens[heading+1]?.children||[]).filter(t=>['text','code_inline','math_inline','image'].includes(t.type)).map(t=>t.content).join('').trim();
-  return text||null;
+  return articleTextMetadata(source).heading;
 }
 // Parsing for source tools must not render SVG, load optional engines or alter text.
 export function mappedInlineTokens(source:string){return md.parse(source,{source,editable:true}).filter(t=>t.type==='inline').map(t=>t.children||[]);}
-let countedSource:string|undefined,countedWords=0;
+export type ArticleTextMetadata={heading:string|null;words:number};
+let countedSource:string|undefined,countedMetadata:ArticleTextMetadata;
 // Count source text, without generated captions, format attributes or TeX.
-export function countWritingWords(source:string){
-  if(source===countedSource)return countedWords;
+export function countWritingWords(source:string){return articleTextMetadata(source).words;}
+export function articleTextMetadata(source:string):ArticleTextMetadata{
+  if(source===countedSource)return countedMetadata;
+  const tokens=md.parse(source,{source,editable:false});
+  const headingIndex=tokens.findIndex(t=>t.type==='heading_open'&&t.tag==='h1'&&t.level===0);
+  const headingText=headingIndex<0?'':(tokens[headingIndex+1]?.children||[]).filter(t=>['text','code_inline','math_inline','image'].includes(t.type)).map(t=>t.content).join('').trim();
   const chunks:string[]=[];let tableDepth=0;
-  for(const token of md.parse(source,{source,editable:false})){
+  for(const token of tokens){
     if(token.type==='table_open')tableDepth++;
     if(token.type==='inline'&&(token.map||tableDepth))chunks.push((token.children||[]).map(t=>t.type==='text'||t.type==='code_inline'?t.content:t.type==='softbreak'||t.type==='hardbreak'||t.type==='math_inline'||t.type==='image'?' ':'').join(''));
     else if(token.type==='fence'||token.type==='code_block')chunks.push(token.content);
     if(token.type==='table_close')tableDepth--;
   }
-  countedSource=source;countedWords=(chunks.join('\n').match(/\p{Script=Han}|(?:(?!\p{Script=Han})[\p{L}\p{N}])+/gu)||[]).length;return countedWords;
+  countedSource=source;countedMetadata={heading:headingText||null,words:(chunks.join('\n').match(/\p{Script=Han}|(?:(?!\p{Script=Han})[\p{L}\p{N}])+/gu)||[]).length};return countedMetadata;
 }
 export function mappedStyleBlocks(source:string){
   const tokens=md.parse(source,{source,editable:true}),stack:typeof tokens=[],starts=[0];

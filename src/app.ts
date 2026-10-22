@@ -15,7 +15,9 @@ import {themes,themeById,themeCSS,visibleThemes,themeDefaults,planThemeImports,t
 import type {ThemeDefinition} from './theme-types';
 import {showThemeManager,chooseThemeFile} from './theme-manager';
 import {decorateTheme,themeDesign} from './theme-design';
-import {renderMarkdown,renderMath,exportFragment,firstArticleHeading,countWritingWords,type RenderResult} from './render';
+import {renderMarkdown,renderMath,exportFragment,countWritingWords,articleTextMetadata,type ArticleTextMetadata,type RenderResult} from './render';
+import {LibraryMetadataIndex} from './library-metadata';
+import {metadataWorker} from './offline-modules';
 import {readWritingLog,writingDays,writingDay} from './writing-log';
 import {freshArticle,escapeHTML as esc,uid,fontNames,type Article,type Asset,type Typography,type Revision} from './model';
 import {openStore,loadStore,persist,preference,readPreference} from './storage';
@@ -70,7 +72,8 @@ import {mountMarkdownShortcuts} from './markdown-shortcuts';
 
 const $=<T extends HTMLElement=HTMLElement>(id:string)=>document.getElementById(id) as T;
 const assetStore=new Map<string,Asset>();const articles=new Map<string,Article>();
-const headingCache=new WeakMap<Article,{markdown:string;heading:string|null}>();
+const headingCache=new WeakMap<Article,{markdown:string;heading:string|null;words:number}>();
+const libraryMetadata=new LibraryMetadataIndex({worker:metadataWorker,fallback:articleTextMetadata,changed:paintLibraryMetadata});
 let current:Article=freshArticle('光的来信 · 科普示例',science);
 const assets=new ArticleAssetMap(assetStore,()=>current);
 let editor:MarkdownEditor,sync:ScrollSync;
@@ -132,7 +135,7 @@ function markDirty(article=current,group='command'){
   clearTimeout(saveTimer);saveTimer=window.setTimeout(()=>void save(),1000);
 }
 function syncArticleTitle(article:Article){
-  let cached=headingCache.get(article);if(!cached||cached.markdown!==article.markdown){cached={markdown:article.markdown,heading:firstArticleHeading(article.markdown)};headingCache.set(article,cached);}
+  let cached=headingCache.get(article);if(!cached||cached.markdown!==article.markdown){const metadata=libraryMetadata.get(article)||articleTextMetadata(article.markdown);cached={markdown:article.markdown,...metadata};headingCache.set(article,cached);libraryMetadata.seed(article,metadata);}
   article.title=article.customTitle||cached.heading||'未命名文章';article.titleMode=article.customTitle?'manual':'auto';
   if(article.id===current.id){const title=$('document-title');if(document.activeElement!==title)title.textContent=article.title;title.title=article.customTitle?'手动名称 · 清空或点旁边恢复按钮跟随 H1':'跟随第一个 H1 · 点击可手动改名';title.dataset.naming=article.customTitle?'manual':'auto';$('title-follow-h1').hidden=!article.customTitle;}
   const name=$('article-list')?.querySelector<HTMLElement>(`[data-id="${article.id}"] strong`);if(name)name.textContent=article.title;
@@ -299,18 +302,29 @@ function switchArticle(id:string,resetEditor=true){
 function addArticle(title='未命名文章',markdown='',theme='rational'){
   const article=freshArticle(title,markdown);article.theme=theme;article.folder=libraryFolder==='*'?undefined:libraryFolder||undefined;trash=false;articles.set(article.id,article);markDirty(article);switchArticle(article.id);return article;
 }
-let libraryWindowSignature='';let libraryScrollFrame=0;
+let libraryWindowSignature='';let libraryScrollFrame=0;let libraryOrder:string[]=[];
+const wordCountTitle='与编辑区相同：汉字按字，其他连续字母与数字按词；不计排版标记、图片和公式代码。';
+function libraryWordCount(article:Article){const count=libraryMetadata.get(article)?.words,failed=libraryMetadata.failed(article);return `<span data-library-count title="${wordCountTitle}" ${count===undefined&&!failed?'aria-busy="true"':''}>${count!==undefined?count.toLocaleString()+' 字':failed?'<button data-action="retry-count" title="重试此篇文章的字数统计">重试字数</button>':'统计中…'}</span>`;}
+function paintLibraryMetadata(id:string,source:string,result:ArticleTextMetadata|undefined){
+ const article=articles.get(id);if(!article||article.markdown!==source)return;
+ if(result){headingCache.set(article,{markdown:source,...result});article.title=article.customTitle||result.heading||'未命名文章';article.titleMode=article.customTitle?'manual':'auto';}
+ const row=[...$('article-list').querySelectorAll<HTMLElement>('.article-item')].find(n=>n.dataset.id===id);if(!row)return;
+ if(result){row.querySelector('strong')!.textContent=article.title;row.setAttribute('aria-label',article.title);}
+ const count=row.querySelector<HTMLElement>('[data-library-count]');if(count){const template=document.createElement('template');template.innerHTML=libraryWordCount(article);count.replaceWith(template.content);}
+}
 function renderLibrary(){
-  for(const a of articles.values())syncArticleTitle(a);
+  syncArticleTitle(current);
   for(const a of articles.values())if(a.folder&&!folders.includes(a.folder))folders.push(a.folder);
   if(libraryFolder!=='*'&&libraryFolder&&!folders.includes(libraryFolder))libraryFolder='*';
   const query=$<HTMLInputElement>('library-search').value.toLowerCase(),all=[...articles.values()],active=all.filter(a=>!a.deleted),recentSince=Date.now()-30*86400000;
-  const words=(text:string)=>(text.match(/[\u3400-\u9fff]|[A-Za-z0-9]+/g)||[]).length;
   const list=all.filter(a=>a.deleted===trash&&(trash||libraryFolder==='*'||(a.folder||'')===libraryFolder)&&(!libraryRecent||a.updated>=recentSince)&&(!query||(a.title+'\n'+a.markdown).toLowerCase().includes(query))).sort((a,b)=>b.updated-a.updated);
+  const activeBefore=document.activeElement as HTMLElement|null,libraryList=$('article-list');const focused=activeBefore&&libraryList.contains(activeBefore)?activeBefore:null;
+  if(libraryWindowSignature===JSON.stringify([query,trash,libraryFolder,libraryRecent])&&libraryList.querySelector('.article-actions[open]')){const ranks=new Map(libraryOrder.map((id,i)=>[id,i]));list.sort((a,b)=>(ranks.get(a.id)??Infinity)-(ranks.get(b.id)??Infinity));}libraryOrder=list.map(a=>a.id);
   const signature=JSON.stringify([query,trash,libraryFolder,libraryRecent]);if(signature!==libraryWindowSignature){$('article-list').scrollTop=0;libraryWindowSignature=signature;}const virtual=list.length>200,start=virtual?Math.max(0,Math.min(list.length-30,Math.floor($('article-list').scrollTop/76)-4)):0,end=virtual?Math.min(list.length,start+30):list.length;const visible=list.slice(start,end);$('article-list').classList.toggle('virtual-articles',virtual);
-  const rowTemplate=document.createElement('template');rowTemplate.innerHTML=visible.map(a=>`<div class="article-item ${a.id===current.id?'current':''}" data-id="${a.id}" tabindex="0" role="button" aria-label="${esc(a.title)}"><strong>${esc(a.title)}</strong><small>${a.provenance?esc(({copy:'副本',conflict:'冲突副本',recovery:'崩溃恢复稿'} as const)[a.provenance.kind])+' · ':''}${words(a.markdown).toLocaleString()} 字 · ${new Date(a.updated).toLocaleDateString('zh-CN',{month:'numeric',day:'numeric'})} · ${themeById(a.theme).name}</small><details class="article-actions"><summary aria-label="文章操作" title="文章操作">⋯</summary><div class="item-actions">${trash?'<button data-action="restore">恢复文章</button>':'<button data-action="move">移动</button><button data-action="duplicate">副本</button><button data-action="history">历史</button><button data-action="delete">删除</button>'+(a.provenance&&articles.has(a.provenance.sourceId)?'<button data-action="compare-source">对比原稿</button>':'')}</div></details></div>`).join('')||'<div class="empty-state">'+(query?'没有找到相关文章':libraryRecent?'最近 30 天还没有编辑记录':'这里还没有文章')+'</div>';
+  const rowTemplate=document.createElement('template');rowTemplate.innerHTML=visible.map(a=>`<div class="article-item ${a.id===current.id?'current':''}" data-id="${a.id}" tabindex="0" role="button" aria-label="${esc(a.title)}"><strong>${esc(a.title)}</strong><small>${a.provenance?esc(({copy:'副本',conflict:'冲突副本',recovery:'崩溃恢复稿'} as const)[a.provenance.kind])+' · ':''}${libraryWordCount(a)} · ${new Date(a.updated).toLocaleDateString('zh-CN',{month:'numeric',day:'numeric'})} · ${themeById(a.theme).name}${!trash&&a.folder?' · '+esc(a.folder):''}</small><details class="article-actions"><summary aria-label="文章操作" title="文章操作">⋯</summary><div class="item-actions">${trash?'<button data-action="restore">恢复文章</button>':'<button data-action="move">移动</button><button data-action="duplicate">副本</button><button data-action="history">历史</button><button data-action="delete">删除</button>'+(a.provenance&&articles.has(a.provenance.sourceId)?'<button data-action="compare-source">对比原稿</button>':'')}</div></details></div>`).join('')||'<div class="empty-state">'+(query?'没有找到相关文章':libraryRecent?'最近 30 天还没有编辑记录':'这里还没有文章')+'</div>';
   if(virtual){const top=document.createElement('div'),bottom=document.createElement('div');top.className=bottom.className='article-virtual-spacer';top.style.height=start*76+'px';bottom.style.height=(list.length-end)*76+'px';rowTemplate.content.prepend(top);rowTemplate.content.append(bottom);}
-  const libraryList=$('article-list'),existing=new Map([...libraryList.querySelectorAll<HTMLElement>('.article-item')].map(n=>[n.dataset.id,n]));const desired:Node[]=[];for(const fresh of [...rowTemplate.content.children] as HTMLElement[]){const old=fresh.dataset.id?existing.get(fresh.dataset.id):undefined;if(!old){desired.push(fresh);continue;}existing.delete(fresh.dataset.id);old.className=fresh.className;old.setAttribute('aria-label',fresh.getAttribute('aria-label')||'');for(const selector of ['strong','small','.item-actions']){const a=old.querySelector<HTMLElement>(selector)!,b=fresh.querySelector<HTMLElement>(selector)!;if(a.innerHTML!==b.innerHTML)a.innerHTML=b.innerHTML;}desired.push(old);}for(const child of [...libraryList.childNodes])if(!desired.includes(child))child.remove();desired.forEach((node,i)=>{if(libraryList.childNodes[i]!==node)libraryList.insertBefore(node,libraryList.childNodes[i]||null);});
+  const existing=new Map([...libraryList.querySelectorAll<HTMLElement>('.article-item')].map(n=>[n.dataset.id,n]));const desired:Node[]=[];for(const fresh of [...rowTemplate.content.children] as HTMLElement[]){const old=fresh.dataset.id?existing.get(fresh.dataset.id):undefined;if(!old){desired.push(fresh);continue;}existing.delete(fresh.dataset.id);old.className=fresh.className;old.setAttribute('aria-label',fresh.getAttribute('aria-label')||'');for(const selector of ['strong','small','.item-actions']){const a=old.querySelector<HTMLElement>(selector)!,b=fresh.querySelector<HTMLElement>(selector)!;const signature=(root:HTMLElement)=>[...root.querySelectorAll<HTMLElement>('[data-action]')].map(n=>[n.dataset.action,n.textContent]);if(selector==='.item-actions'?JSON.stringify(signature(a))!==JSON.stringify(signature(b)):a.innerHTML!==b.innerHTML)a.innerHTML=b.innerHTML;}desired.push(old);}for(const child of [...libraryList.childNodes])if(!desired.includes(child))child.remove();desired.forEach((node,i)=>{if(libraryList.childNodes[i]!==node)libraryList.insertBefore(node,libraryList.childNodes[i]||null);});if(focused?.isConnected&&document.activeElement!==focused)focused.focus({preventScroll:true});
+  libraryMetadata.request($('library').hidden?[]:visible);
   $('library-count').textContent=String(active.length);$('rail-document-count').textContent=String(active.length);syncCatalogLayout();
   for(const [id,icon,label,count,selected] of [['active-tab','document','我的文档',active.length,!trash&&!libraryRecent],['recent-tab','history','最近编辑',active.filter(a=>a.updated>=recentSince).length,!trash&&libraryRecent],['trash-tab','trash','回收站',all.length-active.length,trash]] as const){
     $(id).innerHTML=uiIcon(icon)+'<span>'+label+'</span><small>'+count+'</small>';$(id).classList.toggle('active',selected);$(id).setAttribute('aria-pressed',String(selected));
@@ -319,7 +333,6 @@ function renderLibrary(){
   $('folder-list').hidden=trash;
   document.querySelector<HTMLElement>('.folder-heading')!.hidden=trash;
   $('folder-list').innerHTML=[['*','全部文章'],['','未分类'],...folders.map(n=>[n,n])].map(([id,name])=>`<div class="folder-row"><button data-folder="${esc(id)}" class="${id===libraryFolder&&!libraryRecent?'active':''}"><span>${uiIcon(id==='*'?'document':'folder')}${esc(name)}</span><small>${active.filter(a=>id==='*'||(a.folder||'')===id).length}</small></button>${id&&id!=='*'?`<button data-folder-edit="${esc(id)}" aria-label="管理${esc(name)}" title="重命名 / 删除文件夹">···</button>`:''}</div>`).join('');
-  if(!trash)for(const item of $('article-list').querySelectorAll<HTMLElement>('[data-id]')){const a=articles.get(item.dataset.id!)!;if(a.folder)item.querySelector('small')!.append(' · '+a.folder);}
   const writingLog=readWritingLog(),days=writingDays(7).map(day=>({from:new Date(day+'T12:00:00').getTime(),count:writingLog[day]?.net||0})),max=Math.max(1,...days.map(d=>Math.abs(d.count)));
   $('library-stats').innerHTML=`<div><strong>写作日历与成就 ↗</strong><span data-stat-today>今日 ${writingLog[writingDay()]?.net||0} 字 · 查看时间与积累</span></div><div class="writing-spark" aria-label="最近七天写作净增字数">${days.map(d=>`<i style="height:${4+Math.round(Math.max(0,d.count)/max*25)}px" title="${new Date(d.from).toLocaleDateString('zh-CN')} · 净增 ${d.count.toLocaleString()} 字"></i>`).join('')}</div>`;
 }
@@ -917,6 +930,8 @@ async function init(){
   const backModal=document.createElement('button');backModal.id='modal-back';backModal.hidden=true;backModal.textContent='返回';backModal.title='返回上一个窗口';backModal.onclick=()=>{const previous=modalStack.pop();if(!previous)return;modalGeneration++;$('modal-title').textContent=previous.title;$('modal-eyebrow').textContent=previous.eyebrow;$('modal-body').replaceChildren(...previous.nodes);$('modal-body').scrollTop=previous.scroll;backModal.hidden=!modalStack.length;};$('modal-close').before(backModal);
   bind('modal-close',closeModal);modal.addEventListener('cancel',e=>{e.preventDefault();const detail=document.getElementById('theme-detail');if(detail&&!detail.hidden)$('theme-detail-close').click();else if(modalStack.length)backModal.click();else closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const b=modal.getBoundingClientRect();const m=e as MouseEvent;if(m.clientX<b.left||m.clientX>b.right||m.clientY<b.top||m.clientY>b.bottom)closeModal();}});
   $('library').hidden=readPreference('library-open','true')!=='true';
+  let libraryWasHidden=$('library').hidden;new MutationObserver(()=>{if(libraryWasHidden===$('library').hidden)return;libraryWasHidden=$('library').hidden;if(libraryWasHidden)libraryMetadata.pause();else renderLibrary();}).observe($('library'),{attributes:true,attributeFilter:['hidden']});
+  window.addEventListener('pagehide',()=>libraryMetadata.pause());window.addEventListener('pageshow',()=>{if(editor)renderLibrary();});
   $('theme-sidebar').hidden=readPreference('theme-sidebar-open','false')!=='true';
   themeSidebar=mountThemeSidebar($('theme-sidebar'),{current:()=>current.theme,enabled:()=>publisher==='wechat',pins:()=>pinnedThemes,thumbnail:themeThumbnail,preview:previewArticleTheme,cancel:()=>clearThemePreview(),apply:applyArticleTheme,pin:id=>{if(pinnedThemes.includes(id))pinnedThemes=pinnedThemes.filter(v=>v!==id);else pinnedThemes.push(id);preference('pinned-themes',JSON.stringify(pinnedThemes));},order:ids=>{pinnedThemes=ids;preference('pinned-themes',JSON.stringify(pinnedThemes));},details:()=>showThemes(),close:toggleThemeSidebar});
   bind('theme-sidebar-toggle',toggleThemeSidebar);
@@ -1034,6 +1049,7 @@ async function init(){
     const target=e.target as HTMLElement,item=target.closest<HTMLElement>('[data-id]');if(!item)return;const article=articles.get(item.dataset.id!)!;
     if(target.closest('summary'))return;
     const action=target.dataset.action;
+    if(action==='retry-count'){libraryMetadata.retry(article);renderLibrary();return;}
     if(action==='compare-source'){const source=articles.get(article.provenance!.sourceId)!;showRevisionDiff(article,{...structuredClone(source),at:source.updated});return;}
     if(action==='delete'){snapshot(article,true);article.deleted=true;markDirty(article);if(article.id===current.id){const next=[...articles.values()].find(a=>!a.deleted);if(next)switchArticle(next.id);else addArticle();}renderLibrary();toast('已移入回收站，可以随时恢复');}
     else if(action==='restore'){article.deleted=false;markDirty(article);renderLibrary();toast('文章已恢复到草稿');}
@@ -1045,6 +1061,7 @@ async function init(){
     }else if(!trash)switchArticle(article.id);
   });
   $('article-list').addEventListener('scroll',()=>{if(articles.size>200){cancelAnimationFrame(libraryScrollFrame);libraryScrollFrame=requestAnimationFrame(renderLibrary);}},{passive:true});
+  $('article-list').addEventListener('toggle',e=>{if(e.target instanceof HTMLDetailsElement&&!e.target.open)requestAnimationFrame(renderLibrary);},true);
   $('article-list').addEventListener('keydown',e=>{if(e.key==='Escape'){const menu=(e.target as HTMLElement).closest<HTMLDetailsElement>('.article-actions[open]');if(menu){e.preventDefault();menu.open=false;menu.querySelector('summary')?.focus();return;}}if(e.key==='Enter'&&(e.target as HTMLElement).classList.contains('article-item'))(e.target as HTMLElement).click();});
   bind('render-state',showWritingCheck);
   bind('render-state',event=>{if(['Enter',' '].includes((event as KeyboardEvent).key)&&$('render-state').getAttribute('role')==='button'){event.preventDefault();$('render-state').click();}},'keydown');

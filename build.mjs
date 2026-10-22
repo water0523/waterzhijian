@@ -16,7 +16,7 @@ const result=await build({...options,entryPoints:['src/app.ts'],plugins:[{name:'
  return {contents:'export default '+JSON.stringify(key)+';',loader:'js'};
 });}}]});
 const vendors=[];
-for(const name of ['math','word','highlight','backup']){
+for(const name of ['math','word','highlight','backup','metadata']){
  const output=await build({...options,entryPoints:['src/'+name+'-engine.ts'],globalName:'__offlineExports'});
  const script='globalThis.__feishuiOfflineModules['+JSON.stringify(name)+']=(()=>{'+output.outputFiles[0].text+';return __offlineExports;})();';
  vendors.push({name,script,metafile:output.metafile});
