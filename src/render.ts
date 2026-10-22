@@ -197,6 +197,19 @@ export function firstArticleHeading(source:string):string|null{
 }
 // Parsing for source tools must not render SVG, load optional engines or alter text.
 export function mappedInlineTokens(source:string){return md.parse(source,{source,editable:true}).filter(t=>t.type==='inline').map(t=>t.children||[]);}
+let countedSource:string|undefined,countedWords=0;
+// Count source text, without generated captions, format attributes or TeX.
+export function countWritingWords(source:string){
+  if(source===countedSource)return countedWords;
+  const chunks:string[]=[];let tableDepth=0;
+  for(const token of md.parse(source,{source,editable:false})){
+    if(token.type==='table_open')tableDepth++;
+    if(token.type==='inline'&&(token.map||tableDepth))chunks.push((token.children||[]).map(t=>t.type==='text'||t.type==='code_inline'?t.content:t.type==='softbreak'||t.type==='hardbreak'||t.type==='math_inline'||t.type==='image'?' ':'').join(''));
+    else if(token.type==='fence'||token.type==='code_block')chunks.push(token.content);
+    if(token.type==='table_close')tableDepth--;
+  }
+  countedSource=source;countedWords=(chunks.join('\n').match(/\p{Script=Han}|(?:(?!\p{Script=Han})[\p{L}\p{N}])+/gu)||[]).length;return countedWords;
+}
 export function mappedStyleBlocks(source:string){
   const tokens=md.parse(source,{source,editable:true}),stack:typeof tokens=[],starts=[0];
   for(let i=0;i<source.length;i++)if(source[i]==='\n')starts.push(i+1);

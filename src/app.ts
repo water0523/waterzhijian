@@ -15,7 +15,8 @@ import {themes,themeById,themeCSS,visibleThemes,themeDefaults,planThemeImports,t
 import type {ThemeDefinition} from './theme-types';
 import {showThemeManager,chooseThemeFile} from './theme-manager';
 import {decorateTheme,themeDesign} from './theme-design';
-import {renderMarkdown,renderMath,exportFragment,firstArticleHeading,type RenderResult} from './render';
+import {renderMarkdown,renderMath,exportFragment,firstArticleHeading,countWritingWords,type RenderResult} from './render';
+import {readWritingLog,writingDays} from './writing-log';
 import {freshArticle,escapeHTML as esc,uid,fontNames,type Article,type Asset,type Typography,type Revision} from './model';
 import {openStore,loadStore,persist,preference,readPreference} from './storage';
 import {download,safeName,createBackup,readBackup,fileToAsset,assetRefs,svgToPNG,bytesFromData,extension} from './files';
@@ -190,9 +191,7 @@ async function saveBatch(){
 function queueRender(){clearTimeout(renderTimer);findReplace?.refresh();if(previewEditor?.updating){updateStats();return;}renderTimer=window.setTimeout(()=>{if(editor.view.composing){queueRender();return;}render();},200);}
 function updateStats(){
   if(statisticsKey===current.id+'|'+current.markdown)return;statisticsKey=current.id+'|'+current.markdown;
-  const walker=document.createTreeWalker($('preview'),NodeFilter.SHOW_TEXT,{acceptNode:node=>node.parentElement?.closest('[data-editor-only],[aria-hidden="true"],svg,.math-inline,.math-display,.footnote-backref,.article-references')?NodeFilter.FILTER_REJECT:NodeFilter.FILTER_ACCEPT});
-  const chunks:string[]=[];while(walker.nextNode())chunks.push(walker.currentNode.textContent||'');
-  const count=(chunks.join(' ').match(/[\u3400-\u9fff]|[A-Za-z0-9]+/g)||[]).length;
+  const count=countWritingWords(current.markdown);
   const paragraphs=[...$('preview').querySelectorAll('p,.poem,li')].filter(el=>!el.closest('.article-references')&&(el.tagName!=='LI'||!el.querySelector('p'))).length;
   $('word-count').textContent=`${count.toLocaleString()} 字 · ${paragraphs} 段 · ${current.markdown.split('\n').length} 行`;
   $('reading-time').textContent=`约 ${Math.max(1,Math.ceil(count/450))} 分钟阅读`;
@@ -291,7 +290,7 @@ function switchArticle(id:string,resetEditor=true){
   const next=articles.get(id);if(!next||next.deleted)return;
   if(current.id!==id&&snapshot(current,true))markDirty(current);
   if(resetEditor&&editor){viewSessions.delete(current.id);viewSessions.set(current.id,{state:editor.view.state,scroll:editor.view.scrollDOM.scrollTop,preview:$('preview-scroll').scrollTop});while(viewSessions.size>10)viewSessions.delete(viewSessions.keys().next().value!);}
-  articleHistory.seed(next);current=next;preference('current',id);syncArticleTitle(current);
+  workspaceFeatures?.flushWriting();articleHistory.seed(next);current=next;preference('current',id);syncArticleTitle(current);
   publishRecoverySidecar(current);
   if(resetEditor){const cached=viewSessions.get(id);if(cached&&cached.state.doc.toString()===current.markdown){editor.view.setState(cached.state);editor.theme($<HTMLSelectElement>('editor-theme').value);editor.setLatexCompletion(readPreference('latex-completion','true')==='true');requestAnimationFrame(()=>editor.view.scrollDOM.scrollTop=cached.scroll);}else editor.setText(current.markdown,true);}$('preview-scroll').scrollTop=0;render();renderLibrary();if(styleOpen())renderStylePanel();
   if(window.matchMedia('(max-width:760px)').matches)$('library').hidden=true;
@@ -321,7 +320,7 @@ function renderLibrary(){
   document.querySelector<HTMLElement>('.folder-heading')!.hidden=trash;
   $('folder-list').innerHTML=[['*','全部文章'],['','未分类'],...folders.map(n=>[n,n])].map(([id,name])=>`<div class="folder-row"><button data-folder="${esc(id)}" class="${id===libraryFolder&&!libraryRecent?'active':''}"><span>${uiIcon(id==='*'?'document':'folder')}${esc(name)}</span><small>${active.filter(a=>id==='*'||(a.folder||'')===id).length}</small></button>${id&&id!=='*'?`<button data-folder-edit="${esc(id)}" aria-label="管理${esc(name)}" title="重命名 / 删除文件夹">···</button>`:''}</div>`).join('');
   if(!trash)for(const item of $('article-list').querySelectorAll<HTMLElement>('[data-id]')){const a=articles.get(item.dataset.id!)!;if(a.folder)item.querySelector('small')!.append(' · '+a.folder);}
-  let writingLog:Record<string,{net:number}>={};try{writingLog=JSON.parse(readPreference('writing-log','{}'));}catch{}const today=new Date();today.setHours(0,0,0,0);const days=Array.from({length:7},(_,i)=>{const from=today.getTime()-(6-i)*86400000;return {from,count:writingLog[new Date(from).toLocaleDateString('sv-SE')]?.net||0};}),max=Math.max(1,...days.map(d=>Math.abs(d.count)));
+  const writingLog=readWritingLog(),days=writingDays(7).map(day=>({from:new Date(day+'T12:00:00').getTime(),count:writingLog[day]?.net||0})),max=Math.max(1,...days.map(d=>Math.abs(d.count)));
   $('library-stats').innerHTML=`<div><strong>写作统计</strong><span>${active.length} 篇文章 · ${active.reduce((n,a)=>n+words(a.markdown),0).toLocaleString()} 字</span></div><div class="writing-spark" aria-label="最近七天写作净增字数">${days.map(d=>`<i style="height:${4+Math.round(Math.abs(d.count)/max*25)}px" title="${new Date(d.from).toLocaleDateString('zh-CN')} · 净增 ${d.count.toLocaleString()} 字"></i>`).join('')}</div>`;
 }
 function folderEditor(target:HTMLElement,name?:string){
