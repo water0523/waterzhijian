@@ -7,13 +7,13 @@ import {tags} from '@lezer/highlight';
 import {searchKeymap,highlightSelectionMatches,openSearchPanel} from '@codemirror/search';
 import {closeCompletion,clearSnippet} from '@codemirror/autocomplete';
 import {latexCompletionExtension} from './latex-completion';
-export const editorThemes:Record<string,{name:string;bg:string;fg:string;line:string;muted:string;accent:string;string:string;heading:string}>= {
+export const editorThemes:Record<string,{name:string;bg:string;fg:string;line:string;muted:string;accent:string;string:string;heading:string;controls?:{fg?:string;accent?:string}}>= {
   dark:{name:'VS Code Dark+',bg:'#1e1e1e',fg:'#d4d4d4',line:'#282828',muted:'#858585',accent:'#569cd6',string:'#ce9178',heading:'#4ec9b0'},
   light:{name:'VS Code Light+',bg:'#ffffff',fg:'#303030',line:'#f4f4f4',muted:'#929292',accent:'#0451a5',string:'#a31515',heading:'#267f99'},
   github:{name:'GitHub Light',bg:'#ffffff',fg:'#24292f',line:'#f6f8fa',muted:'#8c959f',accent:'#0969da',string:'#0a3069',heading:'#8250df'},
   dracula:{name:'Dracula',bg:'#282a36',fg:'#f8f8f2',line:'#343746',muted:'#9098bd',accent:'#bd93f9',string:'#f1fa8c',heading:'#50fa7b'},
-  monokai:{name:'Monokai',bg:'#272822',fg:'#f8f8f2',line:'#35362f',muted:'#979987',accent:'#f92672',string:'#e6db74',heading:'#a6e22e'},
-  solarized:{name:'Solarized Light',bg:'#fdf6e3',fg:'#657b83',line:'#eee8d5',muted:'#93a1a1',accent:'#268bd2',string:'#2aa198',heading:'#859900'}
+  monokai:{name:'Monokai',bg:'#272822',fg:'#f8f8f2',line:'#35362f',muted:'#979987',accent:'#f92672',string:'#e6db74',heading:'#a6e22e',controls:{accent:'#ff528e'}},
+  solarized:{name:'Solarized Light',bg:'#fdf6e3',fg:'#657b83',line:'#eee8d5',muted:'#93a1a1',accent:'#268bd2',string:'#2aa198',heading:'#859900',controls:{fg:'#4e6269',accent:'#156592'}}
 };
 function themeExtension(id:string){
   const t=editorThemes[id]||editorThemes.dark;

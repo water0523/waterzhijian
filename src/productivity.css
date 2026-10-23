@@ -31,6 +31,14 @@ html[data-motion=gentle]{--ease-spring:var(--ease-out);--press-scale:1;--lift-y:
 #app .virtual-articles .article-item{height:72px;min-height:72px;max-height:72px;box-sizing:border-box;margin:2px 0}.article-virtual-spacer{flex:0 0 auto;width:1px;pointer-events:none}
 
 /* The same writing tools inherit Elaina's lilac glass and moonlit gold. */
+/* Menus use UI colors; editor controls retain their independent code palette. */
+#app .format-toolbar button,#app .format-toolbar>.toolbar-menu>summary{transition:box-shadow var(--motion-90,90ms),transform var(--motion-90,90ms)}
+#app .format-toolbar>button:is(:hover,:focus-visible),#app .format-toolbar>.toolbar-menu:not([open])>summary:is(:hover,:focus-visible){background:var(--editor-bg);color:var(--editor-control-accent,var(--editor-accent))}
+#app .format-toolbar>button:focus-visible,#app .format-toolbar>.toolbar-menu>summary:focus-visible,#app .editor-title select:focus-visible{outline:2px solid var(--editor-control-accent,var(--editor-accent));outline-offset:1px}
+#app .format-toolbar .toolbar-menu-content{color:var(--ui-ink)}
+#app .format-toolbar .toolbar-menu-content button{color:var(--ui-ink)}
+#app .format-toolbar .toolbar-menu-content button:is(:hover,:focus-visible){background:var(--ui-active);color:var(--ui-ink);border-color:var(--ui-blue)}
+#app .format-toolbar .toolbar-menu-content button:focus-visible{outline:2px solid var(--ui-blue);outline-offset:1px}
 #app #writing-panel{margin:10px 10px 30px 0;border:1px solid var(--ui-border);border-radius:12px;box-shadow:var(--ui-shadow)}
 :root[data-ui-skin^=witch] #app #writing-panel{background:var(--witch-glass);border-color:var(--ui-border);box-shadow:inset 0 1px 0 #ffffff25,0 4px 18px #48418a18}
 :root[data-ui-skin^=witch] #writing-panel>header{background:linear-gradient(100deg,var(--witch-glass-light),transparent);border-bottom:1px solid var(--ui-border)}

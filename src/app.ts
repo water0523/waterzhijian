@@ -205,7 +205,7 @@ function applyAppearance(){
   $('night-button').innerHTML='<span class="'+(!night?'active':'')+'">'+uiIcon('sun')+'</span><span class="'+(night?'active':'')+'">'+uiIcon('moon')+'</span>';$('night-button').setAttribute('aria-pressed',String(night));$('night-button').setAttribute('aria-label',night?'切换日间模式':'切换夜间模式');
   $('preview-dimming').hidden=!night;$<HTMLInputElement>('preview-brightness').value=String(brightness);$('brightness-value').textContent=brightness+'%';
 }
-function editorChrome(id:string){const t=editorThemes[id]||editorThemes.dark;const pane=document.querySelector<HTMLElement>('.editor-pane')!;for(const [name,value] of Object.entries({bg:t.bg,fg:t.fg,surface:t.line,muted:t.muted,accent:t.accent,border:t.muted+'40'}))pane.style.setProperty('--editor-'+name,value);}
+function editorChrome(id:string){const t=editorThemes[id]||editorThemes.dark;const pane=document.querySelector<HTMLElement>('.editor-pane')!;for(const [name,value] of Object.entries({bg:t.bg,fg:t.fg,surface:t.line,muted:t.muted,accent:t.accent,border:t.muted+'40','control-fg':t.controls?.fg||t.fg,'control-accent':t.controls?.accent||t.accent}))pane.style.setProperty('--editor-'+name,value);}
 function setWorkspaceView(mode:'compare'|'preview'){
   document.body.dataset.workspaceView=mode;
   for(const other of ['compare','preview'])$('view-'+other).setAttribute('aria-pressed',String(other===mode));

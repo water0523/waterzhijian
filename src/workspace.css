@@ -1,10 +1,11 @@
 /* Workspace colors are separate from both article and editor themes. */
 .editor-pane{background:var(--editor-bg,#1e1e1e)}
-.editor-title,.editor-bottom,.format-toolbar{background:var(--editor-surface,#282828);color:var(--editor-fg,#d4d4d4);border-color:var(--editor-border,#85858540)}
-.editor-title select{background:var(--editor-bg);color:var(--editor-fg);border-color:var(--editor-border)}
+.editor-title,.editor-bottom,.format-toolbar{background:var(--editor-surface,#282828);color:var(--editor-control-fg,var(--editor-fg,#d4d4d4));border-color:var(--editor-border,#85858540)}
+.editor-title select{background:var(--editor-bg);color:var(--editor-control-fg,var(--editor-fg));border-color:var(--editor-border)}
+.editor-title small{opacity:1;color:inherit}
 .format-toolbar button:hover{background:var(--editor-bg);color:var(--editor-accent)}
 .format-toolbar>span{border-color:var(--editor-border)}
-.editor-bottom{color:var(--editor-muted)}
+.editor-bottom{color:var(--editor-control-fg,var(--editor-fg))}
 .preview-controls{gap:5px}.preview-title{padding:0 12px;gap:8px}.preview-title>span{white-space:nowrap}
 #preview-edit-button{font:11px/1.4 "Microsoft YaHei",sans-serif;letter-spacing:0;border:1px solid var(--line);border-radius:4px;padding:5px 7px;white-space:nowrap}
 #preview-edit-button[aria-pressed=true]{background:#314a5e;color:white;border-color:#314a5e}
