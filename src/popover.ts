@@ -96,7 +96,7 @@ document.addEventListener('click',e=>{
   }
   else if(toolbarFor(anchor)?.contains(target)){closePopover();target.closest<HTMLElement>('button')?.focus({preventScroll:true});}
 },true);
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.getElementById('quick-popover')){closeAndFocus();e.preventDefault();e.stopPropagation();}},true);
+document.addEventListener('keydown',e=>{if(!e.isComposing&&e.keyCode!==229&&e.key==='Escape'&&document.getElementById('quick-popover')){closeAndFocus();e.preventDefault();e.stopPropagation();}},true);
 export const standardColors=[['墨黑','#202124'],['石灰','#6b7280'],['白色','#ffffff'],['朱红','#dc2626'],['橙色','#ea580c'],['金黄','#eab308'],['草绿','#16a34a'],['青绿','#0d9488'],['天蓝','#0284c7'],['钴蓝','#2563eb'],['紫色','#7c3aed'],['玫红','#db2777'],['浅黄','#fff29b'],['浅绿','#bbf7d0'],['浅蓝','#bfdbfe'],['浅粉','#fbcfe8']];
 export function enhanceColors(root:HTMLElement){
   root.querySelectorAll<HTMLInputElement>('input[type=color]').forEach(input=>{

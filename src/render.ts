@@ -193,6 +193,17 @@ export function firstArticleHeading(source:string):string|null{
 }
 // Parsing for source tools must not render SVG, load optional engines or alter text.
 export function mappedInlineTokens(source:string){return md.parse(source,{source,editable:true}).filter(t=>t.type==='inline').map(t=>t.children||[]);}
+export interface OutlineHeading{title:string;level:number;line:number;from:number;to:number;signature:string}
+let outlineSource:string|undefined,outlineCache:OutlineHeading[]=[];
+export function articleOutline(source:string):readonly OutlineHeading[]{
+  if(source===outlineSource)return outlineCache;
+  const starts=[0];for(let i=0;i<source.length;i++)if(source[i]==='\n')starts.push(i+1);
+  const tokens=md.parse(source,{source,editable:false});outlineCache=[];
+  tokens.forEach((token,i)=>{if(token.type!=='heading_open'||!token.map)return;const line=token.map[0],from=starts[line],to=(starts[token.map[1]]??source.length);if(from===undefined)return;
+    const title=(tokens[i+1]?.children||[]).filter(t=>['text','code_inline','math_inline','image'].includes(t.type)).map(t=>t.content).join('').trim()||'无标题';
+    outlineCache.push({title,level:Number(token.tag.slice(1)),line,from,to,signature:source.slice(from,source.indexOf('\n',from)<0?source.length:source.indexOf('\n',from))});
+  });outlineSource=source;return outlineCache;
+}
 export type ArticleTextMetadata={heading:string|null;words:number};
 let countedSource:string|undefined,countedMetadata:ArticleTextMetadata;
 // Count source text, without generated captions, format attributes or TeX.
