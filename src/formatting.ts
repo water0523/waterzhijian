@@ -1,5 +1,6 @@
 import type {MarkdownEditor} from './editor';
 import {parseInlineStyle,styleAttributes,type InlineStyle} from './inline-style';
+import {blockFormatPlan,type BlockKind} from './block-format-plan';
 export function toggleTextStyle(editor:MarkdownEditor,key:'bold'|'italic'|'underline'|'wave'|'strike'){
   const s=editor.view.state.selection.main,source=editor.view.state.doc.toString();
   let from=s.from,to=s.to,text=source.slice(from,to)||'文字';let style:InlineStyle={};
@@ -24,24 +25,11 @@ export function insertFootnote(editor:MarkdownEditor){
   const insert=doc.slice(0,s.to)+marker+doc.slice(s.to)+definition,from=insert.length-'脚注内容'.length;
   editor.view.dispatch({changes:{from:0,to:doc.length,insert},selection:{anchor:from,head:insert.length},scrollIntoView:true,userEvent:'input.format'});editor.view.focus();
 }
-export function blockFormat(editor:MarkdownEditor,kind:'quote'|'poem'|'h1'|'h2'|'h3'|'h4'|'h5'|'h6'|'paragraph'){
-  const state=editor.view.state,s=state.selection.main,first=state.doc.lineAt(s.from),last=state.doc.lineAt(s.to>s.from&&state.doc.sliceString(s.to-1,s.to)==='\n'?s.to-1:s.to);
-  let from=first.from,to=last.to,text=state.doc.sliceString(from,to),insert='';
-  if(kind==='poem'){
-    const before=first.number>1?state.doc.line(first.number-1):null,after=last.number<state.doc.lines?state.doc.line(last.number+1):null;
-    if(before?.text.trim()===':::poem center'&&after?.text.trim()===':::'){from=before.from;to=after.to;insert=text;}
-    else if(/^:::poem(?: center| left)?\n[\s\S]*\n:::$/.test(text)){insert=text.replace(/^:::poem[^\n]*\n/,'').replace(/\n:::$/,'');}
-    else insert=`:::poem center\n${text||'第一行诗\n第二行诗'}\n:::`;
-  }else{
-    const lines=text.split('\n'),unquote=kind==='quote'&&lines.filter(l=>l.trim()).every(l=>/^\s*> ?/.test(l));
-    insert=lines.map(line=>{
-      if(kind==='quote')return unquote?line.replace(/^\s*> ?/,''):'> '+line;
-      if(!line.trim())return line;
-      const cleaned=line.replace(/^(\s*(?:>\s*)*)#{1,6}\s+/,'$1');
-      if(kind==='paragraph')return cleaned;
-      const prefix=cleaned.match(/^(\s*(?:>\s*)*)/)![0];return prefix+'#'.repeat(Number(kind[1]))+' '+cleaned.slice(prefix.length);
-    }).join('\n');
-    if(!text&&kind.startsWith('h'))insert='#'.repeat(Number(kind[1]))+' 新的章节';
-  }
-  editor.view.dispatch({changes:{from,to,insert},selection:{anchor:from,head:from+insert.length},userEvent:'input.format',scrollIntoView:true});editor.view.focus();
+export function blockFormat(editor:MarkdownEditor,kind:BlockKind,notify?:(message:string)=>void){
+  if(typeof document!=='undefined'&&document.body.dataset.previewEditing==='true'){notify?.('请先完成预览文字修改，再转换段落结构。');return false;}
+  const s=editor.view.state.selection.main,plan=blockFormatPlan(editor.view.state.doc.toString(),s.from,s.to,kind);
+  if(plan.error){notify?.(plan.error);return false;}
+  if(!plan.changes.length){editor.view.focus();return false;}
+  editor.formatTextRanges(plan.changes);if(plan.selection)editor.view.dispatch({selection:plan.selection});return true;
 }
+export function listFormat(editor:MarkdownEditor,ordered:boolean,notify?:(message:string)=>void){return blockFormat(editor,ordered?'ordered':'bullet',notify);}

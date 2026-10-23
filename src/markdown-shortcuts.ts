@@ -1,26 +1,21 @@
 import {readPreference,preference} from './storage';
 import {escapeHTML as esc} from './model';
 import type {MarkdownEditor} from './editor';
-import {blockFormat,codeFormat} from './formatting';
+import {blockFormat,codeFormat,listFormat} from './formatting';
 import {closePopover} from './popover';
 
-export function mountMarkdownShortcuts(editor:MarkdownEditor,open?:(title:string,html:string)=>void){
+export function mountMarkdownShortcuts(editor:MarkdownEditor,open?:(title:string,html:string)=>void,notify?:(message:string)=>void){
  const click=(selector:string)=>document.querySelector<HTMLButtonElement>(selector)?.click();
  const wrap=(before:string,after:string,placeholder:string)=>{
   const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to)||placeholder;
   editor.view.dispatch({changes:{from:s.from,to:s.to,insert:before+text+after},selection:{anchor:s.from+before.length,head:s.from+before.length+text.length},userEvent:'input.format',scrollIntoView:true});editor.view.focus();
  };
- const list=(ordered:boolean)=>{
-  const state=editor.view.state,s=state.selection.main,a=state.doc.lineAt(s.from),b=state.doc.lineAt(s.to>s.from&&state.doc.sliceString(s.to-1,s.to)==='\n'?s.to-1:s.to),lines=state.doc.sliceString(a.from,b.to).split('\n');
-  const pattern=ordered?/^(\s*)\d+[.)]\s+/:/^(\s*)[-+*]\s+/,remove=lines.filter(l=>l.trim()).length>0&&lines.filter(l=>l.trim()).every(l=>pattern.test(l));let index=0;
-  const insert=lines.map(l=>{if(!l.trim()&&lines.length>1)return l;if(remove)return l.replace(pattern,'$1');const clean=l.replace(/^(\s*)(?:\d+[.)]|[-+*])\s+/,'$1'),indent=clean.match(/^\s*/)![0];return indent+(ordered?`${++index}. `:'- ')+clean.slice(indent.length);}).join('\n');
-  editor.view.dispatch({changes:{from:a.from,to:b.to,insert},selection:{anchor:a.from,head:a.from+insert.length},userEvent:'input.format',scrollIntoView:true});editor.view.focus();
- };
+ const list=(ordered:boolean)=>listFormat(editor,ordered,notify);
  const commands:Record<string,()=>void>={
   b:()=>click('.format-toolbar [data-format=bold]'),l:()=>click('.format-toolbar [data-format=italic]'),u:()=>click('.format-toolbar [data-format=underline]'),e:()=>{const s=editor.view.state.selection.main;if(!editor.view.state.sliceDoc(s.from,s.to).includes('\n'))codeFormat(editor);},m:()=>wrap('$','$',''),k:()=>click('.format-toolbar [data-format=link]'),
-  'alt-x':()=>click('.format-toolbar [data-format=strike]'),'alt-q':()=>blockFormat(editor,'quote'),'alt-o':()=>list(true),'alt-u':()=>list(false),'alt-e':()=>wrap('\n\n```\n','\n```\n\n','代码'),'alt-m':()=>wrap('\n\n$$\n','\n$$\n\n',''),'alt-h':()=>editor.insert('\n\n---\n\n'),'alt-t':()=>click('.format-toolbar [data-format=table]'),'alt-l':()=>click('#image-button')
+  'alt-x':()=>click('.format-toolbar [data-format=strike]'),'alt-q':()=>blockFormat(editor,'quote',notify),'alt-o':()=>list(true),'alt-u':()=>list(false),'alt-e':()=>wrap('\n\n```\n','\n```\n\n','代码'),'alt-m':()=>wrap('\n\n$$\n','\n$$\n\n',''),'alt-h':()=>editor.insert('\n\n---\n\n'),'alt-t':()=>click('.format-toolbar [data-format=table]'),'alt-l':()=>click('#image-button')
  };
- for(let level=1;level<=6;level++)commands[String(level)]=()=>blockFormat(editor,`h${level}` as 'h1');
+ for(let level=1;level<=6;level++)commands[String(level)]=()=>blockFormat(editor,`h${level}` as 'h1',notify);
  const labels:Record<string,string>={'1':'一级标题','2':'二级标题','3':'三级标题','4':'四级标题','5':'五级标题','6':'六级标题',b:'加粗',l:'倾斜',u:'下划线',e:'行内代码',m:'行内公式',k:'链接','alt-x':'删除线','alt-q':'引用','alt-o':'有序列表','alt-u':'无序列表','alt-e':'代码块','alt-m':'公式块','alt-h':'分割线','alt-t':'表格','alt-l':'图片'};
  const original=Object.fromEntries(Object.keys(commands).map(k=>[k,'Ctrl+'+k.replace('alt-','Alt+').toUpperCase().replace('ALT+','Alt+')])),safe={...original};for(let i=1;i<=6;i++)safe[String(i)]='Ctrl+Alt+'+i;Object.assign(safe,{l:'Ctrl+Alt+I',e:'Ctrl+Alt+C',k:'Ctrl+Alt+K'});
  let custom:Record<string,string>={};try{custom=JSON.parse(readPreference('shortcut-custom','{}'));}catch{}

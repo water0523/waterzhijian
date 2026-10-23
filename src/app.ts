@@ -441,9 +441,9 @@ function renderStylePanel(){
   enhanceColors($('style-panel'));
 }
 function showBlockMenu(target:HTMLElement){
-  const choices=[['h1','H1 · 一级标题'],['h2','H2 · 二级标题'],['h3','H3 · 三级标题'],['paragraph','正文'],['quote','❞ 引用'],['poem','居中诗歌']];
-  const panel=openPopover(target,'转换选区格式','<p class="help">转换选中内容所在的整行，保留原文。未选中文字时作用于光标所在行。</p><div class="quick-choices">'+choices.map(([id,label])=>`<button data-block="${id}">${label}</button>`).join('')+'</div>');
-  panel.querySelectorAll<HTMLElement>('[data-block]').forEach(el=>el.onclick=()=>{closePopover();blockFormat(editor,el.dataset.block as Parameters<typeof blockFormat>[1]);});
+  const choices=[['h1','H1 · 一级标题'],['h2','H2 · 二级标题'],['h3','H3 · 三级标题'],['h4','H4 · 四级标题'],['h5','H5 · 五级标题'],['h6','H6 · 六级标题'],['paragraph','正文'],['ordered','有序列表'],['bullet','无序列表'],['quote','❞ 引用'],['poem','居中诗歌']];
+  const panel=openPopover(target,'转换选区格式','<p class="help">转换整行或完整列表项，保留原文；下划线式标题整体处理。代码、公式等结构会受到保护。</p><div class="quick-choices">'+choices.map(([id,label])=>`<button data-block="${id}">${label}</button>`).join('')+'</div>');
+  panel.querySelectorAll<HTMLElement>('[data-block]').forEach(el=>el.onclick=()=>{closePopover();blockFormat(editor,el.dataset.block as Parameters<typeof blockFormat>[1],toast);});
 }
 function showTableMenu(target:HTMLElement){
   const choices=[['theme','主题默认'],['three-line','三线表'],['striped','斑马纹'],['grid','网格']];
@@ -976,7 +976,7 @@ async function init(){
   document.addEventListener('pointerdown',e=>{if((e.target as HTMLElement).closest('input[type=range],.sticker-item'))gesture='gesture:'+uid();},true);document.addEventListener('pointerup',()=>setTimeout(()=>gesture='',0),true);
   writingDesk=mountWritingDesk({editor,article:()=>current,articles:()=>[...articles.values()],assets:assetStore,insertAsset:id=>editor.insert('\n\n![](asset:'+id+')\n\n'),preview:$('preview'),close:closeModal,open:(title,html)=>{if(title==='写作工作台'&&layout){let desk=document.getElementById('desk-content');if(!desk){desk=document.createElement('div');desk.id='desk-content';layout.slot('writing').append(desk);}const inputs=new Map([...desk.querySelectorAll<HTMLInputElement>('input[type=text],input:not([type])')].map(n=>[n.id,n.value]));desk.innerHTML=html;for(const [id,value] of inputs){const input=desk.querySelector<HTMLInputElement>('#'+id);if(input)input.value=value;}layout.openTab('writing');}else openModal(title,html);},notify:toast,changed:()=>{markDirty();render();if(styleOpen())renderStylePanel();},checkpoint:async label=>{await manualVersion(current,label);},clear:(from,to)=>{const doc=editor.view.state.doc,start=doc.line(Math.min(doc.lines,from+1)).from,end=doc.line(Math.min(doc.lines,to)).to;const plan=selectedTextRuns(doc.toString(),start,end);applySelectedTextStyle(plan,Object.fromEntries(selectionStyleKeys.map(k=>[k,undefined])));render();},jump:position=>{closeModal();editor.goto(editor.view.state.doc.lineAt(position).number);},issues:()=>checkIssues()});
   const advanced=document.createElement('span');advanced.className='advanced-tools';advanced.hidden=readPreference('advanced-tools','false')!=='true';const advancedToggle=document.createElement('button');advancedToggle.id='advanced-tools-toggle';advancedToggle.textContent='更多组件 ▾';advancedToggle.setAttribute('aria-expanded',String(!advanced.hidden));document.querySelector('.format-toolbar')!.append(advancedToggle,advanced);for(const id of ['journal-block-button','folio-block-button','edition-block-button','exam-block-button','anime-block-button','folio-font-button','image-layout-button','divider-button']){const n=document.getElementById(id);if(n)advanced.append(n);}advancedToggle.onclick=()=>{advanced.hidden=!advanced.hidden;advancedToggle.setAttribute('aria-expanded',String(!advanced.hidden));preference('advanced-tools',String(!advanced.hidden));editor.view.requestMeasure();};
-  mountMarkdownShortcuts(editor,openModal);
+  mountMarkdownShortcuts(editor,openModal,toast);
   mountInlineMenus(showInlineStyle);const rewriteButton=document.createElement('button');rewriteButton.id='selection-rewrite';rewriteButton.textContent='改写';$('selection-role-button').after(rewriteButton);rewriteButton.onclick=startRewrite;modal.addEventListener('close',cancelRewrite);
   bind('editor-theme',()=>{const value=$<HTMLSelectElement>('editor-theme').value;editor.theme(value);editorChrome(value);preference(night?'editor-theme-night':'editor-theme',value);},'change');
   bind('night-button',()=>{night=!night;preference('appearance',night?'night':'day');const id=readPreference(night?'editor-theme-night':'editor-theme',night?'dark':'light');const value=editorThemes[id]?id:(night?'dark':'light');$<HTMLSelectElement>('editor-theme').value=value;editor.theme(value);editorChrome(value);applyAppearance();});
@@ -1034,7 +1034,7 @@ async function init(){
       const selection=editor.view.state.selection.main;if(editor.view.state.sliceDoc(selection.from,selection.to).includes('\n')){toast('请在同一行 Markdown 中选中文字。');return;}
       if(type==='strike'&&!hasSelectedStyle(editor))editor.wrap('~~');else toggleTextStyle(editor,type);
     }else if(type==='heading')showBlockMenu(el);
-    else if(type==='quote'||type==='poem')blockFormat(editor,type);
+    else if(type==='quote'||type==='poem')blockFormat(editor,type,toast);
     else if(type==='code')codeFormat(editor);
     else if(type==='footnote'){insertFootnote(editor);toast('脚注标记已插入，直接填写文末选中的注释内容。');}
     else if(type==='link')showLinkMenu(el);

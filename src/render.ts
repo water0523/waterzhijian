@@ -193,6 +193,7 @@ export function firstArticleHeading(source:string):string|null{
 }
 // Parsing for source tools must not render SVG, load optional engines or alter text.
 export function mappedInlineTokens(source:string){return md.parse(source,{source,editable:true}).filter(t=>t.type==='inline').map(t=>t.children||[]);}
+export function sourceBlockTokens(source:string){return md.parse(source,{source,editable:false}).filter(t=>t.map).map(t=>({type:t.type,level:t.level,tag:t.tag,markup:t.markup,map:t.map!}));}
 export interface OutlineHeading{title:string;level:number;line:number;from:number;to:number;signature:string}
 let outlineSource:string|undefined,outlineCache:OutlineHeading[]=[];
 export function articleOutline(source:string):readonly OutlineHeading[]{
