@@ -31,6 +31,19 @@ html[data-motion=gentle]{--ease-spring:var(--ease-out);--press-scale:1;--lift-y:
 #app .virtual-articles .article-item{height:72px;min-height:72px;max-height:72px;box-sizing:border-box;margin:2px 0}.article-virtual-spacer{flex:0 0 auto;width:1px;pointer-events:none}
 
 /* The same writing tools inherit Elaina's lilac glass and moonlit gold. */
+#revision-browser .revision-filters{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;align-items:end;margin-bottom:10px}
+#revision-browser label{font-size:12px;line-height:1.7}#revision-browser input:not([type=checkbox]){display:block;width:100%;min-width:0;min-height:34px;padding:6px 9px;border:1px solid var(--ui-border);border-radius:6px;background:var(--ui-surface);color:var(--ui-ink);font-size:12px}
+#revision-browser .revision-manual-filter{display:flex;align-items:center;gap:6px;padding-bottom:5px;white-space:nowrap}#revision-browser input[type=checkbox]{flex:0 0 auto;width:16px;height:16px;accent-color:var(--ui-blue)}
+#revision-browser button{font-size:12px;min-height:32px;padding:5px 8px;border:1px solid var(--ui-border);border-radius:5px;color:var(--ui-ink);background:var(--ui-surface)}#revision-browser button:hover{background:var(--ui-active)}
+#revision-browser :is(#history-result-count,#history-selection-summary){font-size:12px;line-height:1.7;color:var(--ui-ink);margin:10px 0}
+#revision-browser>.help{font-size:11px;line-height:1.7;color:var(--ui-muted);margin-bottom:0}
+#history-save-error{display:flex;align-items:center;gap:12px;padding:10px;border:1px solid color-mix(in srgb,#be862e 55%,var(--ui-border));border-radius:6px;background:var(--ui-active);color:var(--ui-ink);font-size:12px;line-height:1.7;margin-bottom:12px}#history-save-error span{flex:1}#history-save-error button{flex-shrink:0}
+#revision-browser .revision-save-row{display:flex;gap:8px;align-items:center;margin:12px 0}#revision-browser .revision-save-row input{flex:1}#revision-browser .revision-save-row button{flex-shrink:0}
+#revision-browser .revision-bulk-actions{display:flex;flex-wrap:wrap;gap:6px}#revision-browser #history-delete-selected{border-color:var(--ui-blue)}
+#history-rows{max-height:42vh;overflow:auto;scrollbar-gutter:stable;border-block:1px solid var(--ui-border)}#revision-browser .history-row{gap:12px;padding:12px 8px;align-items:flex-start}#revision-browser .history-row.revision-selected{background:var(--ui-active)}
+#revision-browser .revision-description{min-width:0;flex:1;overflow-wrap:anywhere}#revision-browser .revision-description strong{display:block;font-size:12px;line-height:1.6}#revision-browser .revision-description small{font-size:11px;color:var(--ui-muted);line-height:1.6}
+#revision-browser .history-row>.history-actions{display:flex;flex-wrap:wrap;gap:5px;max-width:260px;justify-content:flex-end}#revision-browser .revision-name-editor{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}#revision-browser .revision-name-editor input{flex:1 0 100%}#history-load-more{width:100%;margin-top:10px}
+@media(max-width:700px){#revision-browser .revision-filters{grid-template-columns:1fr;gap:8px}#revision-browser .revision-save-row{flex-wrap:wrap}#revision-browser .history-row{flex-wrap:wrap}#revision-browser .history-row>.history-actions{margin-left:28px;max-width:100%;justify-content:flex-start}}
 /* Menus use UI colors; editor controls retain their independent code palette. */
 #app .format-toolbar button,#app .format-toolbar>.toolbar-menu>summary{transition:box-shadow var(--motion-90,90ms),transform var(--motion-90,90ms)}
 #app .format-toolbar>button:is(:hover,:focus-visible),#app .format-toolbar>.toolbar-menu:not([open])>summary:is(:hover,:focus-visible){background:var(--editor-bg);color:var(--editor-control-accent,var(--editor-accent))}

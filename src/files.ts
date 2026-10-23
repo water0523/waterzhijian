@@ -5,6 +5,7 @@ import {themes,builtInIds,themesForArticles,themeLibraryDocument} from './themes
 import {parseThemeFile,libraryDocument,validateElements} from './theme-schema';
 import type {ThemeDefinition} from './theme-types';
 import {trackDownload} from './download-location';
+import {remapRevisionNames} from './revision-history';
 export const BackupPolicy={compressedBytes:100*1024*1024,expandedBytes:200*1024*1024,articles:1000,assets:5000,markdownChars:5000000} as const;
 export const safeName=(s:string)=>s.replace(/[<>:"/\\|?*\x00-\x1f]/g,'_').replace(/[. ]+$/,'').slice(0,90)||'未命名文章';
 export function download(data:BlobPart,name:string,type='application/octet-stream'){
@@ -100,12 +101,12 @@ export function readBackup(buffer:Uint8Array):{articles:Article[];assets:Asset[]
     if(a.folder&&!folders.includes(a.folder))folders.push(a.folder);
     if(a.linkMode!==undefined&&!['direct','end'].includes(a.linkMode))throw new Error('文章链接设置无效');
     const stickers=stickerImport(a.stickers);
-    return {version:1,id:articleIds.get(String(a.id))!,provenance:a.provenance&&['copy','conflict','recovery'].includes(a.provenance.kind)?{kind:a.provenance.kind,sourceId:articleIds.get(String(a.provenance.sourceId))||String(a.provenance.sourceId||''),at:Number(a.provenance.at)||Date.now()}:undefined,revisionDeletes:Array.isArray(a.revisionDeletes)?a.revisionDeletes.filter((k:unknown)=>typeof k==='string'&&/^[a-f0-9]{1,32}$/.test(k)):[],customTitle:typeof a.customTitle==='string'?a.customTitle.trim().slice(0,200)||undefined:undefined,title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:[...new Set([...assetRefs(markdown),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(a.assetSettings),linkMode:a.linkMode,created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,
-      revisions:(Array.isArray(a.revisions)?a.revisions:[]).map((r:any)=>{
+    const originals=Array.isArray(a.revisions)?a.revisions:[],revisions=originals.map((r:any)=>{
         if(typeof r.markdown!=='string')throw new Error('恢复版本损坏');
         if(r.linkMode!==undefined&&!['direct','end'].includes(r.linkMode))throw new Error('恢复版本链接设置无效');
         const text=rewrite(r.markdown),stickers=stickerImport(r.stickers);return {customTitle:typeof r.customTitle==='string'?r.customTitle.trim().slice(0,200)||undefined:undefined,label:typeof r.label==='string'?r.label.slice(0,80):undefined,at:Number(r.at)||Date.now(),title:String(r.title||a.title),titleMode:r.titleMode==='auto'?'auto':'manual',markdown:text,theme:checkedTheme(r.theme),typography:validTypography(r.typography),assets:[...new Set([...assetRefs(text),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(r.assetSettings),linkMode:r.linkMode};
-      })};
+      });
+    return {version:1,id:articleIds.get(String(a.id))!,provenance:a.provenance&&['copy','conflict','recovery'].includes(a.provenance.kind)?{kind:a.provenance.kind,sourceId:articleIds.get(String(a.provenance.sourceId))||String(a.provenance.sourceId||''),at:Number(a.provenance.at)||Date.now()}:undefined,revisionDeletes:Array.isArray(a.revisionDeletes)?a.revisionDeletes.filter((k:unknown)=>typeof k==='string'&&/^[a-f0-9]{1,32}$/.test(k)):[],revisionNames:remapRevisionNames(a.revisionNames,originals,revisions),customTitle:typeof a.customTitle==='string'?a.customTitle.trim().slice(0,200)||undefined:undefined,title:a.title,titleMode:a.titleMode==='auto'?'auto':'manual',markdown,folder:a.folder||undefined,theme:checkedTheme(a.theme),typography:validTypography(a.typography),assets:[...new Set([...assetRefs(markdown),...stickers.map(s=>s.assetId)])],stickers,assetSettings:appearanceImport(a.assetSettings),linkMode:a.linkMode,created:Number(a.created)||Date.now(),updated:Date.now(),deleted:!!a.deleted,revisions};
   });
   return {articles:articleOutput,assets:assetOutput,folders,articleIds,themes:themeLibrary.themes,hiddenThemes:themeLibrary.hidden};
 }

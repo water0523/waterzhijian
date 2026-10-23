@@ -16,10 +16,11 @@ export type AssetAppearance=Pick<Asset,'width'|'align'|'alt'|'caption'|'figureLa
 export type AssetSettings=Record<string,AssetAppearance>;
 export interface Sticker { id:string; assetId:string; line:number; x:number; offsetY:number; width:number; rotation:number; layout?:'free'|'wrap-left'|'wrap-right' }
 export interface Revision { label?:string; customTitle?:string; at: number; title: string; titleMode?:'auto'|'manual'; markdown: string; theme: string; typography: Typography; assets: string[]; stickers?:Sticker[]; assetSettings?:AssetSettings; linkMode?:'direct'|'end' }
+export interface RevisionName {value:string;at:number;id:string}
 export interface Article {
   version: 1; id: string; title: string; markdown: string; theme: string;
   typography: Typography; assets: string[]; created: number; updated: number;
-  deleted: boolean; revisions: Revision[]; revisionDeletes?:string[]; stickers?:Sticker[]; folder?:string;
+  deleted: boolean; revisions: Revision[]; revisionDeletes?:string[]; revisionNames?:Record<string,RevisionName>; stickers?:Sticker[]; folder?:string;
   /** An explicit user override; absent means follow the first H1. */
   customTitle?:string;
   /** Legacy backup compatibility. */

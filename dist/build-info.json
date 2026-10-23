@@ -1,9 +1,9 @@
 {
-  "at": "2026-10-23T07:51:49.522Z",
+  "at": "2026-10-23T08:40:14.386Z",
   "version": "1.1.0-dev.0",
   "themes": 50,
-  "htmlBytes": 7021231,
-  "startupBytes": 1616801,
+  "htmlBytes": 7033734,
+  "startupBytes": 1626347,
   "imagePayloads": 10,
-  "sha256": "33118f7f5d3ea05e0e6e571fc0237abe81df173e2715ba5be38ca4b25d38de1b"
+  "sha256": "7f76f80f501930faaf8cdefd26b8b262d47377e1bae0abe5459866bf53e131fb"
 }
