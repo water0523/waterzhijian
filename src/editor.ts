@@ -1,5 +1,5 @@
 import {EditorState,Compartment,Transaction,type Extension} from '@codemirror/state';
-import {EditorView,keymap,lineNumbers,highlightActiveLine,highlightActiveLineGutter,drawSelection,dropCursor,rectangularSelection} from '@codemirror/view';
+import {EditorView,keymap,lineNumbers,highlightActiveLine,highlightActiveLineGutter,drawSelection,dropCursor,rectangularSelection,type ViewUpdate} from '@codemirror/view';
 import {defaultKeymap,history,historyKeymap,indentWithTab,undo,redo,isolateHistory} from '@codemirror/commands';
 import {markdown} from '@codemirror/lang-markdown';
 import {syntaxHighlighting,HighlightStyle,bracketMatching,indentOnInput} from '@codemirror/language';
@@ -53,6 +53,8 @@ function themeExtension(id:string){
   ]))];
 }
 export class MarkdownEditor {
+  private documentObservers=new Set<(update:ViewUpdate)=>void>();
+  observeDocumentChanges(callback:(update:ViewUpdate)=>void){this.documentObservers.add(callback);return ()=>this.documentObservers.delete(callback);}
   onHTMLPaste?:(html:string,plain:string,from:number,to:number)=>boolean;historyAction?: (direction:number)=>void;typingChange=false;beforeSelection?:{anchor:number;head:number};
   view:EditorView; themeSlot=new Compartment(); private completionSlot=new Compartment(); latexCompletionEnabled=true; private suppress=false; private extensions:Extension[]; private themeId:string;
   constructor(parent:HTMLElement,text:string,theme:string,onChange:(text:string)=>void,onImages:(files:File[],position:number)=>void,onSave:()=>void,latexCompletion=true){
@@ -63,7 +65,7 @@ export class MarkdownEditor {
       this.themeSlot.of(themeExtension(theme)),
       this.completionSlot.of(latexCompletionExtension()),
       keymap.of([{key:'Mod-z',run:()=>{this.undo();return true;}},{key:'Mod-Shift-z',run:()=>{this.redo();return true;}},{key:'Mod-y',run:()=>{this.redo();return true;}},{key:'Mod-s',run:()=>{onSave();return true;}},...defaultKeymap,...historyKeymap,...searchKeymap,indentWithTab]),
-      EditorView.updateListener.of(update=>{if(update.docChanged&&!this.suppress){this.beforeSelection=update.startState.selection.main;this.typingChange=update.transactions.some(t=>t.isUserEvent('input.type'));onChange(update.state.doc.toString());this.beforeSelection=undefined;}}),
+      EditorView.updateListener.of(update=>{if(update.docChanged)for(const observer of this.documentObservers)observer(update);if(update.docChanged&&!this.suppress){this.beforeSelection=update.startState.selection.main;this.typingChange=update.transactions.some(t=>t.isUserEvent('input.type'));onChange(update.state.doc.toString());this.beforeSelection=undefined;}}),
       EditorView.updateListener.of(update=>{if(update.selectionSet||update.docChanged||update.focusChanged||update.viewportChanged)requestAnimationFrame(()=>this.selectionTools());}),
       EditorView.domEventHandlers({keydown:(event)=>{if(this.historyAction&&!event.isComposing&&(event.ctrlKey||event.metaKey)&&!event.altKey&&['z','y'].includes(event.key.toLowerCase())){event.preventDefault();this.historyAction(event.shiftKey||event.key.toLowerCase()==='y'?1:-1);return true;}return false;},beforeinput:(event)=>{if(this.historyAction&&['historyUndo','historyRedo'].includes(event.inputType)){event.preventDefault();this.historyAction(event.inputType==='historyUndo'?-1:1);return true;}return false;},paste:(event,view)=>{
         const images=[...(event.clipboardData?.files||[])].filter(f=>f.type.startsWith('image/'));
