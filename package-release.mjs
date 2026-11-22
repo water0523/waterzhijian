@@ -6,7 +6,18 @@ async function tree(target,dir,filter=()=>true){for(const d of await readdir(dir
 for(const name of ['src','assets','scripts','tests','folder-helper','local-model','试卷示例','动漫手记示例','主题示例','docs/plans','plans'])await tree(source,name);
 for(const f of await readdir('.'))if(/\.md$/.test(f)||['package.json','package-lock.json','tsconfig.json','build.mjs','package-release.mjs','index.template.html','.gitignore','.gitattributes'].includes(f))await add(source,f);
 for(const f of ['dist/非水·成章-离线公众号排版器.html','dist/非水成章-下载定位助手.zip','使用说明.md','Markdown快捷键.md','审查优化交付说明.md','补充审查与后续优化方案.md','本轮验收结果.md','当前构建信息.md','写作面板与效率工具说明.md','组件选择与预览宽度说明.md'])await add(usage,f);
-await add(evidence,'本轮验收结果.md');await tree(evidence,'test-results/runs',name=>!name.includes('node_modules'));
+await add(evidence,'本轮验收结果.md');
+const currentHTMLHash=createHash('sha256').update(await readFile('dist/非水·成章-离线公众号排版器.html')).digest('hex');
+const resultsRoot='test-results/runs';
+const releaseScreenshots=/^(?:mermaid-flowchart-(?:chrome|msedge)|quadrant-chart-(?:chrome|msedge)|chrome-(?:water|witch-immersive)-(?:day|night)|layout-(?:1280|1440|1920)-chrome)\.png$/;
+for(const entry of await readdir(resultsRoot,{withFileTypes:true})){
+ if(!entry.isDirectory())continue;
+ const run=resultsRoot+'/'+entry.name;
+ let report;
+ try{report=JSON.parse(await readFile(run+'/report.json','utf8'));}catch{continue;}
+ if(report.artifactHash!==currentHTMLHash||report.finalArtifactHash!==currentHTMLHash||report.artifactChanged||report.cancelled)continue;
+ await tree(evidence,run,(name,file)=>file.isDirectory()?file.name==='visuals':/\.(?:log|json)$/i.test(file.name)||releaseScreenshots.test(file.name));
+}
 await tree(usage,'local-model');
 async function pack(files,names){const data=zipSync(files,{level:6}),check=unzipSync(data);for(const name of Object.keys(files))assert.deepEqual(check[name],files[name]);for(const name of names)await writeFile('dist/'+name,data);return data;}
 await mkdir('dist',{recursive:true});const src=await pack(source,['非水·成章-源码与使用说明.zip','纸间-源码与使用说明.zip']);await pack(usage,['非水·成章-使用包.zip']);await pack(evidence,['非水·成章-验收证据.zip']);

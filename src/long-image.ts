@@ -1,9 +1,11 @@
 import {toCanvas} from 'html-to-image';
 import {zipSync,strToU8} from 'fflate';
 import {exportFragment} from './render';
+import {settleMermaid} from './mermaid-diagrams';
 
 export async function createLongImage(preview:HTMLElement,scale:number,signal:AbortSignal,progress:(message:string)=>void){
   const check=()=>{if(signal.aborted)throw new DOMException('已取消长图导出','AbortError');};
+  await settleMermaid(preview);check();
   const width=Math.round(preview.offsetWidth);
   if(!width)throw new Error('请先切换到预览标签页，再导出长图。');
   const host=document.createElement('div');host.style.cssText='position:fixed;left:-20000px;top:0;pointer-events:none;z-index:-10;';

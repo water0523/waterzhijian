@@ -12,6 +12,7 @@ import {flattenExamBlocks} from './exam-blocks';
 import {flattenAnimeBlocks} from './anime-blocks';
 import {themeById} from './themes';
 import {isExam} from './exam-design';
+import {settleMermaid} from './mermaid-diagrams';
 
 export function standardCSS(selector='.article'){
   return `${selector}{box-sizing:border-box;background:#fff;color:#222;font:16px/1.75 "Microsoft YaHei","PingFang SC",sans-serif;padding:24px;overflow-wrap:anywhere;text-align:left;display:flow-root}
@@ -53,7 +54,7 @@ function mountStandard(article:Article,assets:Map<string,Asset>){
   const style=document.createElement('style');style.textContent=standardCSS('.standard-document');host.append(style);
   const content=document.createElement('article');content.className='standard-document';content.innerHTML=standardBody(article,assets);host.append(content);document.body.append(host);return {host,content};
 }
-export async function standardFragment(article:Article,assets:Map<string,Asset>){const {host,content}=mountStandard(article,assets);try{await Promise.all([...content.querySelectorAll('img')].map(img=>img.decode().catch(()=>{})));return exportFragment(content);}finally{host.remove();}}
+export async function standardFragment(article:Article,assets:Map<string,Asset>){const {host,content}=mountStandard(article,assets);try{await settleMermaid(content);await Promise.all([...content.querySelectorAll('img')].map(img=>img.decode().catch(()=>{})));return exportFragment(content);}finally{host.remove();}}
 
 async function rasterImage(img:HTMLImageElement,maxWidth=570):Promise<WordImageRun>{
   const {ImageRun}=offlineModule<typeof import('./word-engine')>('word');
@@ -72,6 +73,7 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
   const theme=themeById(article.theme),exam=isExam(theme),chineseExam=exam&&(theme.baseId||theme.id)==='exam-chinese';
   const numbering:INumberingOptions['config'][number][]=[];let listSequence=0;
   try{
+    await settleMermaid(content);
     const inline=async(node:Node,format:IRunOptions={}):Promise<ParagraphChild[]>=>{
       if(node.nodeType===Node.TEXT_NODE)return node.textContent?[new TextRun({...format,text:node.textContent})]:[];
       if(!(node instanceof HTMLElement)&&!(node instanceof SVGElement))return [];

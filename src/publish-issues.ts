@@ -4,7 +4,7 @@ export interface PublishIssue{code?:string;source?:string;level?:'blocker'|'warn
 export function publishIssues(source:string,result:RenderResult,hasImages:boolean,stickers:boolean):PublishIssue[]{
  const line=(value:string)=>Math.max(1,source.slice(0,Math.max(0,source.indexOf(value))).split('\n').length);
  const items:PublishIssue[]=[...inspectWriting(source).map(i=>({...i,kind:'writing',severity:i.title.includes('组件')?'error':i.title.includes('脚注')?'warning':'suggestion'} as PublishIssue)),
- ...result.errors.map(e=>({kind:e.kind==='diagram'?'diagram':'formula',severity:'error',line:e.line,title:e.kind==='diagram'?'四象限图错误':'公式错误',detail:e.message} as PublishIssue)),
+ ...result.errors.map(e=>({kind:e.kind==='diagram'?'diagram':'formula',severity:'error',line:e.line,title:e.kind==='diagram'?'图表错误':'公式错误',detail:e.message} as PublishIssue)),
  ...result.missing.map(id=>({kind:'image',severity:'error',line:line(id),title:'图片缺失',detail:id} as PublishIssue)),
  ...result.external.map(url=>({kind:'network',severity:'warning',line:line(url),title:'存在网络图片',detail:'离线阅读需先导入本地副本。'} as PublishIssue)),
  ...(stickers?[{kind:'sticker',severity:'warning',line:1,title:'贴纸发布兼容',detail:'自由叠放区域需要合成为图片；透明轮廓可能被平台过滤。'} as PublishIssue]:[])];

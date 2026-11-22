@@ -14,6 +14,7 @@ import {normalizeEditionPublication} from './edition-design';
 import {installExamBlocks,layoutExamOptions,normalizeExamPublication} from './exam-blocks';
 import {installAnimeBlocks} from './anime-blocks';
 import {drawQuadrantChart,parseQuadrantChart} from './quadrant-chart';
+import {mermaidMarkup} from './mermaid-diagrams';
 
 export interface RenderResult {html:string; errors:{line:number;message:string;kind?:'diagram'}[]; external:string[]; missing:string[]}
 export function renderMath(source:string,display:boolean,startNumber=0,equationNumbers=false){return offlineModule<typeof import('./math-engine')>('math').renderMath(source,display,startNumber,equationNumbers);}
@@ -175,13 +176,14 @@ md.renderer.rules.fence=(ts,i,o,env,self)=>{
   const sourceFence=()=>originalFence(ts,i,o,env,self).replace('<pre',`<pre data-line="${start}" data-end="${end}"`);
   if (!/^mermaid(?:\s|$)/i.test(token.info.trim())) return sourceFence();
   const parsed=parseQuadrantChart(token.content);
-  if (!parsed) return sourceFence();
+  const official=()=>mermaidMarkup(`<pre data-line="${start}" data-end="${end}"><code class="language-mermaid">${escapeHTML(token.content)}</code></pre>`,start,end,env.editable);
+  if (!parsed) return official();
   const report=(message:string,offset=0)=>{
     const line=start+offset+2;
     env.errors.push({line,message,kind:'diagram'});
     return `<p class="chart-error" style="color:#9b3838;background:#fff0ed;padding:8px" data-line="${start}" data-end="${end}">四象限图第 ${line} 行：${escapeHTML(message)}</p>${sourceFence()}`;
   };
-  if ('error' in parsed) return report(parsed.error,parsed.offset);
+  if ('error' in parsed) return parsed.error.includes('横纵坐标须')?report(parsed.error,parsed.offset):official();
   try {
     const image=drawQuadrantChart(token.content,parsed.chart);
     const actions=env.editable?`<div class="chart-actions" data-editor-only="true"><button type="button" data-chart-action="copy">复制图表 PNG</button><button type="button" data-chart-action="download">下载 PNG</button></div>`:'';

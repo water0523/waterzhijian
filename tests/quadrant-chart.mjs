@@ -99,8 +99,8 @@ try{
   await page.locator('#preview .chart-error').filter({hasText:'第 19 行'}).waitFor();
   assert.equal(await image.count(),0);
   assert.equal(await page.locator('#preview pre code').count(),1);
-  await replace('```mermaid\nflowchart TD\nA --> B\n```\n\n<p align="center" onclick="noop()"><strong>普通 HTML</strong></p>');
-  await page.locator('#preview pre code').filter({hasText:'flowchart'}).waitFor();
+  await replace('```mermaid\nunsupportedExample\nA --> B\n```\n\n<p align="center" onclick="noop()"><strong>普通 HTML</strong></p>');
+  await page.locator('#preview pre code').filter({hasText:'unsupportedExample'}).waitFor();
   assert.equal(await page.locator('#preview .centered-caption,[onclick]').count(),0);
   await replace('# 从斜杠插入\n\n');
   await page.keyboard.press('Control+End');

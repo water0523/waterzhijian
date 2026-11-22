@@ -81,3 +81,5 @@ body[data-appearance=night]{--ui-paper:#152232;--ui-surface:#1b2c40;--ui-wash:#1
 .chart-actions{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:7px 0 0;text-indent:0}
 .chart-actions button{min-height:32px;padding:3px 10px;border:1px solid var(--ui-border,var(--line));border-radius:6px;background:var(--ui-surface,#f6f9fc);color:var(--ui-ink,#253854);font:12px/1.45 "Microsoft YaHei",sans-serif}
 .chart-actions button:hover{background:var(--ui-active,#deeaf4)}
+.mermaid-large{max-height:70vh;overflow:auto;background:white;text-align:left;border-radius:6px}
+.mermaid-large img{display:block;max-width:none;height:auto;margin-inline:auto}

@@ -17,6 +17,7 @@ import type {ThemeDefinition} from './theme-types';
 import {showThemeManager,chooseThemeFile} from './theme-manager';
 import {decorateTheme,themeDesign} from './theme-design';
 import {renderMarkdown,renderMath,exportFragment,countWritingWords,articleTextMetadata,type ArticleTextMetadata,type RenderResult} from './render';
+import {settleMermaid,mermaidIssues} from './mermaid-diagrams';
 import {LibraryMetadataIndex} from './library-metadata';
 import {metadataWorker} from './offline-modules';
 import {readWritingLog,writingDays,writingDay} from './writing-log';
@@ -286,6 +287,13 @@ function render(){
     requestAnimationFrame(()=>{sync?.rebuild();sync?.restore(reading);});
     for(const img of $('preview').querySelectorAll('img')){img.onload=()=>{const line=sync?.capture()||0;stickerController?.reposition();sync?.rebuild();sync?.restore(line);};img.onerror=()=>{img.alt='图片无法显示 · 请在素材面板添加本地副本';const report=currentPublishIssues().filter(i=>i.severity!=='suggestion');$('render-state').textContent=report.length?report.length+' 处待检查':'实时预览';$('render-state').className=report.length?'render-error':'';};}
     renderedContentKey=contentKey;writingDesk?.refresh();workspaceFeatures?.refresh();lastRenderMS=performance.now()-start;$('render-state').dataset.duration=lastRenderMS.toFixed(1);
+    const preview=$('preview'),diagram=preview.querySelector<HTMLElement>('[data-mermaid-source]');
+    if(diagram) void settleMermaid(preview).then(()=>{
+      if(!diagram.isConnected)return;
+      const reading=sync?.capture()||0;sync?.rebuild();sync?.restore(reading);stickerController?.reposition();
+      const report=currentPublishIssues().filter(issue=>issue.severity!=='suggestion');
+      if(report.length){const state=$('render-state');state.textContent=`${report.length} 处待检查`;state.className='render-error';state.tabIndex=0;state.setAttribute('role','button');state.title=report[0].detail;}
+    });
   }catch(e){$('render-state').textContent='渲染失败，正文已保留';toast(errorMessage(e),true);}
 }
 function switchArticle(id:string,resetEditor=true){
@@ -665,19 +673,30 @@ function editionComponentSource(sample:string,key:string){
 async function exportBackup(all=false){if(snapshot(current,true))markDirty();const operation=operationProgress(all?'备份文章库':'备份文章');try{const selected=structuredClone(all?[...articles.values()]:[current]),captured=new Map([...assetStore].map(([id,a])=>[id,structuredClone(a)]));operation.update('正在准备可恢复备份…');await operation.frame();operation.check();const parts=await createBackupPartsAsync(selected,captured,all?folders:[],all,operation.signal);await operation.frame();operation.check();for(const [i,data] of parts.entries()){operation.update('正在保存备份包 '+(i+1)+' / '+parts.length,i+1,parts.length);await operation.frame();operation.check();download(data as BlobPart,(all?'非水·成章-文章库备份':safeName(selected[0].title))+(parts.length>1?`-分包${i+1}共${parts.length}`:'')+'.zip','application/zip');}preference('last-backup',JSON.stringify({at:Date.now(),articleId:selected[0].id,updated:selected[0].updated,all}));$('last-export').textContent='已发起备份下载 · 请确认文件已落盘';toast(`已发起 ${parts.length} 个可恢复备份包的下载，请确认保存位置。`);}catch(e){if(e instanceof DOMException&&e.name==='AbortError')toast('已取消备份');else{openModal('备份未生成',`<p>${esc(errorMessage(e))}</p><p>可压缩图片、拆分文章，或导出完整原始资料进行救援。</p><button id="rescue-export" class="button primary">导出原始资料（救援用途）</button>`);bind('rescue-export',()=>download(JSON.stringify({articles:all?[...articles.values()]:[current],assets:[...assetStore.values()]}),'原始资料救援.json','application/json'));}}finally{operation.close();}}
 
 
-function currentPublishIssues(){return publishIssues(current.markdown,renderResult,!!$('preview').querySelector('img'),publisher==='wechat'&&!!current.stickers?.length);}
+function currentPublishIssues(){const preview=$('preview');return publishIssues(current.markdown,{...renderResult,errors:[...renderResult.errors,...mermaidIssues(preview)]},!!preview.querySelector('img'),publisher==='wechat'&&!!current.stickers?.length);}
 function checkIssues():string[]{return currentPublishIssues().map(i=>`${severityLabel[i.severity]} · 第 ${i.line} 行：${i.title}：${i.detail}`);}
+async function readyDiagrams(){
+  const owner=current,source=current.markdown,target=publisher;
+  const preview=$('preview'),first=preview.querySelector('[data-mermaid-source]');
+  if(!first)return true;
+  await settleMermaid(preview);
+  if(owner===current&&source===current.markdown&&target===publisher&&first.isConnected)return true;
+  toast('文章已变化，请重新执行复制或导出。');
+  return false;
+}
 
 async function copyArticle(){
   clearThemePreview(false);
   render();
   copyFeedback('正在检查…','busy',0);
+  if(!await readyDiagrams()){copyFeedback('请重新复制','manual');return;}
   const issues=checkIssues(),blockers=currentPublishIssues().filter(i=>i.severity==='error');
     if(blockers.length){copyFeedback(`需要检查（${issues.length}）`,'manual',5000);openModal('复制前，再看一眼',`<div class="notice">${[...new Set(issues)].map(s=>esc(s)).join('<br>')}</div><p class="modal-subtitle">公式以 SVG 复制。${publisher==='zhihu'?'知乎':'公众号'}的实际显示以粘贴并保存后的结果为准。</p>${publisher==='wechat'&&current.stickers?.length?'<label class="publish-layout-label">贴纸发布方式 <select id="publish-sticker-mode"><option value="outline">尝试保留透明轮廓环绕</option><option value="rectangle">普通左 / 右环绕（按当前方向）</option><option value="image">局部图片（保留视觉效果）</option></select></label><p class="modal-subtitle">公众号若移除了环绕格式，可重新选择普通左右环绕；若仍未保留，可下载局部图补插。</p>':''}<div class="manual-actions"><button id="check-assets" class="button outline">查看素材 / 下载补图</button><button id="continue-copy" class="button primary">继续复制</button></div>`);bind('check-assets',showAssets);bind('continue-copy',()=>performCopy(($<HTMLSelectElement>('publish-sticker-mode')?.value||'outline') as 'outline'|'rectangle'|'image',issues.length));return;}
   await performCopy('outline',issues.length);
 }
 async function performCopy(mode:'outline'|'rectangle'|'image'='outline',reminders=0){
   copyFeedback('正在复制…','busy',0);
+  if(!await readyDiagrams()){copyFeedback('请重新复制','manual');return;}
   let html:string;const generation=modalGeneration,target=publisher,origin=$('modal-body').firstElementChild;
   try{html=target==='zhihu'?await standardFragment(structuredClone(current),new Map([...assets].map(([id,a])=>[id,structuredClone(a)]))):await publicationHTML($('preview'),mode);}catch(e){copyFeedback('复制准备失败','error');throw e;}
   const plain=document.createElement('div');plain.innerHTML=html;plain.style.cssText='position:fixed;left:-30000px';document.body.append(plain);const text=plain.innerText;plain.remove();
@@ -693,10 +712,11 @@ async function performCopy(mode:'outline'|'rectangle'|'image'='outline',reminder
 }
 async function exportHTML(){
   render();
+  if(!await readyDiagrams())return;
   if(renderResult.missing.length||renderResult.external.length||$('preview').querySelector('img:not([src^="data:"])')){
     openModal('请先补齐离线图片','<div class="notice">当前文章包含缺失或网络图片。为保证导出的 HTML 完全离线可读，请先在素材面板导入本地副本。</div><button id="fix-images" class="button primary">打开素材面板</button>');bind('fix-images',showAssets);return;
   }
-  if(renderResult.errors.length)toast('导出包含公式或图表错误提示，请修正后再发布。',true);
+  if(renderResult.errors.length||mermaidIssues($('preview')).length)toast('导出包含公式或图表错误提示，请修正后再发布。',true);
   const origin=$('modal-body').firstElementChild,exported=structuredClone(current),exportWidth=$('preview').clientWidth;const html=await publicationHTML($('preview'),'outline');
   const readingWidth=exported.stickers?.some(s=>!s.layout||s.layout==='free')?exportWidth:720;
   download(`<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(exported.title)}</title><style>body{margin:0;background:#f2f3ef}.reading-page{max-width:${readingWidth}px;margin:24px auto}@media(max-width:${readingWidth}px){.reading-page{margin:0}}</style></head><body><main class="reading-page">${html}</main></body></html>`,safeName(exported.title)+'.html','text/html;charset=utf-8');if(origin?.isConnected)closeModal();toast('独立 HTML 已导出，可离线阅读');
@@ -711,8 +731,9 @@ function showFileMenu(section:'home'|'backup'|'import'='home'){
 }
 function showExport(){openModal('文件 · 导出',`<div class="export-location-heading"><button id="export-file-back" class="file-back">← 返回文件</button><button id="export-download-location" class="button outline">${uiIcon('folder')}下载位置</button></div><p class="modal-subtitle">选择发布或阅读格式；完整原稿和历史请使用「文件 → 备份」。PDF 选项内也可直接打印。</p>${exportOptionsHTML('export')}`,'SAVE & EXPORT');bind('export-file-back',()=>{closeModal();showFileMenu();});bind('export-download-location',()=>showDownloadLocation());bind('export-html',exportHTML);bind('export-longimage',showLongImage);bind('export-pdf',showPDF);bind('export-word',exportWord);bind('export-md',()=>{if(assetRefs(current.markdown).length||current.stickers?.length)exportBackup();else{download(current.markdown,safeName(current.title)+'.md','text/markdown;charset=utf-8');toast('Markdown 已导出');}closeModal();});}
 
-function documentReady(){
-  render();const blockers=currentPublishIssues().filter(i=>i.severity==='error');if(blockers.length){showWritingCheck();toast('有 '+blockers.length+' 项必须处理的问题，请定位修复后再导出。',true);return false;}return true;
+async function documentReady(){
+  render();if(!await readyDiagrams())return false;
+  const blockers=currentPublishIssues().filter(i=>i.severity==='error');if(blockers.length){showWritingCheck();toast('有 '+blockers.length+' 项必须处理的问题，请定位修复后再导出。',true);return false;}return true;
 }
 function showLongImage(){
   if(window.matchMedia('(max-width:760px)').matches)$('mobile-preview').click();
@@ -754,11 +775,11 @@ function showLongImageResult(result:Awaited<ReturnType<typeof createLongImage>>,
   bind('longimage-save',()=>save());if(result.parts>1)bind('longimage-save-all',()=>save(true));
 }
 async function exportWord(){
-  if(!documentReady())return;const operation=operationProgress('导出 Word');operation.update('正在处理正文、公式和图片…');await operation.frame();const article=structuredClone(current);const button=$<HTMLButtonElement>('export-word');button.disabled=true;button.textContent='正在生成 Word…';
+  if(!await documentReady())return;const operation=operationProgress('导出 Word');operation.update('正在处理正文、公式和图片…');await operation.frame();const article=structuredClone(current);const button=$<HTMLButtonElement>('export-word');button.disabled=true;button.textContent='正在生成 Word…';
   try{const blob=await createWord(article,new Map([...assets].map(([id,a])=>[id,structuredClone(a)])));if(operation.signal.aborted){toast('已取消 Word 导出');return;}download(blob,safeName(article.title)+'.docx','application/vnd.openxmlformats-officedocument.wordprocessingml.document');if(button.isConnected)closeModal();toast('Word 已导出：标准排版，公式以图片保留');}finally{operation.close();if(button.isConnected){button.disabled=false;button.innerHTML='<strong>Word 文档 .docx</strong><small>标准 Markdown 排版；正文可编辑，公式转为高清图片</small>';}}
 }
-function showPDF(){
-  if(!documentReady())return;
+async function showPDF(){
+  if(!await documentReady())return;
   openModal('导出 PDF','<p class="modal-subtitle">打开打印预览后，点击「打印 / 另存为 PDF」，目标选择「另存为 PDF」。建议关闭页眉页脚。</p><div class="option-list"><button id="pdf-theme" class="option-card"><strong>当前预览排版</strong><small>保留配色与版式，贴纸局部区域合成为图片</small></button><button id="pdf-standard" class="option-card"><strong>标准 Markdown 文档</strong><small>适合 A4 阅读与打印，贴纸作为普通图片</small></button></div><div class="pdf-folder-help"><button id="pdf-download-folder" class="button outline">打开默认下载文件夹</button><p class="help">需连接下载定位助手。打印另存的 PDF 无法读取实际路径；若选了其他目录，请使用保存时选择的目录。</p></div>');
   bind('pdf-download-folder',()=>void openDownloadFolder());
   for(const mode of ['theme','standard'] as const)bind('pdf-'+mode,async()=>{
@@ -1084,15 +1105,20 @@ async function init(){
   $('preview').addEventListener('click',async e=>{
     const target=e.target as HTMLElement,button=target.closest<HTMLButtonElement>('[data-chart-action]');
     if(button){
-      const image=button.closest('.quadrant-figure')?.querySelector('img');
+      const image=button.closest('.quadrant-figure,.mermaid-figure')?.querySelector('img');
       if(!image?.src.startsWith('data:image/png;base64,'))return;
+      if(button.dataset.chartAction==='view'){
+        const width=Number(image.getAttribute('width'))||image.naturalWidth;
+        openModal('Mermaid 图表',`<div class="mermaid-large" tabindex="0" aria-label="大图，可横向滚动"><img src="${esc(image.src)}" alt="${esc(image.alt)}" width="${width}"></div>`);
+        return;
+      }
       const png=new Blob([bytesFromData(image.src) as BlobPart],{type:'image/png'});
-      if(button.dataset.chartAction==='download'){download(png,safeName(current.title)+'-四象限图.png','image/png');return;}
+      if(button.dataset.chartAction==='download'){download(png,safeName(current.title)+(button.closest('.quadrant-figure')?'-四象限图.png':'-Mermaid 图表.png'),'image/png');return;}
       try{await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);toast('图表 PNG 已复制，可直接粘贴。');}
       catch{toast('浏览器未允许复制图片，请使用「下载 PNG」。',true);}
       return;
     }
-    if(previewEditor.enabled&&target.closest('.image-wrap,.quadrant-figure,.centered-caption,pre,.math-inline,.math-display,table,[data-component]'))toast('此元素请在 Markdown 栏修改。');
+    if(previewEditor.enabled&&target.closest('.image-wrap,.quadrant-figure,.mermaid-figure,.centered-caption,pre,.math-inline,.math-display,table,[data-component]'))toast('此元素请在 Markdown 栏修改。');
   });
   window.addEventListener('paper-layout',()=>{if(!layout!.state.panel)writingDesk?.cancelInspection();});
   compactToolbar();if(layout.state.panel)layout.openTab(layout.state.panelTab);
