@@ -34,7 +34,7 @@ export class FindReplace {
     this.get('find-format-key').onchange=()=>{this.get<HTMLSelectElement>('find-format-value').value='';const key=this.filter;this.get<HTMLSelectElement>('find-action').value=['marker','highlight','font','size','color','role',...directEffects].includes(key)?key:'effect';this.refresh(true);};
     this.get('find-action').onchange=()=>this.actionLabel();
     this.get('find-format-value').onchange=()=>this.refresh(true);
-    this.get('find-query').oninput=()=>{clearTimeout(this.timer);this.timer=window.setTimeout(()=>this.refresh(true),120);};
+    this.get('find-query').oninput=()=>{clearTimeout(this.timer);this.timer=window.setTimeout(()=>this.refresh(),120);};
     this.get('find-case').onchange=()=>this.refresh(true);
     this.get('find-word').onchange=()=>this.refresh(true);
     this.get('find-scope-only').onchange=()=>{if(this.limited&&!this.scope)this.captureScope();this.refresh(true);};

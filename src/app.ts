@@ -696,7 +696,7 @@ async function exportHTML(){
   if(renderResult.missing.length||renderResult.external.length||$('preview').querySelector('img:not([src^="data:"])')){
     openModal('请先补齐离线图片','<div class="notice">当前文章包含缺失或网络图片。为保证导出的 HTML 完全离线可读，请先在素材面板导入本地副本。</div><button id="fix-images" class="button primary">打开素材面板</button>');bind('fix-images',showAssets);return;
   }
-  if(renderResult.errors.length)toast('导出包含公式错误提示，请修正后再发布。',true);
+  if(renderResult.errors.length)toast('导出包含公式或图表错误提示，请修正后再发布。',true);
   const origin=$('modal-body').firstElementChild,exported=structuredClone(current),exportWidth=$('preview').clientWidth;const html=await publicationHTML($('preview'),'outline');
   const readingWidth=exported.stickers?.some(s=>!s.layout||s.layout==='free')?exportWidth:720;
   download(`<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(exported.title)}</title><style>body{margin:0;background:#f2f3ef}.reading-page{max-width:${readingWidth}px;margin:24px auto}@media(max-width:${readingWidth}px){.reading-page{margin:0}}</style></head><body><main class="reading-page">${html}</main></body></html>`,safeName(exported.title)+'.html','text/html;charset=utf-8');if(origin?.isConnected)closeModal();toast('独立 HTML 已导出，可离线阅读');
@@ -915,7 +915,7 @@ async function init(){
   title.addEventListener('keydown',e=>{if(e.isComposing)return;if(e.key==='Enter'){e.preventDefault();title.blur();}if(e.key==='Escape'){e.preventDefault();title.textContent=current.title;titleOwner=undefined;title.blur();}});
   title.addEventListener('paste',e=>{e.preventDefault();const value=(e.clipboardData?.getData('text/plain')||'').replace(/[\r\n\t]+/g,' ');document.execCommand('insertText',false,value);});
   bind('title-follow-h1',()=>{if(!current.customTitle)return;current.customTitle=undefined;markDirty();renderLibrary();syncArticleTitle(current);});
-  editor.historyAction=historyMove;editorChrome(editorTheme);applyAppearance();
+  editor.historyAction=historyMove;editor.historyBoundary=()=>articleHistory.breakGroup(current);editorChrome(editorTheme);applyAppearance();
   sync=new ScrollSync(editor,$('preview-scroll'),$('preview'));
   previewEditor=new PreviewEditor($('preview'),editor,render,toast);
   previewFormatting=new PreviewFormatting($('preview'),editor,render);
@@ -1035,8 +1035,8 @@ async function init(){
       if(type==='strike'&&!hasSelectedStyle(editor))editor.wrap('~~');else toggleTextStyle(editor,type);
     }else if(type==='heading')showBlockMenu(el);
     else if(type==='quote'||type==='poem')blockFormat(editor,type,toast);
-    else if(type==='code')codeFormat(editor);
-    else if(type==='footnote'){insertFootnote(editor);toast('脚注标记已插入，直接填写文末选中的注释内容。');}
+    else if(type==='code')codeFormat(editor,'auto',toast);
+    else if(type==='footnote')insertFootnote(editor,toast);
     else if(type==='link')showLinkMenu(el);
     else if(type==='table')showTableMenu(el);
   });
@@ -1081,7 +1081,19 @@ async function init(){
   layout.on('writing',()=>{if(!document.getElementById('assistant-content'))showWritingTools(writingButton);if(!document.getElementById('desk-content'))writingDesk?.show();});
   $('toc-button').onclick=()=>layout!.openTab('outline');writingButton.onclick=()=>{showWritingTools(writingButton);if(!document.getElementById('desk-content'))writingDesk?.show();};writingButton.innerHTML=uiIcon('document')+'<span>写作面板</span>';writingButton.setAttribute('aria-label','写作面板');
   const mode=document.createElement('div');mode.id='preview-edit-mode';mode.hidden=true;mode.innerHTML='<span>文字编辑中 · 结构已锁定：只能改文字，换行和组件请在 Markdown 栏修改</span><button>完成修改</button>';$('article-pane').prepend(mode);mode.querySelector('button')!.onclick=()=>$('preview-edit-button').click();new MutationObserver(()=>{const editing=document.body.dataset.previewEditing==='true';mode.hidden=!editing;$('style-panel').inert=editing;}).observe(document.body,{attributes:true,attributeFilter:['data-preview-editing']});
-  $('preview').addEventListener('click',e=>{if(previewEditor.enabled&&(e.target as HTMLElement).closest('.image-wrap,pre,.math-inline,.math-display,table,[data-component]'))toast('此元素请在 Markdown 栏修改。');});
+  $('preview').addEventListener('click',async e=>{
+    const target=e.target as HTMLElement,button=target.closest<HTMLButtonElement>('[data-chart-action]');
+    if(button){
+      const image=button.closest('.quadrant-figure')?.querySelector('img');
+      if(!image?.src.startsWith('data:image/png;base64,'))return;
+      const png=new Blob([bytesFromData(image.src) as BlobPart],{type:'image/png'});
+      if(button.dataset.chartAction==='download'){download(png,safeName(current.title)+'-四象限图.png','image/png');return;}
+      try{await navigator.clipboard.write([new ClipboardItem({'image/png':png})]);toast('图表 PNG 已复制，可直接粘贴。');}
+      catch{toast('浏览器未允许复制图片，请使用「下载 PNG」。',true);}
+      return;
+    }
+    if(previewEditor.enabled&&target.closest('.image-wrap,.quadrant-figure,.centered-caption,pre,.math-inline,.math-display,table,[data-component]'))toast('此元素请在 Markdown 栏修改。');
+  });
   window.addEventListener('paper-layout',()=>{if(!layout!.state.panel)writingDesk?.cancelInspection();});
   compactToolbar();if(layout.state.panel)layout.openTab(layout.state.panelTab);
   // The constructor already contains the restored document and its settings.

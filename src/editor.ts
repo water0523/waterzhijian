@@ -55,7 +55,7 @@ function themeExtension(id:string){
 export class MarkdownEditor {
   private documentObservers=new Set<(update:ViewUpdate)=>void>();
   observeDocumentChanges(callback:(update:ViewUpdate)=>void){this.documentObservers.add(callback);return ()=>this.documentObservers.delete(callback);}
-  onHTMLPaste?:(html:string,plain:string,from:number,to:number)=>boolean;historyAction?: (direction:number)=>void;typingChange=false;beforeSelection?:{anchor:number;head:number};
+  onHTMLPaste?:(html:string,plain:string,from:number,to:number)=>boolean;historyAction?: (direction:number)=>void;historyBoundary?:()=>void;typingChange=false;beforeSelection?:{anchor:number;head:number};
   view:EditorView; themeSlot=new Compartment(); private completionSlot=new Compartment(); latexCompletionEnabled=true; private suppress=false; private extensions:Extension[]; private themeId:string;
   constructor(parent:HTMLElement,text:string,theme:string,onChange:(text:string)=>void,onImages:(files:File[],position:number)=>void,onSave:()=>void,latexCompletion=true){
     this.themeId=theme;this.latexCompletionEnabled=latexCompletion;
@@ -112,9 +112,9 @@ export class MarkdownEditor {
     const anchor=outerFrom+prefix.length;
     this.view.dispatch({changes:[{from:outerFrom,to:from,insert:prefix},{from:to,to:outerTo,insert:suffix}],selection:{anchor,head:anchor+to-from},userEvent:'input.format',annotations:isolateHistory.of('full')});
   }
-  formatTextRanges(specs:import('@codemirror/state').ChangeSpec[],focus=true){
+  formatTextRanges(specs:import('@codemirror/state').ChangeSpec[],focus=true,options?:{selection?:{anchor:number;head:number};reveal?:boolean}){
     const selection=this.view.state.selection.main,changes=this.view.state.changes(specs),from=changes.mapPos(selection.from,1),to=changes.mapPos(selection.to,-1);
-    this.view.dispatch({changes,selection:{anchor:from,head:Math.max(from,to)},userEvent:'input.format',annotations:isolateHistory.of('full')});if(focus)this.view.focus();
+    this.view.dispatch({changes,selection:options?.selection||{anchor:from,head:Math.max(from,to)},scrollIntoView:!!options?.reveal,userEvent:'input.format',annotations:isolateHistory.of('full')});if(focus)this.view.focus();
   }
   insert(text:string,at?:number){const sel=this.view.state.selection.main;const from=at??sel.from;this.view.dispatch({changes:{from,to:at===undefined?sel.to:from,insert:text},selection:{anchor:from+text.length},scrollIntoView:true});this.view.focus();}
   wrap(before:string,after=before){

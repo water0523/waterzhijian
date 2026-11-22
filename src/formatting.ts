@@ -1,6 +1,7 @@
 import type {MarkdownEditor} from './editor';
 import {parseInlineStyle,styleAttributes,type InlineStyle} from './inline-style';
 import {blockFormatPlan,type BlockKind} from './block-format-plan';
+import {codeWritingPlan,footnoteWritingPlan,type WritingPlan} from './source-writing-plan';
 export function toggleTextStyle(editor:MarkdownEditor,key:'bold'|'italic'|'underline'|'wave'|'strike'){
   const s=editor.view.state.selection.main,source=editor.view.state.doc.toString();
   let from=s.from,to=s.to,text=source.slice(from,to)||'文字';let style:InlineStyle={};
@@ -13,17 +14,19 @@ export function toggleTextStyle(editor:MarkdownEditor,key:'bold'|'italic'|'under
   editor.view.dispatch({changes:{from,to,insert},selection:{anchor:from+offset,head:from+offset+text.length},userEvent:'input.format'});editor.view.focus();
 }
 export function hasSelectedStyle(editor:MarkdownEditor){const s=editor.view.state.selection.main,doc=editor.view.state.doc.toString();return doc[s.from-1]==='['&&/^\]\{/.test(doc.slice(s.to))||/\]\{[^}]+\}/.test(doc.slice(s.from,s.to));}
-export function codeFormat(editor:MarkdownEditor){
-  const s=editor.view.state.selection.main,text=editor.view.state.sliceDoc(s.from,s.to)||'代码';
-  const n=Math.max(1,...[...text.matchAll(/`+/g)].map(m=>m[0].length+1));
-  if(!text.includes('\n')){const delimiter='`'.repeat(n),padding=/^`|`$|^ .* $/.test(text)?' ':'';editor.wrap(delimiter+padding,padding+delimiter);}
-  else{const fence='`'.repeat(Math.max(3,n));editor.wrap('\n'+fence+'\n','\n'+fence+'\n');}
+function applyWritingPlan(editor:MarkdownEditor,plan:WritingPlan,notify?:(text:string)=>void){
+ if(plan.error){notify?.(plan.error);editor.view.focus();return false;}
+ if(plan.changes.length)editor.formatTextRanges(plan.changes,true,{selection:plan.selection,reveal:plan.reveal});
+ else if(plan.selection){editor.historyBoundary?.();editor.selectRange(plan.selection.anchor,plan.selection.head);editor.view.focus();}
+ if(plan.message)notify?.(plan.message);return true;
 }
-export function insertFootnote(editor:MarkdownEditor){
-  const s=editor.view.state.selection.main,doc=editor.view.state.doc.toString();let number=1;while(doc.includes(`[^${number}]`))number++;
-  const marker=`[^${number}]`,prefix=doc.endsWith('\n\n')?'':doc.endsWith('\n')?'\n':'\n\n',definition=prefix+marker+': 脚注内容';
-  const insert=doc.slice(0,s.to)+marker+doc.slice(s.to)+definition,from=insert.length-'脚注内容'.length;
-  editor.view.dispatch({changes:{from:0,to:doc.length,insert},selection:{anchor:from,head:insert.length},scrollIntoView:true,userEvent:'input.format'});editor.view.focus();
+export function codeFormat(editor:MarkdownEditor,mode:'auto'|'inline'|'block'='auto',notify?:(text:string)=>void){
+ if(document.body.dataset.previewEditing==='true'){notify?.('请先完成预览文字修改，再转换代码结构。');return false;}
+ const s=editor.view.state.selection.main;return applyWritingPlan(editor,codeWritingPlan(editor.view.state.doc.toString(),s.from,s.to,mode),notify);
+}
+export function insertFootnote(editor:MarkdownEditor,notify?:(text:string)=>void){
+ if(document.body.dataset.previewEditing==='true'){notify?.('请先完成预览文字修改，再插入或编辑脚注。');return false;}
+ const s=editor.view.state.selection.main;return applyWritingPlan(editor,footnoteWritingPlan(editor.view.state.doc.toString(),s.from,s.to),notify);
 }
 export function blockFormat(editor:MarkdownEditor,kind:BlockKind,notify?:(message:string)=>void){
   if(typeof document!=='undefined'&&document.body.dataset.previewEditing==='true'){notify?.('请先完成预览文字修改，再转换段落结构。');return false;}

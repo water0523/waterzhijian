@@ -26,7 +26,7 @@ export function blockFormatPlan(source:string,from:number,to:number,kind:BlockKi
    return {changes:[{from:starts[a],to:starts[a+1],insert:''},{from:end(b-1),to:end(b),insert:''}]};
   }return fail('请选中完整诗歌或全部诗行后取消诗歌格式。');
  }
- const protectedNames:Record<string,string>={fence:'代码块',code_block:'缩进代码',math_block:'公式块',table_open:'表格',hr:'分割线',decorative_divider:'分割线',poem_open:'诗歌',gallery_open:'组图'};
+ const protectedNames:Record<string,string>={fence:'代码块',code_block:'缩进代码',math_block:'公式块',table_open:'表格',hr:'分割线',decorative_divider:'分割线',poem_open:'诗歌',gallery_open:'组图',centered_caption:'居中图注'};
  for(const token of tokens){const label=protectedNames[token.type];if(label&&token.map[0]<=last&&token.map[1]>first)return fail(`第 ${Math.max(first,token.map[0])+1} 行属于${label}，请单独选择正文或标题后转换。`);}
  for(let i=first;i<=last;i++){const p=parts(text(i)),body=p.body.replace(/^(?:[-+*]|\d{1,9}[.)])(?:[ \t]+|$)/,'');if(/^:::/.test(body))return fail(`第 ${i+1} 行是组件边界，请选择组件内部的普通段落。`);if(/^\[[^\]]+\]:/.test(body))return fail(`第 ${i+1} 行是链接或脚注定义，请在源码中单独修改。`);}
  if(kind==='quote'){

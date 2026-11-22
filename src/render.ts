@@ -13,8 +13,9 @@ import {installEditionBlocks} from './edition-blocks';
 import {normalizeEditionPublication} from './edition-design';
 import {installExamBlocks,layoutExamOptions,normalizeExamPublication} from './exam-blocks';
 import {installAnimeBlocks} from './anime-blocks';
+import {drawQuadrantChart,parseQuadrantChart} from './quadrant-chart';
 
-export interface RenderResult {html:string; errors:{line:number;message:string}[]; external:string[]; missing:string[]}
+export interface RenderResult {html:string; errors:{line:number;message:string;kind?:'diagram'}[]; external:string[]; missing:string[]}
 export function renderMath(source:string,display:boolean,startNumber=0,equationNumbers=false){return offlineModule<typeof import('./math-engine')>('math').renderMath(source,display,startNumber,equationNumbers);}
 
 const md = new MarkdownIt({html:false,linkify:true,typographer:true,breaks:false,
@@ -169,7 +170,46 @@ md.renderer.rules.image=(ts,i,_o,env)=>{
   return `<span class="image-wrap" data-asset="${assetId}" data-source="${escapeHTML(src)}" ${t.meta?.protectedRange?`data-image-from="${t.meta.protectedRange.from}" data-image-to="${t.meta.protectedRange.to}"`:''} style="text-align:${align}"><img src="${escapeHTML(url)}" alt="${escapeHTML(alt||env.assets.get(assetId)?.alt||'')}" style="width:${width}%;max-width:100%" loading="eager">${description?`<span class="image-caption" style="display:block;text-indent:0">${escapeHTML(description)}</span>`:''}${source?`<span class="image-source" style="display:block;text-indent:0">来源：${escapeHTML(source)}</span>`:''}</span>`;
 };
 const originalFence=md.renderer.rules.fence!;
-md.renderer.rules.fence=(ts,i,o,env,self)=>originalFence(ts,i,o,env,self).replace('<pre',`<pre data-line="${ts[i].map?.[0]||0}" data-end="${ts[i].map?.[1]||0}"`);
+md.renderer.rules.fence=(ts,i,o,env,self)=>{
+  const token=ts[i],start=token.map?.[0]??0,end=token.map?.[1]??start+1;
+  const sourceFence=()=>originalFence(ts,i,o,env,self).replace('<pre',`<pre data-line="${start}" data-end="${end}"`);
+  if (!/^mermaid(?:\s|$)/i.test(token.info.trim())) return sourceFence();
+  const parsed=parseQuadrantChart(token.content);
+  if (!parsed) return sourceFence();
+  const report=(message:string,offset=0)=>{
+    const line=start+offset+2;
+    env.errors.push({line,message,kind:'diagram'});
+    return `<p class="chart-error" style="color:#9b3838;background:#fff0ed;padding:8px" data-line="${start}" data-end="${end}">四象限图第 ${line} 行：${escapeHTML(message)}</p>${sourceFence()}`;
+  };
+  if ('error' in parsed) return report(parsed.error,parsed.offset);
+  try {
+    const image=drawQuadrantChart(token.content,parsed.chart);
+    const actions=env.editable?`<div class="chart-actions" data-editor-only="true"><button type="button" data-chart-action="copy">复制图表 PNG</button><button type="button" data-chart-action="download">下载 PNG</button></div>`:'';
+    return `<figure class="quadrant-figure" data-line="${start}" data-end="${end}" style="margin:1.2em 0 .5em;text-align:center;break-inside:avoid"><img src="${image.src}" alt="${escapeHTML(image.alt)}" width="${image.width}" height="${image.height}" style="width:${image.width}px;max-width:100%;height:auto;vertical-align:middle">${actions}</figure>`;
+  } catch {
+    return report('浏览器未能生成图表，请缩短标签或减少数据点。');
+  }
+};
+
+// Accept only the caption pattern used by pasted articles. All text is
+// escaped, and other raw HTML remains disabled.
+md.block.ruler.before('paragraph','centered_caption',(state,line,_end,silent)=>{
+  if (state.sCount[line]-state.blkIndent>=4) return false;
+  const value=state.src.slice(state.bMarks[line]+state.tShift[line],state.eMarks[line]);
+  const match=/^<p[ \t]+align[ \t]*=[ \t]*(?:"center"|'center'|“center”|‘center’)[ \t]*>[ \t]*(?:<strong>([^<>]+)<\/strong>|([^<>]+?))[ \t]*<\/p>[ \t]*$/i.exec(value);
+  if (!match) return false;
+  if (silent) return true;
+  const token=state.push('centered_caption','p',0);
+  token.content=(match[1]||match[2]).trim();
+  token.markup=match[1]?'strong':'';
+  token.map=[line,line+1];
+  state.line=line+1;
+  return true;
+},{alt:['paragraph','blockquote','list']});
+md.renderer.rules.centered_caption=(tokens,index)=>{
+  const token=tokens[index],text=escapeHTML(token.content),content=token.markup?`<strong>${text}</strong>`:text;
+  return `<p class="centered-caption" data-line="${token.map?.[0]??0}" data-end="${token.map?.[1]??0}" style="text-align:center;text-indent:0;margin:.35em 0 1.2em;line-height:1.65;white-space:pre-wrap">${content}</p>`;
+};
 installInlineStyles(md);
 installTextMapping(md);
 md.core.ruler.after('text_join','math_text_styles',state=>{
@@ -218,7 +258,7 @@ export function articleTextMetadata(source:string):ArticleTextMetadata{
   for(const token of tokens){
     if(token.type==='table_open')tableDepth++;
     if(token.type==='inline'&&(token.map||tableDepth))chunks.push((token.children||[]).map(t=>t.type==='text'||t.type==='code_inline'?t.content:t.type==='softbreak'||t.type==='hardbreak'||t.type==='math_inline'||t.type==='image'?' ':'').join(''));
-    else if(token.type==='fence'||token.type==='code_block')chunks.push(token.content);
+    else if(token.type==='fence'||token.type==='code_block'||token.type==='centered_caption')chunks.push(token.content);
     if(token.type==='table_close')tableDepth--;
   }
   countedSource=source;countedMetadata={heading:headingText||null,words:(chunks.join('\n').match(/\p{Script=Han}|(?:(?!\p{Script=Han})[\p{L}\p{N}])+/gu)||[]).length};return countedMetadata;

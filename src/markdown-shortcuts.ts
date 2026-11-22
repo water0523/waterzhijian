@@ -12,8 +12,8 @@ export function mountMarkdownShortcuts(editor:MarkdownEditor,open?:(title:string
  };
  const list=(ordered:boolean)=>listFormat(editor,ordered,notify);
  const commands:Record<string,()=>void>={
-  b:()=>click('.format-toolbar [data-format=bold]'),l:()=>click('.format-toolbar [data-format=italic]'),u:()=>click('.format-toolbar [data-format=underline]'),e:()=>{const s=editor.view.state.selection.main;if(!editor.view.state.sliceDoc(s.from,s.to).includes('\n'))codeFormat(editor);},m:()=>wrap('$','$',''),k:()=>click('.format-toolbar [data-format=link]'),
-  'alt-x':()=>click('.format-toolbar [data-format=strike]'),'alt-q':()=>blockFormat(editor,'quote',notify),'alt-o':()=>list(true),'alt-u':()=>list(false),'alt-e':()=>wrap('\n\n```\n','\n```\n\n','代码'),'alt-m':()=>wrap('\n\n$$\n','\n$$\n\n',''),'alt-h':()=>editor.insert('\n\n---\n\n'),'alt-t':()=>click('.format-toolbar [data-format=table]'),'alt-l':()=>click('#image-button')
+  b:()=>click('.format-toolbar [data-format=bold]'),l:()=>click('.format-toolbar [data-format=italic]'),u:()=>click('.format-toolbar [data-format=underline]'),e:()=>{codeFormat(editor,'inline',notify);},m:()=>wrap('$','$',''),k:()=>click('.format-toolbar [data-format=link]'),
+  'alt-x':()=>click('.format-toolbar [data-format=strike]'),'alt-q':()=>blockFormat(editor,'quote',notify),'alt-o':()=>list(true),'alt-u':()=>list(false),'alt-e':()=>{codeFormat(editor,'block',notify);},'alt-m':()=>wrap('\n\n$$\n','\n$$\n\n',''),'alt-h':()=>editor.insert('\n\n---\n\n'),'alt-t':()=>click('.format-toolbar [data-format=table]'),'alt-l':()=>click('#image-button')
  };
  for(let level=1;level<=6;level++)commands[String(level)]=()=>blockFormat(editor,`h${level}` as 'h1',notify);
  const labels:Record<string,string>={'1':'一级标题','2':'二级标题','3':'三级标题','4':'四级标题','5':'五级标题','6':'六级标题',b:'加粗',l:'倾斜',u:'下划线',e:'行内代码',m:'行内公式',k:'链接','alt-x':'删除线','alt-q':'引用','alt-o':'有序列表','alt-u':'无序列表','alt-e':'代码块','alt-m':'公式块','alt-h':'分割线','alt-t':'表格','alt-l':'图片'};

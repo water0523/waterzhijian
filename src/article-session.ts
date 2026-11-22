@@ -7,6 +7,7 @@ type Entry={article:ArticleCommand;cursor?:Cursor};
 type ArticleSession={states:Entry[];index:number;at:number;group:string;typed:number};
 export class ArticleHistory{
  private sessions=new Map<string,ArticleSession>();restoring=false;
+ breakGroup(a:Article){const s=this.sessions.get(a.id);if(s){s.group='';s.typed=0;s.at=0;}}
  seed(a:Article){const prior=this.sessions.get(a.id);this.sessions.delete(a.id);this.sessions.set(a.id,prior||{states:[{article:state(a)}],index:0,at:0,group:'',typed:0});while(this.sessions.size>10)this.sessions.delete(this.sessions.keys().next().value!);}
  record(a:Article,group='command',cursor?:Cursor,before?:Cursor){
   if(this.restoring)return;this.seed(a);const s=this.sessions.get(a.id)!,next={article:state(a),cursor:cursor&&{anchor:cursor.anchor,head:cursor.head}};if(JSON.stringify(next.article)===JSON.stringify(s.states[s.index].article))return;if(before)s.states[s.index].cursor={anchor:before.anchor,head:before.head};

@@ -1,8 +1,9 @@
 import type {CompletionContext,Completion} from '@codemirror/autocomplete';
 import {syntaxTree} from '@codemirror/language';
 import {readPreference} from './storage';
+import {quadrantSnippet} from './quadrant-chart';
 export const insertSnippets=[
- ['h1','一级标题','# 标题\n'],['h2','二级标题','## 标题\n'],['h3','三级标题','### 标题\n'],['quote','引用','> 引用文字\n'],['poem','诗歌',':::poem center\n诗句\n:::'],['image','图片','![图片说明](图片地址)'],['table','表格','| 项目 | 内容 |\n| --- | --- |\n| 示例 | 内容 |'],['math','公式','$$\nx = y\n$$'],['divider','分割线','---\n'],['code','代码块','```text\n代码\n```'],['component','主题组件','']
+ ['h1','一级标题','# 标题\n'],['h2','二级标题','## 标题\n'],['h3','三级标题','### 标题\n'],['quote','引用','> 引用文字\n'],['poem','诗歌',':::poem center\n诗句\n:::'],['image','图片','![图片说明](图片地址)'],['table','表格','| 项目 | 内容 |\n| --- | --- |\n| 示例 | 内容 |'],['math','公式','$$\nx = y\n$$'],['quadrant','四象限图',quadrantSnippet],['divider','分割线','---\n'],['code','代码块','```text\n代码\n```'],['component','主题组件','']
  ];
 export function slashInsertSource(context:CompletionContext){
  if(readPreference('slash-insert','true')!=='true'||!context.state.selection.main.empty)return null;

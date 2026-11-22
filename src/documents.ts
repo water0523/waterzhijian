@@ -112,7 +112,7 @@ export async function createWord(article:Article,assets:Map<string,Asset>):Promi
         const tag=node.tagName;
         if(node.matches('.exam-pagebreak'))output.push(new Paragraph({pageBreakBefore:true}));
         else if(node.matches('.exam-answer-line'))output.push(new Paragraph({children:[new TextRun(' ')],spacing:{after:0,line:480},border:{bottom:{style:BorderStyle.SINGLE,size:4,color:'999999'}}}));
-        else if(node.matches('.exam-center'))output.push(new Paragraph({children:await inline(node),alignment:AlignmentType.CENTER,spacing:{after:100}}));
+        else if(node.matches('.exam-center,.centered-caption'))output.push(new Paragraph({children:await inline(node),alignment:AlignmentType.CENTER,spacing:{after:100}}));
         else if(node.matches('.exam-key-text'))output.push(new Paragraph({children:await inline(node,{font:{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'宋体'}}),spacing:{after:120,line:360}}));
         else if(node.matches('.exam-analysis-text'))output.push(new Paragraph({children:await inline(node,{font:{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'楷体'}}),spacing:{after:120,line:400}}));
         else if(chineseExam&&node.matches('.exam-reading'))output.push(new Paragraph({children:await inline(node,{font:{ascii:'Times New Roman',hAnsi:'Times New Roman',eastAsia:'楷体'}}),spacing:{after:120,line:400}}));
