@@ -3,11 +3,13 @@ import {folioNames} from './folio-blocks';
 import {editionCatalog} from './edition-blocks';
 import {examTags} from './exam-blocks';
 import {animeTags} from './anime-blocks';
+import {workshopTags} from './workshop-blocks';
 import type {Theme} from './theme-types';
-export type FormatProfile='journal'|'folio'|'digest'|'press'|'gewu'|'exam'|'anime'|'standard';
-export function formatProfile(theme:Theme):FormatProfile{return ['journal','folio','digest','press','gewu','exam','anime'].includes(theme.variant)?theme.variant as FormatProfile:'standard';}
+export type FormatProfile='journal'|'folio'|'digest'|'press'|'gewu'|'exam'|'anime'|'workshop'|'standard';
+export function formatProfile(theme:Theme):FormatProfile{return ['journal','folio','digest','press','gewu','exam','anime','workshop'].includes(theme.variant)?theme.variant as FormatProfile:'standard';}
 export function formatTags(profile:FormatProfile):string[]{
  if(profile==='anime')return animeTags;
+ if(profile==='workshop')return workshopTags;
  if(profile==='exam')return [...examTags,'exam-pagebreak'];
  if(profile==='journal')return [...journalKinds];
  if(profile==='folio')return Object.keys(folioNames).filter(k=>k!=='scroll').map(k=>'folio-'+k);
@@ -15,6 +17,12 @@ export function formatTags(profile:FormatProfile):string[]{
  return Object.keys(editionCatalog[profile]).map(k=>profile+'-'+k);
 }
 const policies:Record<FormatProfile,string>={
+ workshop:`【主题工坊七套主题的用法】
+- 使用原有一级标题作为 # 封面，现有章节使用 ##，小节使用 ###。章号、刊头图案、配色和分隔图案由主题生成。分隔线用 ---。
+- 根据原文选用 workshop-lead（导语）、workshop-toc（既有目录）、workshop-tip（提示）、workshop-note（补充）、workshop-warning（提醒）、workshop-checklist（清单）、workshop-poster（原有独立金句）。现有引用也可直接用 >。
+- workshop-steps、workshop-timeline 适合原有步骤和时间顺序，可保留内部 Markdown 列表。现有问答可使用 workshop-dialogue，内部每组原有说话内容用 workshop-item。
+- workshop-kpi、workshop-compare 与 workshop-gallery 里可嵌套 workshop-item 表示指标、对比分栏和图片分栏。只给确实并列的内容分栏；保持原有文字、数值、图片地址、图注与顺序，不拼接、换算或补造。单幅原图及图注可用 workshop-figure。
+- 既有参考资料、署名与作者简介、推荐链接、文末叮嘱可分别用 workshop-references、workshop-author、workshop-recommend、workshop-footer。容器标题可省略，只有原文已经有对应标题时才放在开标签这一行。`,
  anime:`【樱粉魔法 / 抹茶猫猫的用法】
 - 按这篇具体文章的语气，自主搭配胶带引文、角色气泡、拍立得、公式手札、设定档案、轻量便签和彩蛋尾卡；也保留适量普通正文。主题色与字体由排版器处理，不把主题名字或颜色说明写进文章。
 - 原有题首引导、栏目或短引入可用 anime-banner；原有署名、日期、出处可用 anime-meta。原有关键词、分类词可用 anime-tags，保留文字和标点，允许用行内代码包住原有标签词；不得补作者、关注号召、标签文案或元数据。现成文章标题与章节用 # / ## / ###，胶囊章节编号由主题生成，不另外手写序号。
@@ -71,6 +79,22 @@ const policies:Record<FormatProfile,string>={
 };
 // Examples are complete snippets that can also be checked by the actual renderer.
 export const formatExamples:Record<FormatProfile,string>={
+ workshop:`:::workshop-lead
+原有导语。
+:::
+
+:::workshop-compare
+:::workshop-item 原有第一项标题
+原有第一项内容。
+:::
+:::workshop-item 原有第二项标题
+原有第二项内容。
+:::
+:::
+
+:::workshop-poster
+原文中已经独立成段的句子。
+:::`,
  anime:String.raw`:::anime-banner 原有题首短语
 原有引入文字。
 :::

@@ -1,0 +1,743 @@
+{
+  "monocle": {
+    "name": "摩登画报",
+    "description": "Monocle 深度杂志 · 暖米纸感、衬线刊头与克制赤陶红，复刻高端纸媒特稿阅读质感",
+    "tags": [
+      "主题工坊",
+      "Monocle Editorial",
+      "深度长文",
+      "文化评论",
+      "商业人物",
+      "品牌特稿"
+    ],
+    "group": "通用",
+    "paper": "#FAF8F4",
+    "accent": "#C84B31",
+    "ink": "#2E2C28",
+    "bodyFont": "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+    "headingFont": "'Songti SC', 'STSong', 'Noto Serif SC', Georgia, SimSun, serif",
+    "size": 15,
+    "lineHeight": 1.85,
+    "padding": 18,
+    "cover": "background-color:#FAF8F4;border-top:3px solid #1C1C1A;border-bottom:1px solid #DFD7C8;padding:18px 0 20px 0",
+    "coverFrame": "",
+    "coverTitle": "font-size:23px;font-weight:700;line-height:1.38;color:#1C1C1A;letter-spacing:0.5px",
+    "crest": "<svg aria-hidden=\"true\" fill=\"none\" viewbox=\"0 0 44 44\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"22\" cy=\"22\" r=\"20\" stroke=\"#C84B31\" stroke-width=\"1.4\"></circle><circle cx=\"22\" cy=\"22\" r=\"15\" stroke=\"#1C1C1A\" stroke-dasharray=\"3 2\" stroke-width=\"1\"></circle><text fill=\"#1C1C1A\" font-family=\"Georgia,serif\" font-size=\"16\" font-weight=\"700\" text-anchor=\"middle\" x=\"22\" y=\"27\">M</text></svg>",
+    "chapter": "padding:6px 0 10px 0;border-bottom:2px solid #1C1C1A",
+    "chapterTitle": "font-size:20px;font-weight:700;line-height:1.35;color:#1C1C1A",
+    "badge": "",
+    "subheading": "font-size:16.5px;font-weight:700;line-height:1.45;color:#1C1C1A",
+    "submark": "",
+    "submarkStyle": "display:inline-block;width:14px;height:2px;background-color:#C84B31;margin-right:8px;vertical-align:4px",
+    "minorHeading": "font-size:14.5px;font-weight:700;line-height:1.5;color:#C84B31;letter-spacing:0.3px",
+    "quote": "background-color:#F5F0E6;border-left:4px solid #C84B31;border-radius:8px;padding:14px 16px",
+    "quoteText": "font-size:14.5px;line-height:1.85;color:#3A352E",
+    "figure": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:8px",
+    "caption": "",
+    "divider": "<svg fill=\"none\" height=\"18\" style=\"display:block;margin:0 auto;max-width:100%;\" viewbox=\"0 0 260 18\" width=\"260\" xmlns=\"http://www.w3.org/2000/svg\"><line stroke=\"#D5CCB9\" stroke-width=\"1\" x1=\"10\" x2=\"108\" y1=\"9\" y2=\"9\"></line><rect fill=\"#C84B31\" height=\"10\" transform=\"rotate(45 129 9)\" width=\"10\" x=\"124\" y=\"4\"></rect><circle cx=\"115\" cy=\"9\" fill=\"#1C1C1A\" r=\"2\"></circle><circle cx=\"145\" cy=\"9\" fill=\"#1C1C1A\" r=\"2\"></circle><line stroke=\"#D5CCB9\" stroke-width=\"1\" x1=\"152\" x2=\"250\" y1=\"9\" y2=\"9\"></line></svg>",
+    "table": "border:1px solid #DFD7C8;border-radius:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;background-color:#FFFFFF;box-sizing:border-box",
+    "tableHead": "border:none;border-bottom:2px solid #C84B31;background-color:#1C1C1A;color:#FAF8F4;padding:9px 8px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap",
+    "tableCell": "border:none;border-bottom:1px solid #E7E0D3;padding:9px 8px;font-size:12.5px;line-height:1.5;color:#1C1C1A;font-weight:700;background-color:#FFFFFF;vertical-align:middle",
+    "code": "background-color:#22211E;border:1px solid #3D3A34;border-radius:10px",
+    "codeText": "font-size:12.5px;line-height:1.7;color:#EFEAE0",
+    "emphasis": "color:#1C1C1A;font-weight:700",
+    "link": "",
+    "label": "font-size:11.5px;font-weight:800;letter-spacing:1.4px;color:#C84B31;text-transform:uppercase",
+    "posterText": "font-size:18px;font-weight:700;line-height:1.68;color:#FAF8F4",
+    "blocks": {
+      "lead": "background-color:#F3EEE5;border:1px solid #E7E0D3;border-left:4px solid #C84B31;border-radius:6px;padding:15px 16px",
+      "toc": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:14px 16px",
+      "tip": "background-color:#F4F7F2;border:1px solid #C9D8C3;border-left:4px solid #3B6E4C;border-radius:6px;padding:13px 15px",
+      "figure": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:8px",
+      "steps": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:12px 14px;margin:0 0 10px 0",
+      "timeline": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:16px 15px",
+      "note": "background-color:#F5F0E6;border:1px solid #DFD5C3;border-left:4px solid #B87D3B;border-radius:6px;padding:13px 15px",
+      "dialogue": "background-color:#F3EEE5;border:1px solid #E7E0D3;border-radius:6px;padding:15px 13px",
+      "warning": "background-color:#FCF1EE;border:1px solid #EBBDB1;border-left:4px solid #C84B31;border-radius:6px;padding:13px 15px",
+      "checklist": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:15px 16px",
+      "poster": "background-color:#1C1C1A;background-image:linear-gradient(145deg,#1C1C1A 0%,#2E2A25 100%);border:1px solid #3D3730;border-radius:14px;padding:24px 20px;text-align:center",
+      "references": "border-top:1px dashed #DFD7C8;padding:14px 2px 2px 2px",
+      "author": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:15px 15px",
+      "recommend": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:13px 15px",
+      "footer": "background-color:#F3EEE5;border:1px solid #DFD7C8;border-radius:6px;padding:15px 14px;text-align:center"
+    },
+    "cards": {
+      "kpi": [
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:13px 8px;text-align:center",
+          "headingColor": "#C84B31"
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:13px 8px;text-align:center",
+          "headingColor": "#C84B31"
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:6px;padding:13px 8px;text-align:center",
+          "headingColor": "#C84B31"
+        }
+      ],
+      "compare": [
+        {
+          "style": "background-color:#F7FAF7;border:1px solid #C8D8C8;border-radius:6px;overflow:hidden",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FCF4F2;border:1px solid #E8C5BC;border-radius:6px;overflow:hidden",
+          "headingColor": ""
+        }
+      ],
+      "gallery": [
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:8px;padding:7px",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #DFD7C8;border-radius:8px;padding:7px",
+          "headingColor": ""
+        }
+      ]
+    },
+    "icons": {
+      "tip": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" fill=\"#3B6E4C\" fill-opacity=\"0.16\" r=\"10\"></circle><path d=\"M9.5 14.5C9.5 13 8 12 8 9.8C8 7.5 9.8 5.8 12 5.8C14.2 5.8 16 7.5 16 9.8C16 12 14.5 13 14.5 14.5H9.5Z\" stroke=\"#3B6E4C\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#3B6E4C\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"10\" x2=\"14\" y1=\"17.5\" y2=\"17.5\"></line></svg>",
+      "quote": "<svg fill=\"none\" height=\"20\" style=\"display:block;\" viewbox=\"0 0 28 22\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M11.2 0L6.8 11.2H11.6V22H0.4V11.8L5.4 0H11.2ZM26.8 0L22.4 11.2H27.2V22H16V11.8L21 0H26.8Z\" fill=\"#C84B31\" fill-opacity=\"0.32\"></path></svg>",
+      "note": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#B87D3B\" fill-opacity=\"0.15\" height=\"17\" rx=\"4\" stroke=\"#B87D3B\" stroke-width=\"1.8\" width=\"17\" x=\"3.5\" y=\"3.5\"></rect><line stroke=\"#B87D3B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"16\" y1=\"9\" y2=\"9\"></line><line stroke=\"#B87D3B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"14\" y1=\"13\" y2=\"13\"></line><line stroke=\"#B87D3B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"11.5\" y1=\"16.5\" y2=\"16.5\"></line></svg>",
+      "warning": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 3.5L21 19.5H3L12 3.5Z\" fill=\"#C84B31\" fill-opacity=\"0.16\" stroke=\"#C84B31\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#C84B31\" stroke-linecap=\"round\" stroke-width=\"1.9\" x1=\"12\" x2=\"12\" y1=\"9.5\" y2=\"14\"></line><circle cx=\"12\" cy=\"16.8\" fill=\"#C84B31\" r=\"1.1\"></circle></svg>",
+      "author": "<svg fill=\"none\" height=\"48\" style=\"display:block;\" viewbox=\"0 0 48 48\" width=\"48\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#1C1C1A\" height=\"48\" rx=\"6\" width=\"48\"></rect><rect height=\"38\" rx=\"3\" stroke=\"#D4A373\" stroke-width=\"1.2\" width=\"38\" x=\"5\" y=\"5\"></rect><text fill=\"#FAF8F4\" font-family=\"Georgia,serif\" font-size=\"22\" font-weight=\"700\" text-anchor=\"middle\" x=\"24\" y=\"31\">M</text></svg>"
+    }
+  },
+  "sakura": {
+    "name": "草莓奶霜",
+    "description": "可爱日系手账 · 樱花奶霜粉、奶油黄与虚线手账贴纸边框，软萌治愈的日系少女杂志感",
+    "tags": [
+      "主题工坊",
+      "Sakura Kawaii Diary",
+      "可爱日系",
+      "探店手账",
+      "追番安利",
+      "好物分享"
+    ],
+    "group": "文学",
+    "paper": "#FFF8FA",
+    "accent": "#F26B8A",
+    "ink": "#523A43",
+    "bodyFont": "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+    "headingFont": "'Hiragino Maru Gothic ProN', 'Yuanti SC', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+    "size": 15,
+    "lineHeight": 1.85,
+    "padding": 16,
+    "cover": "background-color:#FFFFFF;border:2px solid #FFB8CC;border-radius:22px;padding:6px;box-shadow:0 6px 0 #FFE0EA",
+    "coverFrame": "background-color:#FFF7FA;background-image:linear-gradient(160deg,#FFF5F8 0%,#FFFDF2 55%,#F2FCF9 100%);border:1.5px dashed #FF9EBB;border-radius:16px;padding:18px 16px 16px 16px",
+    "coverTitle": "font-size:21px;font-weight:700;line-height:1.42;color:#5A2B3C",
+    "crest": "<svg aria-hidden=\"true\" fill=\"none\" viewbox=\"0 0 84 32\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M14 16L16 11L18 16L23 18L18 20L16 25L14 20L9 18L14 16Z\" fill=\"#FFD166\"></path>\n<g transform=\"translate(42 16)\">\n<ellipse cx=\"0\" cy=\"-8\" fill=\"#FF9EBB\" rx=\"4.5\" ry=\"6.5\"></ellipse>\n<ellipse cx=\"7.6\" cy=\"-2.5\" fill=\"#FFB3CA\" rx=\"4.5\" ry=\"6.5\" transform=\"rotate(72 7.6 -2.5)\"></ellipse>\n<ellipse cx=\"4.7\" cy=\"6.5\" fill=\"#FF9EBB\" rx=\"4.5\" ry=\"6.5\" transform=\"rotate(144 4.7 6.5)\"></ellipse>\n<ellipse cx=\"-4.7\" cy=\"6.5\" fill=\"#FFB3CA\" rx=\"4.5\" ry=\"6.5\" transform=\"rotate(216 -4.7 6.5)\"></ellipse>\n<ellipse cx=\"-7.6\" cy=\"-2.5\" fill=\"#FF9EBB\" rx=\"4.5\" ry=\"6.5\" transform=\"rotate(288 -7.6 -2.5)\"></ellipse>\n<circle cx=\"0\" cy=\"0\" fill=\"#FFD166\" r=\"3.4\"></circle>\n</g>\n<path d=\"M68 12L69.5 8.5L71 12L74.5 13.5L71 15L69.5 18.5L68 15L64.5 13.5L68 12Z\" fill=\"#64C5B1\"></path>\n</svg>",
+    "chapter": "background-color:#FFF0F5;border:1.5px solid #FF9EBB;border-radius:16px;padding:10px 13px;box-shadow:0 3px 0 #FFD6E5",
+    "chapterTitle": "font-size:16.5px;font-weight:700;line-height:1.45;color:#5A2D3D",
+    "badge": "background-color:#F26B8A;color:#FFFFFF;font-size:11.5px;font-weight:800;border-radius:999px;white-space:nowrap",
+    "subheading": "font-size:16.5px;font-weight:700;line-height:1.45;color:#5A2B3C",
+    "submark": "♥",
+    "submarkStyle": "color:#F26B8A;margin-right:6px",
+    "minorHeading": "font-size:14.5px;font-weight:700;line-height:1.5;color:#F26B8A;letter-spacing:0.3px",
+    "quote": "background-color:#FFFDF2;border-left:4px solid #F26B8A;border-radius:14px;padding:14px 16px",
+    "quoteText": "font-size:14.5px;line-height:1.85;color:#5A3E48",
+    "figure": "background-color:#FFFFFF;border:2px solid #FFC4D6;border-radius:18px;padding:10px 10px 12px 10px;box-shadow:0 5px 0 #FFE4EE",
+    "caption": "",
+    "divider": "<svg fill=\"none\" height=\"24\" style=\"display:block;margin:0 auto;max-width:100%;\" viewbox=\"0 0 260 24\" width=\"260\" xmlns=\"http://www.w3.org/2000/svg\">\n<path d=\"M12 12 Q28 4 44 12 T76 12 T102 12\" fill=\"none\" stroke=\"#FFB8CE\" stroke-linecap=\"round\" stroke-width=\"2\"></path>\n<circle cx=\"116\" cy=\"12\" fill=\"#FFD166\" r=\"3.5\"></circle>\n<circle cx=\"130\" cy=\"12\" fill=\"#F26B8A\" r=\"5.5\"></circle>\n<circle cx=\"130\" cy=\"12\" fill=\"#FFF8FA\" r=\"2\"></circle>\n<circle cx=\"144\" cy=\"12\" fill=\"#64C5B1\" r=\"3.5\"></circle>\n<path d=\"M158 12 Q174 4 190 12 T222 12 T248 12\" fill=\"none\" stroke=\"#FFB8CE\" stroke-linecap=\"round\" stroke-width=\"2\"></path>\n</svg>",
+    "table": "border:1px solid #FFD1E0;border-radius:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;background-color:#FFFFFF;box-sizing:border-box",
+    "tableHead": "border:none;border-bottom:2px solid #E05275;background-color:#F26B8A;color:#FFFFFF;padding:9px 8px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap",
+    "tableCell": "border:none;border-bottom:1px solid #FFE2EC;padding:9px 8px;font-size:12.5px;line-height:1.5;color:#5A2B3C;font-weight:700;background-color:#FFFFFF;vertical-align:middle",
+    "code": "background-color:#3D2B35;border:1px solid #634757;border-radius:16px",
+    "codeText": "font-size:12.5px;line-height:1.7;color:#FFF3F7",
+    "emphasis": "color:#D6456B;font-weight:700",
+    "link": "",
+    "label": "font-size:11.5px;font-weight:800;letter-spacing:1.4px;color:#F26B8A;text-transform:uppercase",
+    "posterText": "font-size:18px;font-weight:700;line-height:1.68;color:#4A2534",
+    "blocks": {
+      "lead": "background-color:#FFF1F6;border:1.5px dashed #F9A8C0;border-radius:16px;padding:15px 16px",
+      "toc": "background-color:#FFFFFF;border:1.5px solid #FFD0DF;border-radius:18px;box-shadow:0 4px 0 #FFF0F5;padding:14px 16px",
+      "tip": "background-color:#EFFCF8;border:1.5px dashed #A7E6D5;border-radius:16px;padding:13px 15px",
+      "figure": "background-color:#FFFFFF;border:2px solid #FFC4D6;border-radius:18px;padding:10px 10px 12px 10px;box-shadow:0 5px 0 #FFE4EE",
+      "steps": "background-color:#FFFFFF;border:1px solid #FFD1E0;border-radius:16px;padding:12px 14px;margin:0 0 10px 0",
+      "timeline": "background-color:#FFFFFF;border:1px solid #FFD1E0;border-radius:18px;padding:16px 15px",
+      "note": "background-color:#FFFBF0;border:1.5px dashed #FDE096;border-radius:16px;padding:13px 15px",
+      "dialogue": "background-color:#FFF1F6;border:1px solid #FFE2EC;border-radius:18px;padding:15px 13px",
+      "warning": "background-color:#FFF1F4;border:1.5px dashed #FFB5C8;border-radius:16px;padding:13px 15px",
+      "checklist": "background-color:#FFFFFF;border:1.5px dashed #FF9EBB;border-radius:18px;padding:15px 16px",
+      "poster": "background-color:#FFF0F5;background-image:linear-gradient(135deg,#FFE6EF 0%,#FFF9DB 52%,#E5FAF4 100%);border:2px solid #FF9EBB;border-radius:22px;padding:22px 18px;text-align:center;box-shadow:0 6px 0 #FFD6E5",
+      "references": "border-top:1px dashed #FFD1E0;padding:14px 2px 2px 2px",
+      "author": "background-color:#FFFFFF;border:1px solid #FFD1E0;border-radius:18px;padding:15px 15px",
+      "recommend": "background-color:#FFFFFF;border:1px solid #FFD1E0;border-radius:18px;padding:13px 15px",
+      "footer": "background-color:#FFF0F6;border:1px solid #FFB8CE;border-radius:18px;padding:15px 14px;text-align:center"
+    },
+    "cards": {
+      "kpi": [
+        {
+          "style": "background-color:#FFFFFF;border:1.5px solid #FFC4D6;border-radius:16px;padding:13px 8px;text-align:center",
+          "headingColor": "#F26B8A"
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1.5px solid #FFC4D6;border-radius:16px;padding:13px 8px;text-align:center",
+          "headingColor": "#F26B8A"
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1.5px solid #FFC4D6;border-radius:16px;padding:13px 8px;text-align:center",
+          "headingColor": "#F26B8A"
+        }
+      ],
+      "compare": [
+        {
+          "style": "background-color:#F2FCF9;border:1px solid #A7E6D5;border-radius:16px;overflow:hidden",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FFF3F7;border:1px solid #FFC2D5;border-radius:16px;overflow:hidden",
+          "headingColor": ""
+        }
+      ],
+      "gallery": [
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #FFD1E0;border-radius:14px;padding:7px",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #FFD1E0;border-radius:14px;padding:7px",
+          "headingColor": ""
+        }
+      ]
+    },
+    "icons": {
+      "tip": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" fill=\"#3CA88E\" fill-opacity=\"0.16\" r=\"10\"></circle><path d=\"M9.5 14.5C9.5 13 8 12 8 9.8C8 7.5 9.8 5.8 12 5.8C14.2 5.8 16 7.5 16 9.8C16 12 14.5 13 14.5 14.5H9.5Z\" stroke=\"#3CA88E\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#3CA88E\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"10\" x2=\"14\" y1=\"17.5\" y2=\"17.5\"></line></svg>",
+      "quote": "<svg fill=\"none\" height=\"20\" style=\"display:block;\" viewbox=\"0 0 28 22\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M11.2 0L6.8 11.2H11.6V22H0.4V11.8L5.4 0H11.2ZM26.8 0L22.4 11.2H27.2V22H16V11.8L21 0H26.8Z\" fill=\"#F26B8A\" fill-opacity=\"0.32\"></path></svg>",
+      "note": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#E59A1A\" fill-opacity=\"0.15\" height=\"17\" rx=\"4\" stroke=\"#E59A1A\" stroke-width=\"1.8\" width=\"17\" x=\"3.5\" y=\"3.5\"></rect><line stroke=\"#E59A1A\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"16\" y1=\"9\" y2=\"9\"></line><line stroke=\"#E59A1A\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"14\" y1=\"13\" y2=\"13\"></line><line stroke=\"#E59A1A\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"11.5\" y1=\"16.5\" y2=\"16.5\"></line></svg>",
+      "warning": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 3.5L21 19.5H3L12 3.5Z\" fill=\"#E84D74\" fill-opacity=\"0.16\" stroke=\"#E84D74\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#E84D74\" stroke-linecap=\"round\" stroke-width=\"1.9\" x1=\"12\" x2=\"12\" y1=\"9.5\" y2=\"14\"></line><circle cx=\"12\" cy=\"16.8\" fill=\"#E84D74\" r=\"1.1\"></circle></svg>",
+      "author": "<svg fill=\"none\" height=\"48\" style=\"display:block;\" viewbox=\"0 0 48 48\" width=\"48\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"24\" cy=\"24\" fill=\"#FFF0F5\" r=\"23\" stroke=\"#FF8FAB\" stroke-width=\"2\"></circle><circle cx=\"24\" cy=\"24\" fill=\"#F26B8A\" r=\"15\"></circle><text fill=\"#FFFFFF\" font-family=\"sans-serif\" font-size=\"16\" font-weight=\"700\" text-anchor=\"middle\" x=\"24\" y=\"30\">莓</text></svg>"
+    }
+  },
+  "matcha": {
+    "name": "抹茶晴日",
+    "description": "日系清新杂货绘本 · 和纸米白、宇治抹茶绿与蜂蜜柚子橙，像翻开一本温暖治愈的日系生活绘本",
+    "tags": [
+      "主题工坊",
+      "Matcha Zakka Journal",
+      "可爱日系",
+      "居家美学",
+      "读书笔记",
+      "慢生活随笔"
+    ],
+    "group": "文学",
+    "paper": "#FBFBF6",
+    "accent": "#5E8C61",
+    "ink": "#3F4238",
+    "bodyFont": "'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+    "headingFont": "'PingFang SC', 'Hiragino Sans GB', 'Songti SC', 'Microsoft YaHei', sans-serif",
+    "size": 15,
+    "lineHeight": 1.85,
+    "padding": 17,
+    "cover": "background-color:#F5F7EE;border:1.5px solid #C6D6BC;border-radius:16px;padding:18px 16px",
+    "coverFrame": "",
+    "coverTitle": "font-size:21px;font-weight:700;line-height:1.45;color:#2E3B2F;letter-spacing:0.4px",
+    "crest": "<svg aria-hidden=\"true\" fill=\"none\" viewbox=\"0 0 44 44\" xmlns=\"http://www.w3.org/2000/svg\">\n<rect fill=\"#FFFFFF\" height=\"40\" rx=\"12\" stroke=\"#B9CBAF\" stroke-dasharray=\"3 2\" stroke-width=\"1.5\" width=\"40\" x=\"2\" y=\"2\"></rect>\n<path d=\"M22 31V17\" stroke=\"#5E8C61\" stroke-linecap=\"round\" stroke-width=\"2.2\"></path>\n<path d=\"M22 22C15 21 12 15 15 12C19 12 22 16 22 22Z\" fill=\"#7FB081\"></path>\n<path d=\"M22 20C29 19 32 13 29 10C25 10 22 14 22 20Z\" fill=\"#5E8C61\"></path>\n<circle cx=\"31\" cy=\"30\" fill=\"#E8985E\" r=\"3\"></circle>\n</svg>",
+    "chapter": "border-bottom:2px dashed #C7D7BE;padding-bottom:10px",
+    "chapterTitle": "font-size:18.5px;font-weight:700;line-height:1.35;color:#2E3B2F",
+    "badge": "background-color:#5E8C61;color:#FFFFFF;border-radius:10px;font-size:13px;font-weight:700",
+    "subheading": "font-size:16.5px;font-weight:700;line-height:1.45;color:#2E3B2F",
+    "submark": "❖",
+    "submarkStyle": "color:#5E8C61;margin-right:6px",
+    "minorHeading": "font-size:14.5px;font-weight:700;line-height:1.5;color:#5E8C61;letter-spacing:0.3px",
+    "quote": "background-color:#F6F7EF;border-left:4px solid #5E8C61;border-radius:8px;padding:14px 16px",
+    "quoteText": "font-size:14.5px;line-height:1.85;color:#43493C",
+    "figure": "background-color:#FFFFFF;border:1.5px solid #C8D6BE;border-radius:14px;padding:10px 10px 12px 10px",
+    "caption": "",
+    "divider": "<svg fill=\"none\" height=\"22\" style=\"display:block;margin:0 auto;max-width:100%;\" viewbox=\"0 0 260 22\" width=\"260\" xmlns=\"http://www.w3.org/2000/svg\">\n<line stroke=\"#C7D7BE\" stroke-dasharray=\"4 4\" stroke-width=\"1.5\" x1=\"14\" x2=\"104\" y1=\"11\" y2=\"11\"></line>\n<path d=\"M120 15C120 8 128 5 130 12C132 5 140 8 140 15C134 16 126 16 120 15Z\" fill=\"#5E8C61\"></path>\n<circle cx=\"111\" cy=\"11\" fill=\"#E08E45\" r=\"2.5\"></circle>\n<circle cx=\"149\" cy=\"11\" fill=\"#E08E45\" r=\"2.5\"></circle>\n<line stroke=\"#C7D7BE\" stroke-dasharray=\"4 4\" stroke-width=\"1.5\" x1=\"156\" x2=\"246\" y1=\"11\" y2=\"11\"></line>\n</svg>",
+    "table": "border:1px solid #CFDDC8;border-radius:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;background-color:#FFFFFF;box-sizing:border-box",
+    "tableHead": "border:none;border-bottom:2px solid #466E49;background-color:#5E8C61;color:#FFFFFF;padding:9px 8px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap",
+    "tableCell": "border:none;border-bottom:1px solid #DDE7D7;padding:9px 8px;font-size:12.5px;line-height:1.5;color:#2E3B2F;font-weight:700;background-color:#FFFFFF;vertical-align:middle",
+    "code": "background-color:#2F3630;border:1px solid #4E5950;border-radius:10px",
+    "codeText": "font-size:12.5px;line-height:1.7;color:#EFF5ED",
+    "emphasis": "color:#3E6B42;font-weight:700",
+    "link": "",
+    "label": "font-size:11.5px;font-weight:800;letter-spacing:1.4px;color:#5E8C61;text-transform:uppercase",
+    "posterText": "font-size:18px;font-weight:700;line-height:1.68;color:#FBFBF6",
+    "blocks": {
+      "lead": "background-color:#F2F6EC;border:1px solid #DDE7D7;border-left:4px solid #5E8C61;border-radius:14px;padding:15px 16px",
+      "toc": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:14px 16px",
+      "tip": "background-color:#EFF6EC;border:1px solid #BDD6B5;border-left:4px solid #5E8C61;border-radius:14px;padding:13px 15px",
+      "figure": "background-color:#FFFFFF;border:1.5px solid #C8D6BE;border-radius:14px;padding:10px 10px 12px 10px",
+      "steps": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:12px 14px;margin:0 0 10px 0",
+      "timeline": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:16px 15px",
+      "note": "background-color:#F2F7FA;border:1px solid #BDD8E6;border-left:4px solid #5B95B5;border-radius:14px;padding:13px 15px",
+      "dialogue": "background-color:#F2F6EC;border:1px solid #DDE7D7;border-radius:14px;padding:15px 13px",
+      "warning": "background-color:#FDF4EB;border:1px solid #F0CCA7;border-left:4px solid #D97B2E;border-radius:14px;padding:13px 15px",
+      "checklist": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:15px 16px",
+      "poster": "background-color:#466B49;background-image:linear-gradient(145deg,#4B734E 0%,#5E8C61 60%,#749E6F 100%);border:1px solid #3D5E40;border-radius:14px;padding:24px 20px;text-align:center",
+      "references": "border-top:1px dashed #CFDDC8;padding:14px 2px 2px 2px",
+      "author": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:15px 15px",
+      "recommend": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:13px 15px",
+      "footer": "background-color:#F2F6EC;border:1px solid #C7DAC0;border-radius:14px;padding:15px 14px;text-align:center"
+    },
+    "cards": {
+      "kpi": [
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:13px 8px;text-align:center",
+          "headingColor": "#5E8C61"
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:13px 8px;text-align:center",
+          "headingColor": "#5E8C61"
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:14px;padding:13px 8px;text-align:center",
+          "headingColor": "#5E8C61"
+        }
+      ],
+      "compare": [
+        {
+          "style": "background-color:#F2F8F0;border:1px solid #C0D8B8;border-radius:14px;overflow:hidden",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FCF5EE;border:1px solid #ECCEB2;border-radius:14px;overflow:hidden",
+          "headingColor": ""
+        }
+      ],
+      "gallery": [
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:8px;padding:7px",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #CFDDC8;border-radius:8px;padding:7px",
+          "headingColor": ""
+        }
+      ]
+    },
+    "icons": {
+      "tip": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" fill=\"#5E8C61\" fill-opacity=\"0.16\" r=\"10\"></circle><path d=\"M9.5 14.5C9.5 13 8 12 8 9.8C8 7.5 9.8 5.8 12 5.8C14.2 5.8 16 7.5 16 9.8C16 12 14.5 13 14.5 14.5H9.5Z\" stroke=\"#5E8C61\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#5E8C61\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"10\" x2=\"14\" y1=\"17.5\" y2=\"17.5\"></line></svg>",
+      "quote": "<svg fill=\"none\" height=\"20\" style=\"display:block;\" viewbox=\"0 0 28 22\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M11.2 0L6.8 11.2H11.6V22H0.4V11.8L5.4 0H11.2ZM26.8 0L22.4 11.2H27.2V22H16V11.8L21 0H26.8Z\" fill=\"#5E8C61\" fill-opacity=\"0.32\"></path></svg>",
+      "note": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#5B95B5\" fill-opacity=\"0.15\" height=\"17\" rx=\"4\" stroke=\"#5B95B5\" stroke-width=\"1.8\" width=\"17\" x=\"3.5\" y=\"3.5\"></rect><line stroke=\"#5B95B5\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"16\" y1=\"9\" y2=\"9\"></line><line stroke=\"#5B95B5\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"14\" y1=\"13\" y2=\"13\"></line><line stroke=\"#5B95B5\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"11.5\" y1=\"16.5\" y2=\"16.5\"></line></svg>",
+      "warning": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 3.5L21 19.5H3L12 3.5Z\" fill=\"#D97B2E\" fill-opacity=\"0.16\" stroke=\"#D97B2E\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#D97B2E\" stroke-linecap=\"round\" stroke-width=\"1.9\" x1=\"12\" x2=\"12\" y1=\"9.5\" y2=\"14\"></line><circle cx=\"12\" cy=\"16.8\" fill=\"#D97B2E\" r=\"1.1\"></circle></svg>",
+      "author": "<svg fill=\"none\" height=\"48\" style=\"display:block;\" viewbox=\"0 0 48 48\" width=\"48\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#5E8C61\" height=\"48\" rx=\"14\" width=\"48\"></rect><circle cx=\"24\" cy=\"24\" r=\"16\" stroke=\"#DCEAD9\" stroke-dasharray=\"3 2\" stroke-width=\"1.4\"></circle><text fill=\"#FFFFFF\" font-family=\"sans-serif\" font-size=\"16\" font-weight=\"700\" text-anchor=\"middle\" x=\"24\" y=\"30\">茶</text></svg>"
+    }
+  },
+  "celadon": {
+    "name": "青瓷墨韵",
+    "description": "新中式东方美学 · 宣纸微黄、汝窑天青与朱砂方印，克制留白间尽显宋代器物与文人书卷雅韵",
+    "tags": [
+      "主题工坊",
+      "Song Celadon & Ink",
+      "人文历史",
+      "国学茶道",
+      "建筑美学",
+      "文化专栏"
+    ],
+    "group": "文学",
+    "paper": "#F8F5EE",
+    "accent": "#3D6B66",
+    "ink": "#343D39",
+    "bodyFont": "'Songti SC', 'STSong', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+    "headingFont": "'Songti SC', 'STSong', 'Noto Serif SC', 'SimSun', SimSun, serif",
+    "size": 15,
+    "lineHeight": 1.85,
+    "padding": 18,
+    "cover": "background-color:#F4F0E6;border:1px solid #C8C1B0;padding:5px",
+    "coverFrame": "border:1px solid #3D6B66;padding:18px 16px;background-color:#FAF8F2",
+    "coverTitle": "font-size:22px;font-weight:700;line-height:1.45;color:#1F2B28;letter-spacing:1.2px",
+    "crest": "<svg aria-hidden=\"true\" fill=\"none\" viewbox=\"0 0 42 42\" xmlns=\"http://www.w3.org/2000/svg\">\n<rect fill=\"#FAF8F2\" height=\"36\" rx=\"3\" stroke=\"#B23A2E\" stroke-width=\"1.6\" width=\"36\" x=\"3\" y=\"3\"></rect>\n<rect fill=\"#B23A2E\" height=\"28\" rx=\"1.5\" width=\"28\" x=\"7\" y=\"7\"></rect>\n<text fill=\"#FAF8F2\" font-family=\"Songti SC,serif\" font-size=\"14\" font-weight=\"700\" text-anchor=\"middle\" x=\"21\" y=\"26\">青瓷</text>\n</svg>",
+    "chapter": "padding:4px 0 10px 0;border-bottom:1px solid #C8C1B0",
+    "chapterTitle": "font-size:19.5px;font-weight:700;line-height:1.4;color:#1F2B28;letter-spacing:1px",
+    "badge": "background-color:#B23A2E;color:#FAF8F2;font-size:15px;font-weight:700;border-radius:3px",
+    "subheading": "font-size:16.5px;font-weight:700;line-height:1.45;color:#1F2B28",
+    "submark": "◈",
+    "submarkStyle": "color:#B23A2E;margin-right:6px",
+    "minorHeading": "font-size:14.5px;font-weight:700;line-height:1.5;color:#3D6B66;letter-spacing:0.3px",
+    "quote": "background-color:#F3EFE4;border-left:4px solid #3D6B66;border-radius:8px;padding:14px 16px",
+    "quoteText": "font-size:14.5px;line-height:1.85;color:#2D3A36",
+    "figure": "background-color:#FAF8F2;border:1px solid #C8C1B0;padding:8px",
+    "caption": "",
+    "divider": "<svg fill=\"none\" height=\"20\" style=\"display:block;margin:0 auto;max-width:100%;\" viewbox=\"0 0 260 20\" width=\"260\" xmlns=\"http://www.w3.org/2000/svg\">\n<line stroke=\"#C8C1B0\" stroke-width=\"1\" x1=\"10\" x2=\"104\" y1=\"10\" y2=\"10\"></line>\n<rect height=\"6\" stroke=\"#3D6B66\" stroke-width=\"1.2\" width=\"6\" x=\"112\" y=\"7\"></rect>\n<circle cx=\"130\" cy=\"10\" fill=\"#B23A2E\" r=\"4.5\"></circle>\n<circle cx=\"130\" cy=\"10\" fill=\"#FAF8F2\" r=\"1.5\"></circle>\n<rect height=\"6\" stroke=\"#3D6B66\" stroke-width=\"1.2\" width=\"6\" x=\"142\" y=\"7\"></rect>\n<line stroke=\"#C8C1B0\" stroke-width=\"1\" x1=\"156\" x2=\"250\" y1=\"10\" y2=\"10\"></line>\n</svg>",
+    "table": "border:1px solid #D3CCBC;border-radius:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;background-color:#FCFBF7;box-sizing:border-box",
+    "tableHead": "border:none;border-bottom:2px solid #B59867;background-color:#3D6B66;color:#FAF8F2;padding:9px 8px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap",
+    "tableCell": "border:none;border-bottom:1px solid #E1DACB;padding:9px 8px;font-size:12.5px;line-height:1.5;color:#1F2B28;font-weight:700;background-color:#FCFBF7;vertical-align:middle",
+    "code": "background-color:#232B28;border:1px solid #404D48;border-radius:10px",
+    "codeText": "font-size:12.5px;line-height:1.7;color:#EFECE4",
+    "emphasis": "color:#1F2B28;font-weight:700",
+    "link": "",
+    "label": "font-size:11.5px;font-weight:800;letter-spacing:1.4px;color:#3D6B66;text-transform:uppercase",
+    "posterText": "font-size:18px;font-weight:700;line-height:1.68;color:#FAF8F2",
+    "blocks": {
+      "lead": "background-color:#F1ECE0;border:1px solid #C6CFC9;border-left:4px solid #3D6B66;border-radius:2px;padding:15px 16px",
+      "toc": "background-color:#FCFBF7;border:1px solid #C8C1B0;border-top:2px solid #3D6B66;border-radius:2px;padding:14px 16px",
+      "tip": "background-color:#EFF4F1;border:1px solid #BDD0C8;border-left:4px solid #3D6B66;border-radius:3px;padding:13px 15px",
+      "figure": "background-color:#FAF8F2;border:1px solid #C8C1B0;padding:8px",
+      "steps": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:3px;padding:12px 14px;margin:0 0 10px 0",
+      "timeline": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:3px;padding:16px 15px",
+      "note": "background-color:#F5F0E4;border:1px solid #D9CEB8;border-left:4px solid #A68853;border-radius:3px;padding:13px 15px",
+      "dialogue": "background-color:#F1ECE0;border:1px solid #E1DACB;border-radius:3px;padding:15px 13px",
+      "warning": "background-color:#F8ECE9;border:1px solid #DFB6AE;border-left:4px solid #B23A2E;border-radius:3px;padding:13px 15px",
+      "checklist": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:3px;padding:15px 16px",
+      "poster": "background-color:#26423F;background-image:linear-gradient(145deg,#243E3B 0%,#355B56 60%,#294542 100%);border:1px solid #B59867;border-radius:2px;padding:24px 20px;text-align:center",
+      "references": "border-top:1px dashed #D3CCBC;padding:14px 2px 2px 2px",
+      "author": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:3px;padding:15px 15px",
+      "recommend": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:3px;padding:13px 15px",
+      "footer": "background-color:#F1ECE0;border:1px solid #D3CCBC;border-radius:3px;padding:15px 14px;text-align:center"
+    },
+    "cards": {
+      "kpi": [
+        {
+          "style": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:3px;padding:13px 8px;text-align:center",
+          "headingColor": "#3D6B66"
+        },
+        {
+          "style": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:3px;padding:13px 8px;text-align:center",
+          "headingColor": "#3D6B66"
+        },
+        {
+          "style": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:3px;padding:13px 8px;text-align:center",
+          "headingColor": "#3D6B66"
+        }
+      ],
+      "compare": [
+        {
+          "style": "background-color:#F0F5F2;border:1px solid #BFCFC8;border-radius:3px;overflow:hidden",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#F9EFEC;border:1px solid #DFBBB4;border-radius:3px;overflow:hidden",
+          "headingColor": ""
+        }
+      ],
+      "gallery": [
+        {
+          "style": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:8px;padding:7px",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FCFBF7;border:1px solid #D3CCBC;border-radius:8px;padding:7px",
+          "headingColor": ""
+        }
+      ]
+    },
+    "icons": {
+      "tip": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" fill=\"#3D6B66\" fill-opacity=\"0.16\" r=\"10\"></circle><path d=\"M9.5 14.5C9.5 13 8 12 8 9.8C8 7.5 9.8 5.8 12 5.8C14.2 5.8 16 7.5 16 9.8C16 12 14.5 13 14.5 14.5H9.5Z\" stroke=\"#3D6B66\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#3D6B66\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"10\" x2=\"14\" y1=\"17.5\" y2=\"17.5\"></line></svg>",
+      "quote": "<svg fill=\"none\" height=\"20\" style=\"display:block;\" viewbox=\"0 0 28 22\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M11.2 0L6.8 11.2H11.6V22H0.4V11.8L5.4 0H11.2ZM26.8 0L22.4 11.2H27.2V22H16V11.8L21 0H26.8Z\" fill=\"#3D6B66\" fill-opacity=\"0.32\"></path></svg>",
+      "note": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#A68853\" fill-opacity=\"0.15\" height=\"17\" rx=\"4\" stroke=\"#A68853\" stroke-width=\"1.8\" width=\"17\" x=\"3.5\" y=\"3.5\"></rect><line stroke=\"#A68853\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"16\" y1=\"9\" y2=\"9\"></line><line stroke=\"#A68853\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"14\" y1=\"13\" y2=\"13\"></line><line stroke=\"#A68853\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"11.5\" y1=\"16.5\" y2=\"16.5\"></line></svg>",
+      "warning": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 3.5L21 19.5H3L12 3.5Z\" fill=\"#B23A2E\" fill-opacity=\"0.16\" stroke=\"#B23A2E\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#B23A2E\" stroke-linecap=\"round\" stroke-width=\"1.9\" x1=\"12\" x2=\"12\" y1=\"9.5\" y2=\"14\"></line><circle cx=\"12\" cy=\"16.8\" fill=\"#B23A2E\" r=\"1.1\"></circle></svg>",
+      "author": "<svg fill=\"none\" height=\"48\" style=\"display:block;\" viewbox=\"0 0 48 48\" width=\"48\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#26423F\" height=\"48\" rx=\"4\" width=\"48\"></rect><rect height=\"38\" stroke=\"#B59867\" stroke-width=\"1.2\" width=\"38\" x=\"5\" y=\"5\"></rect><text fill=\"#FAF8F2\" font-family=\"Songti SC,serif\" font-size=\"18\" font-weight=\"700\" text-anchor=\"middle\" x=\"24\" y=\"30\">砚</text></svg>"
+    }
+  },
+  "swiss": {
+    "name": "瑞士网格",
+    "description": "包豪斯现代撞色 · 克莱因蓝、包豪斯红、镉黄三原色与硬朗黑框硬阴影，打造画廊海报级视觉冲击",
+    "tags": [
+      "主题工坊",
+      "Swiss Bauhaus Pop",
+      "设计灵感",
+      "创意营销",
+      "品牌视觉",
+      "先锋观点"
+    ],
+    "group": "通用",
+    "paper": "#FFFFFF",
+    "accent": "#E6392E",
+    "ink": "#1F2937",
+    "bodyFont": "'Helvetica Neue', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+    "headingFont": "'Helvetica Neue', 'Arial Black', 'PingFang SC', 'Microsoft YaHei', sans-serif",
+    "size": 15,
+    "lineHeight": 1.85,
+    "padding": 16,
+    "cover": "background-color:#FFFFFF;border:3px solid #111111;box-shadow:6px 6px 0 #111111;padding:0",
+    "coverFrame": "",
+    "coverTitle": "font-size:22px;font-weight:900;line-height:1.35;color:#111111;letter-spacing:-0.2px",
+    "crest": "<svg aria-hidden=\"true\" fill=\"none\" viewbox=\"0 0 32 32\" xmlns=\"http://www.w3.org/2000/svg\">\n<circle cx=\"11\" cy=\"11\" fill=\"#F5C400\" r=\"7\"></circle>\n<rect fill=\"#E6392E\" height=\"13\" width=\"13\" x=\"15\" y=\"15\"></rect>\n<polygon fill=\"#FFFFFF\" points=\"4,28 11,16 18,28\"></polygon>\n</svg>",
+    "chapter": "border:2.5px solid #111111;background-color:#FFFFFF;box-shadow:4px 4px 0 #111111",
+    "chapterTitle": "font-size:18.5px;font-weight:900;line-height:1.35;color:#111111",
+    "badge": "border-right:2.5px solid #111111;background-color:#F5C400;font-size:17px;font-weight:900;color:#111111",
+    "subheading": "font-size:16.5px;font-weight:700;line-height:1.45;color:#111111",
+    "submark": "",
+    "submarkStyle": "display:inline-block;width:10px;height:10px;background-color:#E6392E;margin-right:8px;vertical-align:1px",
+    "minorHeading": "font-size:14.5px;font-weight:700;line-height:1.5;color:#E6392E;letter-spacing:0.3px",
+    "quote": "background-color:#F4F7FF;border-left:4px solid #E6392E;border-radius:0px;padding:14px 16px;border:2px solid #111111;border-left:6px solid #1A43BF",
+    "quoteText": "font-size:14.5px;line-height:1.85;color:#111111",
+    "figure": "background-color:#FFFFFF;border:3px solid #111111;padding:8px;box-shadow:5px 5px 0 #111111",
+    "caption": "",
+    "divider": "<svg fill=\"none\" height=\"20\" style=\"display:block;margin:0 auto;max-width:100%;\" viewbox=\"0 0 260 20\" width=\"260\" xmlns=\"http://www.w3.org/2000/svg\">\n<line stroke=\"#111111\" stroke-width=\"2.5\" x1=\"8\" x2=\"96\" y1=\"10\" y2=\"10\"></line>\n<circle cx=\"112\" cy=\"10\" fill=\"#E6392E\" r=\"6\" stroke=\"#111111\" stroke-width=\"2\"></circle>\n<rect fill=\"#F5C400\" height=\"12\" stroke=\"#111111\" stroke-width=\"2\" width=\"12\" x=\"124\" y=\"4\"></rect>\n<polygon fill=\"#1A43BF\" points=\"148,4 156,16 140,16\" stroke=\"#111111\" stroke-width=\"2\"></polygon>\n<line stroke=\"#111111\" stroke-width=\"2.5\" x1=\"164\" x2=\"252\" y1=\"10\" y2=\"10\"></line>\n</svg>",
+    "table": "border:2.5px solid #111111;border-radius:0px;overflow-x:auto;-webkit-overflow-scrolling:touch;background-color:#FFFFFF;box-sizing:border-box",
+    "tableHead": "border:none;border-bottom:2px solid #111111;background-color:#111111;color:#F5C400;padding:9px 8px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap",
+    "tableCell": "border:none;border-bottom:1px solid #D4D4D8;padding:9px 8px;font-size:12.5px;line-height:1.5;color:#111111;font-weight:700;background-color:#FFFFFF;vertical-align:middle",
+    "code": "background-color:#111111;border:2.5px solid #111111;box-shadow:4px 4px 0 #111111;border-radius:0px",
+    "codeText": "font-size:12.5px;line-height:1.7;color:#F9FAFB",
+    "emphasis": "color:#111111;font-weight:700",
+    "link": "",
+    "label": "font-size:11.5px;font-weight:800;letter-spacing:1.4px;color:#E6392E;text-transform:uppercase",
+    "posterText": "font-size:18.5px;font-weight:900;line-height:1.58;color:#FFFFFF",
+    "blocks": {
+      "lead": "background-color:#FFFBE6;border:2.5px solid #111111;border-radius:0;box-shadow:4px 4px 0 #111111;padding:15px 16px",
+      "toc": "background-color:#FFFFFF;border:2.5px solid #111111;box-shadow:4px 4px 0 #1A43BF;border-radius:0;padding:14px 16px",
+      "tip": "background-color:#EEF3FF;border:2.5px solid #111111;border-left:6px solid #1A43BF;box-shadow:4px 4px 0 #111111;border-radius:0px;padding:13px 15px",
+      "figure": "background-color:#FFFFFF;border:3px solid #111111;padding:8px;box-shadow:5px 5px 0 #111111",
+      "steps": "background-color:#FFFFFF;border:2px solid #111111;border-radius:0px;padding:12px 14px;margin:0 0 10px 0",
+      "timeline": "background-color:#FFFFFF;border:2.5px solid #111111;border-radius:0px;padding:16px 15px",
+      "note": "background-color:#FFFBE0;border:2.5px solid #111111;border-left:6px solid #E0A800;box-shadow:4px 4px 0 #111111;border-radius:0px;padding:13px 15px",
+      "dialogue": "background-color:#FFFBE6;border:2px solid #111111;border-radius:0px;padding:15px 13px",
+      "warning": "background-color:#FFF0EE;border:2.5px solid #111111;border-left:6px solid #E6392E;box-shadow:4px 4px 0 #111111;border-radius:0px;padding:13px 15px",
+      "checklist": "background-color:#FFFFFF;border:2.5px solid #111111;box-shadow:4px 4px 0 #F5C400;border-radius:0px;padding:15px 16px",
+      "poster": "background-color:#1A43BF;border:3px solid #111111;box-shadow:6px 6px 0 #E6392E;padding:22px 18px",
+      "references": "border-top:1px dashed #111111;padding:14px 2px 2px 2px",
+      "author": "background-color:#FFFFFF;border:2.5px solid #111111;box-shadow:4px 4px 0 #111111;border-radius:0px;padding:15px 15px",
+      "recommend": "background-color:#FFFFFF;border:2px solid #111111;border-radius:0px;padding:13px 15px",
+      "footer": "background-color:#F5C400;border:2.5px solid #111111;border-radius:0px;padding:15px 14px;text-align:center"
+    },
+    "cards": {
+      "kpi": [
+        {
+          "style": "background-color:#E6392E;border:2.5px solid #111111;border-radius:0px;padding:13px 8px;text-align:center;box-shadow:3px 3px 0 #111111",
+          "headingColor": "#FFFFFF"
+        },
+        {
+          "style": "background-color:#1A43BF;border:2.5px solid #111111;border-radius:0px;padding:13px 8px;text-align:center;box-shadow:3px 3px 0 #111111",
+          "headingColor": "#FFFFFF"
+        },
+        {
+          "style": "background-color:#F5C400;border:2.5px solid #111111;border-radius:0px;padding:13px 8px;text-align:center;box-shadow:3px 3px 0 #111111",
+          "headingColor": "#111111"
+        }
+      ],
+      "compare": [
+        {
+          "style": "background-color:#F0F4FF;border:2.5px solid #111111;border-radius:0px;overflow:hidden",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FFF2F0;border:2.5px solid #111111;border-radius:0px;overflow:hidden",
+          "headingColor": ""
+        }
+      ],
+      "gallery": [
+        {
+          "style": "background-color:#FFFFFF;border:2.5px solid #111111;border-radius:0px;padding:7px",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FFFFFF;border:2.5px solid #111111;border-radius:0px;padding:7px",
+          "headingColor": ""
+        }
+      ]
+    },
+    "icons": {
+      "tip": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" fill=\"#1A43BF\" fill-opacity=\"0.16\" r=\"10\"></circle><path d=\"M9.5 14.5C9.5 13 8 12 8 9.8C8 7.5 9.8 5.8 12 5.8C14.2 5.8 16 7.5 16 9.8C16 12 14.5 13 14.5 14.5H9.5Z\" stroke=\"#1A43BF\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#1A43BF\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"10\" x2=\"14\" y1=\"17.5\" y2=\"17.5\"></line></svg>",
+      "quote": "<svg fill=\"none\" height=\"20\" style=\"display:block;\" viewbox=\"0 0 28 22\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M11.2 0L6.8 11.2H11.6V22H0.4V11.8L5.4 0H11.2ZM26.8 0L22.4 11.2H27.2V22H16V11.8L21 0H26.8Z\" fill=\"#E6392E\" fill-opacity=\"0.32\"></path></svg>",
+      "note": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#E0A800\" fill-opacity=\"0.15\" height=\"17\" rx=\"4\" stroke=\"#E0A800\" stroke-width=\"1.8\" width=\"17\" x=\"3.5\" y=\"3.5\"></rect><line stroke=\"#E0A800\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"16\" y1=\"9\" y2=\"9\"></line><line stroke=\"#E0A800\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"14\" y1=\"13\" y2=\"13\"></line><line stroke=\"#E0A800\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"11.5\" y1=\"16.5\" y2=\"16.5\"></line></svg>",
+      "warning": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 3.5L21 19.5H3L12 3.5Z\" fill=\"#E6392E\" fill-opacity=\"0.16\" stroke=\"#E6392E\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#E6392E\" stroke-linecap=\"round\" stroke-width=\"1.9\" x1=\"12\" x2=\"12\" y1=\"9.5\" y2=\"14\"></line><circle cx=\"12\" cy=\"16.8\" fill=\"#E6392E\" r=\"1.1\"></circle></svg>",
+      "author": "<svg fill=\"none\" height=\"48\" style=\"display:block;\" viewbox=\"0 0 48 48\" width=\"48\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#111111\" height=\"48\" width=\"48\"></rect><circle cx=\"18\" cy=\"18\" fill=\"#E6392E\" r=\"9\"></circle><rect fill=\"#F5C400\" height=\"18\" width=\"18\" x=\"22\" y=\"22\"></rect><polygon fill=\"#1A43BF\" points=\"8,40 18,26 28,40\"></polygon></svg>"
+    }
+  },
+  "broadsheet": {
+    "name": "复古铅印",
+    "description": "百年文艺报纸 · 泛黄旧书纸底、双粗细铅印报栏与勃艮第酒红刊铭，自带历史档案馆般的叙事重量",
+    "tags": [
+      "主题工坊",
+      "Vintage Broadsheet Press",
+      "书评影评",
+      "历史档案",
+      "深度调查",
+      "纪实写作"
+    ],
+    "group": "文学",
+    "paper": "#F4ECD8",
+    "accent": "#7A262A",
+    "ink": "#2E2720",
+    "bodyFont": "'Songti SC', 'STSong', 'PingFang SC', 'Microsoft YaHei', SimSun, serif",
+    "headingFont": "'Songti SC', 'STSong', 'Times New Roman', Georgia, SimSun, serif",
+    "size": 15,
+    "lineHeight": 1.85,
+    "padding": 16,
+    "cover": "background-color:#EFE5CC;border-top:4px solid #241F1A;border-bottom:4px solid #241F1A;padding:12px 14px 16px 14px",
+    "coverFrame": "",
+    "coverTitle": "font-size:23px;font-weight:700;line-height:1.38;color:#1E1915;text-align:center",
+    "crest": "<svg aria-hidden=\"true\" fill=\"none\" viewbox=\"0 0 32 22\" xmlns=\"http://www.w3.org/2000/svg\">\n<polygon fill=\"#7A262A\" points=\"16,2 22,11 16,20 10,11\"></polygon>\n<circle cx=\"5\" cy=\"11\" fill=\"#241F1A\" r=\"2.2\"></circle>\n<circle cx=\"27\" cy=\"11\" fill=\"#241F1A\" r=\"2.2\"></circle>\n</svg>",
+    "chapter": "text-align:center;border-top:2px solid #241F1A;border-bottom:1px solid #241F1A;padding:10px 6px;background-color:#EFE5CC",
+    "chapterTitle": "font-size:19.5px;font-weight:700;line-height:1.38;color:#1E1915",
+    "badge": "",
+    "subheading": "font-size:16.5px;font-weight:700;line-height:1.45;color:#1E1915",
+    "submark": "◆",
+    "submarkStyle": "color:#7A262A;margin-right:6px",
+    "minorHeading": "font-size:14.5px;font-weight:700;line-height:1.5;color:#7A262A;letter-spacing:0.3px",
+    "quote": "border-top:2px solid #241F1A;border-bottom:2px solid #241F1A;padding:14px 16px;background-color:#F0E7D1;text-align:center",
+    "quoteText": "font-size:15.5px;line-height:1.8;color:#1E1915;font-style:italic",
+    "figure": "background-color:#EFE5CC;border:1px solid #241F1A;padding:8px",
+    "caption": "",
+    "divider": "<svg fill=\"none\" height=\"18\" style=\"display:block;margin:0 auto;max-width:100%;\" viewbox=\"0 0 260 18\" width=\"260\" xmlns=\"http://www.w3.org/2000/svg\">\n<line stroke=\"#241F1A\" stroke-width=\"1.5\" x1=\"8\" x2=\"104\" y1=\"7\" y2=\"7\"></line>\n<line stroke=\"#241F1A\" stroke-width=\"0.8\" x1=\"8\" x2=\"104\" y1=\"11\" y2=\"11\"></line>\n<polygon fill=\"#7A262A\" points=\"130,2 137,9 130,16 123,9\"></polygon>\n<circle cx=\"115\" cy=\"9\" fill=\"#241F1A\" r=\"2\"></circle>\n<circle cx=\"145\" cy=\"9\" fill=\"#241F1A\" r=\"2\"></circle>\n<line stroke=\"#241F1A\" stroke-width=\"1.5\" x1=\"156\" x2=\"252\" y1=\"7\" y2=\"7\"></line>\n<line stroke=\"#241F1A\" stroke-width=\"0.8\" x1=\"156\" x2=\"252\" y1=\"11\" y2=\"11\"></line>\n</svg>",
+    "table": "border:1px solid #B8A98E;border-radius:0px;overflow-x:auto;-webkit-overflow-scrolling:touch;background-color:#F8F2E2;box-sizing:border-box",
+    "tableHead": "border:none;border-bottom:2px solid #7A262A;background-color:#241F1A;color:#F4ECD8;padding:9px 8px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap",
+    "tableCell": "border:none;border-bottom:1px solid #CFC2A8;padding:9px 8px;font-size:12.5px;line-height:1.5;color:#1E1915;font-weight:700;background-color:#F8F2E2;vertical-align:middle",
+    "code": "background-color:#241F1A;border:1px solid #4A4035;border-radius:0px",
+    "codeText": "font-size:12.5px;line-height:1.7;color:#F2E9D6",
+    "emphasis": "color:#1E1915;font-weight:700",
+    "link": "",
+    "label": "font-size:11.5px;font-weight:800;letter-spacing:1.4px;color:#7A262A;text-transform:uppercase",
+    "posterText": "font-size:18px;font-weight:700;line-height:1.68;color:#F4ECD8",
+    "blocks": {
+      "lead": "background-color:#ECE1C7;border-top:2px solid #241F1A;border-bottom:2px solid #241F1A;border-left:1px solid #C9B99B;border-right:1px solid #C9B99B;border-radius:0;padding:15px 16px",
+      "toc": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:14px 16px",
+      "tip": "background-color:#EDF0E4;border:1px solid #9EAA8D;border-left:4px solid #4C5E3E;border-radius:0px;padding:13px 15px",
+      "figure": "background-color:#EFE5CC;border:1px solid #241F1A;padding:8px",
+      "steps": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:12px 14px;margin:0 0 10px 0",
+      "timeline": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:16px 15px",
+      "note": "background-color:#EFE5CC;border:1px solid #BAA98B;border-left:4px solid #6E654B;border-radius:0px;padding:13px 15px",
+      "dialogue": "background-color:#ECE1C7;border:1px solid #CFC2A8;border-radius:0px;padding:15px 13px",
+      "warning": "background-color:#F4E3E0;border:1px solid #C99893;border-left:4px solid #7A262A;border-radius:0px;padding:13px 15px",
+      "checklist": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:15px 16px",
+      "poster": "background-color:#241F1A;background-image:linear-gradient(145deg,#241F1A 0%,#362B22 100%);border:2px solid #7A262A;border-radius:2px;padding:24px 20px;text-align:center",
+      "references": "border-top:1px dashed #B8A98E;padding:14px 2px 2px 2px",
+      "author": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:15px 15px",
+      "recommend": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:13px 15px",
+      "footer": "background-color:#ECE1C7;border:1px solid #241F1A;border-radius:0px;padding:15px 14px;text-align:center"
+    },
+    "cards": {
+      "kpi": [
+        {
+          "style": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:13px 8px;text-align:center",
+          "headingColor": "#7A262A"
+        },
+        {
+          "style": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:13px 8px;text-align:center",
+          "headingColor": "#7A262A"
+        },
+        {
+          "style": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:13px 8px;text-align:center",
+          "headingColor": "#7A262A"
+        }
+      ],
+      "compare": [
+        {
+          "style": "background-color:#F2F0E4;border:1px solid #9E967D;border-radius:0px;overflow:hidden",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#F5E7E4;border:1px solid #C49A95;border-radius:0px;overflow:hidden",
+          "headingColor": ""
+        }
+      ],
+      "gallery": [
+        {
+          "style": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:7px",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#F8F2E2;border:1px solid #B8A98E;border-radius:0px;padding:7px",
+          "headingColor": ""
+        }
+      ]
+    },
+    "icons": {
+      "tip": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" fill=\"#4C5E3E\" fill-opacity=\"0.16\" r=\"10\"></circle><path d=\"M9.5 14.5C9.5 13 8 12 8 9.8C8 7.5 9.8 5.8 12 5.8C14.2 5.8 16 7.5 16 9.8C16 12 14.5 13 14.5 14.5H9.5Z\" stroke=\"#4C5E3E\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#4C5E3E\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"10\" x2=\"14\" y1=\"17.5\" y2=\"17.5\"></line></svg>",
+      "note": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#6E654B\" fill-opacity=\"0.15\" height=\"17\" rx=\"4\" stroke=\"#6E654B\" stroke-width=\"1.8\" width=\"17\" x=\"3.5\" y=\"3.5\"></rect><line stroke=\"#6E654B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"16\" y1=\"9\" y2=\"9\"></line><line stroke=\"#6E654B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"14\" y1=\"13\" y2=\"13\"></line><line stroke=\"#6E654B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"11.5\" y1=\"16.5\" y2=\"16.5\"></line></svg>",
+      "warning": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 3.5L21 19.5H3L12 3.5Z\" fill=\"#7A262A\" fill-opacity=\"0.16\" stroke=\"#7A262A\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#7A262A\" stroke-linecap=\"round\" stroke-width=\"1.9\" x1=\"12\" x2=\"12\" y1=\"9.5\" y2=\"14\"></line><circle cx=\"12\" cy=\"16.8\" fill=\"#7A262A\" r=\"1.1\"></circle></svg>",
+      "author": "<svg fill=\"none\" height=\"48\" style=\"display:block;\" viewbox=\"0 0 48 48\" width=\"48\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#241F1A\" height=\"48\" width=\"48\"></rect><rect height=\"40\" stroke=\"#D9B277\" stroke-width=\"1.2\" width=\"40\" x=\"4\" y=\"4\"></rect><text fill=\"#F4ECD8\" font-family=\"Georgia,serif\" font-size=\"20\" font-weight=\"700\" text-anchor=\"middle\" x=\"24\" y=\"31\">报</text></svg>"
+    }
+  },
+  "finance": {
+    "name": "投行研报",
+    "description": "华尔街商业财经 · 午夜藏青刊头、金融琥珀金与严谨咨询研报秩序，专为商业洞察与宏观财经打造",
+    "tags": [
+      "主题工坊",
+      "Wall Street Executive Brief",
+      "商业分析",
+      "宏观财经",
+      "职场管理",
+      "咨询研报"
+    ],
+    "group": "通用",
+    "paper": "#FFFFFF",
+    "accent": "#14284B",
+    "ink": "#2B3A4E",
+    "bodyFont": "-apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', sans-serif",
+    "headingFont": "'PingFang SC', 'Helvetica Neue', 'Songti SC', 'Microsoft YaHei', sans-serif",
+    "size": 15,
+    "lineHeight": 1.85,
+    "padding": 16,
+    "cover": "background-color:#14284B;background-image:linear-gradient(135deg,#10213E 0%,#1C3764 100%);padding:20px 18px 18px 18px;border-bottom:4px solid #C5963E",
+    "coverFrame": "",
+    "coverTitle": "font-size:21px;font-weight:700;line-height:1.4;color:#FFFFFF",
+    "crest": "<svg aria-hidden=\"true\" fill=\"none\" viewbox=\"0 0 38 32\" xmlns=\"http://www.w3.org/2000/svg\">\n<rect fill=\"#9FB3CF\" height=\"12\" width=\"7\" x=\"3\" y=\"18\"></rect>\n<rect fill=\"#C5963E\" height=\"19\" width=\"7\" x=\"15\" y=\"11\"></rect>\n<rect fill=\"#E2BC72\" height=\"26\" width=\"7\" x=\"27\" y=\"4\"></rect>\n<polyline fill=\"none\" points=\"6,14 18,8 30,2\" stroke=\"#FFFFFF\" stroke-width=\"1.6\"></polyline>\n</svg>",
+    "chapter": "border-bottom:1px solid #CBD5E1;padding-bottom:8px",
+    "chapterTitle": "font-size:18.5px;font-weight:700;line-height:1.35;color:#14284B",
+    "badge": "",
+    "subheading": "font-size:16.5px;font-weight:700;line-height:1.45;color:#14284B",
+    "submark": "",
+    "submarkStyle": "display:inline-block;width:4px;height:14px;background-color:#C5963E;margin-right:8px;vertical-align:-2px",
+    "minorHeading": "font-size:14.5px;font-weight:700;line-height:1.5;color:#B5852E;letter-spacing:0.3px",
+    "quote": "background-color:#F5F8FC;border-left:4px solid #B5852E;border-radius:8px;padding:14px 16px",
+    "quoteText": "font-size:14.5px;line-height:1.85;color:#1E3357",
+    "figure": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:4px;padding:8px",
+    "caption": "",
+    "divider": "<svg fill=\"none\" height=\"16\" style=\"display:block;margin:0 auto;max-width:100%;\" viewbox=\"0 0 260 16\" width=\"260\" xmlns=\"http://www.w3.org/2000/svg\">\n<line stroke=\"#CBD5E1\" stroke-width=\"1.2\" x1=\"8\" x2=\"112\" y1=\"8\" y2=\"8\"></line>\n<polygon fill=\"#C5963E\" points=\"130,2 136,8 130,14 124,8\"></polygon>\n<line stroke=\"#CBD5E1\" stroke-width=\"1.2\" x1=\"148\" x2=\"252\" y1=\"8\" y2=\"8\"></line>\n</svg>",
+    "table": "border:1px solid #D6DFE9;border-radius:8px;overflow-x:auto;-webkit-overflow-scrolling:touch;background-color:#FFFFFF;box-sizing:border-box",
+    "tableHead": "border:none;border-bottom:2px solid #C5963E;background-color:#14284B;color:#FFFFFF;padding:9px 8px;text-align:left;font-size:12px;font-weight:700;white-space:nowrap",
+    "tableCell": "border:none;border-bottom:1px solid #E5ECF3;padding:9px 8px;font-size:12.5px;line-height:1.5;color:#14284B;font-weight:700;background-color:#FFFFFF;vertical-align:middle",
+    "code": "background-color:#101D34;border:1px solid #2A4068;border-radius:10px",
+    "codeText": "font-size:12.5px;line-height:1.7;color:#F1F5F9",
+    "emphasis": "color:#14284B;font-weight:700",
+    "link": "",
+    "label": "font-size:11.5px;font-weight:800;letter-spacing:1.4px;color:#B5852E;text-transform:uppercase",
+    "posterText": "font-size:18px;font-weight:700;line-height:1.68;color:#FFFFFF",
+    "blocks": {
+      "lead": "background-color:#F4F7FB;border:1px solid #D5DEE8;border-left:4px solid #C5963E;border-radius:4px;padding:15px 16px",
+      "toc": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:4px;padding:14px 16px",
+      "tip": "background-color:#EFF8F3;border:1px solid #B9E0CC;border-left:4px solid #12784E;border-radius:4px;padding:13px 15px",
+      "figure": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:4px;padding:8px",
+      "steps": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:4px;padding:12px 14px;margin:0 0 10px 0",
+      "timeline": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:4px;padding:16px 15px",
+      "note": "background-color:#F4F7FB;border:1px solid #C9D6E6;border-left:4px solid #14284B;border-radius:4px;padding:13px 15px",
+      "dialogue": "background-color:#F4F7FB;border:1px solid #E5ECF3;border-radius:4px;padding:15px 13px",
+      "warning": "background-color:#FDF6EC;border:1px solid #EBD1A7;border-left:4px solid #B8741C;border-radius:4px;padding:13px 15px",
+      "checklist": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:4px;padding:15px 16px",
+      "poster": "background-color:#14284B;background-image:linear-gradient(135deg,#0F1F3B 0%,#1B3664 100%);border:2px solid #C5963E;border-radius:14px;padding:24px 20px;text-align:center",
+      "references": "border-top:1px dashed #D6DFE9;padding:14px 2px 2px 2px",
+      "author": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:4px;padding:15px 15px",
+      "recommend": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:4px;padding:13px 15px",
+      "footer": "background-color:#F4F7FB;border:1px solid #14284B;border-radius:4px;padding:15px 14px;text-align:center"
+    },
+    "cards": {
+      "kpi": [
+        {
+          "style": "background-color:#F8FAFD;border:1px solid #D6DFE9;border-radius:4px;padding:13px 8px;text-align:center",
+          "headingColor": "#14284B"
+        },
+        {
+          "style": "background-color:#F8FAFD;border:1px solid #D6DFE9;border-radius:4px;padding:13px 8px;text-align:center",
+          "headingColor": "#14284B"
+        },
+        {
+          "style": "background-color:#F8FAFD;border:1px solid #D6DFE9;border-radius:4px;padding:13px 8px;text-align:center",
+          "headingColor": "#14284B"
+        }
+      ],
+      "compare": [
+        {
+          "style": "background-color:#F1F9F5;border:1px solid #B9E0CC;border-radius:4px;overflow:hidden",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FDF3F2;border:1px solid #EBC2BE;border-radius:4px;overflow:hidden",
+          "headingColor": ""
+        }
+      ],
+      "gallery": [
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:8px;padding:7px",
+          "headingColor": ""
+        },
+        {
+          "style": "background-color:#FFFFFF;border:1px solid #D6DFE9;border-radius:8px;padding:7px",
+          "headingColor": ""
+        }
+      ]
+    },
+    "icons": {
+      "tip": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><circle cx=\"12\" cy=\"12\" fill=\"#12784E\" fill-opacity=\"0.16\" r=\"10\"></circle><path d=\"M9.5 14.5C9.5 13 8 12 8 9.8C8 7.5 9.8 5.8 12 5.8C14.2 5.8 16 7.5 16 9.8C16 12 14.5 13 14.5 14.5H9.5Z\" stroke=\"#12784E\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#12784E\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"10\" x2=\"14\" y1=\"17.5\" y2=\"17.5\"></line></svg>",
+      "quote": "<svg fill=\"none\" height=\"20\" style=\"display:block;\" viewbox=\"0 0 28 22\" width=\"24\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M11.2 0L6.8 11.2H11.6V22H0.4V11.8L5.4 0H11.2ZM26.8 0L22.4 11.2H27.2V22H16V11.8L21 0H26.8Z\" fill=\"#B5852E\" fill-opacity=\"0.32\"></path></svg>",
+      "note": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#14284B\" fill-opacity=\"0.15\" height=\"17\" rx=\"4\" stroke=\"#14284B\" stroke-width=\"1.8\" width=\"17\" x=\"3.5\" y=\"3.5\"></rect><line stroke=\"#14284B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"16\" y1=\"9\" y2=\"9\"></line><line stroke=\"#14284B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"14\" y1=\"13\" y2=\"13\"></line><line stroke=\"#14284B\" stroke-linecap=\"round\" stroke-width=\"1.8\" x1=\"8\" x2=\"11.5\" y1=\"16.5\" y2=\"16.5\"></line></svg>",
+      "warning": "<svg fill=\"none\" height=\"18\" style=\"display:block;\" viewbox=\"0 0 24 24\" width=\"18\" xmlns=\"http://www.w3.org/2000/svg\"><path d=\"M12 3.5L21 19.5H3L12 3.5Z\" fill=\"#B8741C\" fill-opacity=\"0.16\" stroke=\"#B8741C\" stroke-linejoin=\"round\" stroke-width=\"1.8\"></path><line stroke=\"#B8741C\" stroke-linecap=\"round\" stroke-width=\"1.9\" x1=\"12\" x2=\"12\" y1=\"9.5\" y2=\"14\"></line><circle cx=\"12\" cy=\"16.8\" fill=\"#B8741C\" r=\"1.1\"></circle></svg>",
+      "author": "<svg fill=\"none\" height=\"48\" style=\"display:block;\" viewbox=\"0 0 48 48\" width=\"48\" xmlns=\"http://www.w3.org/2000/svg\"><rect fill=\"#14284B\" height=\"48\" rx=\"4\" width=\"48\"></rect><rect height=\"40\" stroke=\"#C5963E\" stroke-width=\"1.5\" width=\"40\" x=\"4\" y=\"4\"></rect><text fill=\"#E2BC72\" font-family=\"Georgia,serif\" font-size=\"18\" font-weight=\"700\" text-anchor=\"middle\" x=\"24\" y=\"30\">FB</text></svg>"
+    }
+  }
+}

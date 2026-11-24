@@ -6,7 +6,8 @@ const chosen=[];for(const channel of ['chrome','msedge']){const matches=all.filt
 for(const alias of ['dist/纸间-离线公众号排版器.html','docs/index.html'])assert.deepEqual(await readFile(alias),bytes);
 let md='# 本轮验收结果\n\n日期：'+new Date().toLocaleString('zh-CN',{timeZone:'Asia/Shanghai'})+'。以下结果均核对实际产物，不引用旧构建的通过记录。\n\n产物 SHA256：`'+hash+'`。三个 HTML 入口字节一致。\n\n| 环境 | 检查集合 | 通过脚本 | 浏览器版本 |\n|---|---|---:|---|\n';
 for(const r of chosen)md+=`| ${r.channel} | ${r.suite} | ${r.checks.filter(c=>c.status==='passed').length} / ${r.checks.length} | ${r.browserVersion||'未记录'} |\n`;
-md+='\n本轮新增验收覆盖按需加载的 Mermaid 官方离线引擎。两种浏览器分别验证 26 份图表源码，包含中文和换行的横向流程图、时序、类、状态、ER、甘特图、思维导图、看板、雷达和目录树等。验证首次复制等待出图、剪贴板中的内嵌与独立 PNG、长图大图查看、Word 媒体与 PDF、失败时保留源码。公众号后台实际粘贴待人工验证。\n';
+md+='\n本轮新增验收覆盖七套主题工坊主题。Chrome 和 Edge 测试了全部原版离线示例、套用主题后保留 Markdown、375 与 430 像素宽度下的可编辑示例、卡片配色、格式改写提示词和组件插入，也核对富文本剪贴板、独立 HTML 与 Word 导出。公众号后台实际粘贴待人工验证。\n';
+md+='\nMermaid 官方离线引擎保留在回归范围内，覆盖中文及换行流程图等多图型，验证首次复制等待出图、剪贴板内嵌及独立 PNG、长图查看、Word、PDF 和失败时保留源码。\n';
 md+='\n此前新增的 Mermaid 四象限图与居中图注仍纳入回归。使用截图中的中文轴名、象限和八个点，核对离线预览、富文本剪贴板的内嵌 PNG、单独 PNG 复制和下载、HTML、Word 内嵌图片、PDF 及 Markdown 原文。代码切换与脚注覆盖围栏、已有和缺失定义、撤销、大纲折叠与限定查找范围。\n';
 md+=`\n两浏览器各覆盖 ${testSuites.all.length} 份登记脚本（去重计数），按当前产物每份脚本最新完成的结果判定通过；表内为该批次通过 / 执行份数，修复前的失败日志保留。类型检查及差异空白检查通过。每份脚本包含多项断言，脚本数量不冒充独立功能数量。已运行原有综合入口，以及登记的专项集合；没有宣称运行目录中全部历史脚本。\n\n`;
 md+='本次区块转换覆盖：按钮 H1–H6、正文及有序 / 无序列表与快捷键共用计划；Setext 标题整体转换、闭合 # 和空标题 / 空列表项、同级重复应用不增加撤销、选区末尾换行边界、引用内列表、任务状态、嵌套计数及十位编号的续行缩进均检查。代码 / 公式 / 表格实际渲染、诗歌 / 组图、组件边界和定义行混合选区原文不变，不完整列表项明确拒绝，空光标按完整项处理；诗歌空白、列表内诗歌解包保护与引用增减一层、预览改字结构锁定、一次撤销 / 重做、500 行末尾位置、保存重开和三套界面日夜菜单均验证。多行 Setext 转 ATX / 列表及列表内引用转换保留原文并提示整理，不宣称支持任意复杂结构。纯函数使用独立 Markdown 解析器核对文字和列表深度，浏览器检查使用实际离线产物。改前 JSON 保留旧哈希及误改结果。\n\n';
@@ -56,6 +57,7 @@ await copyFile('test-results/block-format-plan.json',dir+'/visuals/block-format-
 for(const channel of ['chrome','msedge']){
  await copyFile(`test-results/quadrant-chart-${channel}/preview.png`,`${dir}/visuals/quadrant-chart-${channel}.png`);
  await copyFile(`test-results/mermaid-${channel}/flowchart.png`,`${dir}/visuals/mermaid-flowchart-${channel}.png`);
+ for(const theme of ['celadon','swiss'])await copyFile(`test-results/workshop-${channel}/${theme}-masthead.png`,`${dir}/visuals/workshop-${theme}-${channel}-masthead.png`);
  await copyFile(`test-results/source-writing-${channel}/report.json`,`${dir}/visuals/code-footnote-${channel}.json`);
 }
 try{const before=JSON.parse(await readFile('test-results/library-startup-before/report.json','utf8')),after=JSON.parse(await readFile('test-results/library-startup-after/report.json','utf8'));if(after.artifactHash===hash){const note=`\n## 本机大库观察\n\n同一台机器、Chrome、1001 篇各 120 段的合成离线文章库，从导航开始至首屏完成后 300 ms 的观察窗口：最大主线程任务由 ${before.maxMainThreadTaskMS} ms 变为 ${after.maxMainThreadTaskMS} ms；首屏完成标记由 ${Math.round(before.articleReadyMS)} ms 变为 ${Math.round(after.articleReadyMS)} ms。这是单次本机观察，不作为所有设备的固定性能保证。场景和观测脚本位于 scripts/benchmark-library-startup.mjs，两个报告保留产物哈希。\n`;await writeFile('本轮验收结果.md',md+note);for(const name of ['before','after'])for(const file of ['report.json','app.png'])await copyFile(`test-results/library-startup-${name}/${file}`,`${dir}/visuals/library-startup-${name}-${file}`);}}catch{}

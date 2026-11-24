@@ -6,6 +6,7 @@ import {editionCSS} from './edition-design';
 import {examCSS} from './exam-design';
 import {examThemes} from './exam-themes';
 import {animeThemes,animeCSS} from './anime-design';
+import {workshopCSS,workshopThemes} from './workshop-design';
 import {fontStacks, type Typography} from './model';
 import type {Theme,ThemeDefinition,ElementStyle} from './theme-types';
 import {parseThemeFile,libraryDocument,validateTheme} from './theme-schema';
@@ -68,6 +69,7 @@ const pairings:Record<string,[string,string,string?,string?]>={
 for(const t of builtInThemes){const [body,heading,quote,caption]=pairings[t.id]||['noto-sans','noto-serif','kai','noto-sans'];Object.assign(t,{font:body,headingFont:heading,quoteFont:quote,captionFont:caption,poemFont:t.id==='folio'?'wenkai':['moon','ink','classical'].includes(t.id)?'kai':body,codeFont:['journal','press','gewu'].includes(t.variant)?'jetbrains':'mono'});}
 builtInThemes.push(...examThemes);
 builtInThemes.push(...animeThemes);
+builtInThemes.push(...workshopThemes);
 export const builtInIds=builtInThemes.map(t=>t.id);
 export function materializeTheme(d:ThemeDefinition):Theme{
   const base=builtInThemes.find(t=>t.id===d.base)!;
@@ -210,6 +212,7 @@ export function themeCSS(theme: Theme, o: Typography = {}): string {
   .article .poem{font-family:${fontStacks[theme.poemFont||theme.font]||f}}
   ${animeCSS(theme,a,o)}
   ${readabilityCSS(theme,o,a)}
+  ${workshopCSS(theme,a,o)}
   ${elementCSS(theme.definition?.elements)}
   ${(theme.baseId||theme.id)==='magazine'?`.article{display:flow-root}.article p:has(.magazine-initial){text-indent:0}.article .magazine-initial{margin-left:${o.indent?size*2:0}px}`:''}
   .article .decorative-divider{color:${a};margin:26px 0}

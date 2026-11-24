@@ -13,6 +13,7 @@ import {installEditionBlocks} from './edition-blocks';
 import {normalizeEditionPublication} from './edition-design';
 import {installExamBlocks,layoutExamOptions,normalizeExamPublication} from './exam-blocks';
 import {installAnimeBlocks} from './anime-blocks';
+import {installWorkshopBlocks,workshopColumns} from './workshop-blocks';
 import {drawQuadrantChart,parseQuadrantChart} from './quadrant-chart';
 import {mermaidMarkup} from './mermaid-diagrams';
 
@@ -28,6 +29,7 @@ installFolioBlocks(md);
 installEditionBlocks(md);
 installExamBlocks(md);
 installAnimeBlocks(md);
+installWorkshopBlocks(md);
 md.validateLink=(url:string)=>/^asset:[a-zA-Z0-9-]+$/.test(url)||baseValidate(url);
 
 // Accept only paired, attribute-free script tags. Keep raw HTML disabled, and
@@ -272,7 +274,7 @@ export function mappedStyleBlocks(source:string){
   for(const token of tokens){
     if(token.nesting===1)stack.push(token);
     if(token.type==='inline'){
-    const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem|exam|anime)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/')+(stack.some(t=>t.type==='table_open')?':cell-'+cell++:'');
+    const scope=stack.filter(t=>!['paragraph_open','list_item_open','poem_line_open'].includes(t.type)).map(t=>t.type+':'+t.tag+':'+(t.attrGet('class')||'')+(/^(edition|journal|folio|poem|exam|anime|workshop)_open$/.test(t.type)?':'+t.map?.[0]:'')).join('/')+(stack.some(t=>t.type==='table_open')?':cell-'+cell++:'');
       blocks.push({tokens:token.children||[],scope:scope||'paragraph'});
     }
     if(token.map&&['fence','code_block','math_block','hr','decorative_divider','table_open'].includes(token.type))barriers.push({from:starts[token.map[0]],to:starts[token.map[1]]??source.length,table:token.type==='table_open'});
@@ -325,6 +327,9 @@ export function exportFragment(article:HTMLElement):string{
   normalizeFolioPublication(clone);
   normalizeEditionPublication(clone);
   normalizeExamPublication(clone);
+  for(const group of clone.querySelectorAll<HTMLElement>(workshopColumns.map(kind=>'.workshop-'+kind+'>.workshop-content').join(','))){
+    if(group.style.display==='table'){group.style.width='100%';group.style.borderSpacing='6px';}
+  }
   // Inline styles are authoritative, so no dependency on editor CSS remains.
   return clone.outerHTML;
 }

@@ -38,6 +38,9 @@ import {isExam} from './exam-design';
 import {isAnime,animeThemes} from './anime-design';
 import {animeSample,animeAssets,animeComponentSample,animeComponentExamples} from './anime-sample';
 import type {AnimeKind} from './anime-blocks';
+import {isWorkshop,workshopOriginal,workshopThemes} from './workshop-design';
+import {workshopBlocks,workshopComponent} from './workshop-blocks';
+import {workshopExampleGroups,workshopExamples,workshopSample,workshopSampleTitle,workshopThumbnail} from './workshop-sample';
 import {themeMatches} from './theme-search';
 import {showRewrite,cancelRewrite} from './rewrite';
 import {inspectFonts} from './font-inspection';
@@ -274,6 +277,8 @@ function render(){
     const mood=$('folio-font-button');if(mood){mood.hidden=!isFolio(committed)||publisher!=='wechat';mood.textContent=({'noto-serif':'书卷宋体',wenkai:'温润楷体','noto-sans':'现代人文黑'} as Record<string,string>)[current.typography.font||committed.font]||'自定字体';mood.textContent+=' ▾';}
     const examButton=$('exam-block-button');if(examButton)examButton.hidden=!isExam(committed)||publisher!=='wechat';
     const animeButton=$('anime-block-button');if(animeButton)animeButton.hidden=!isAnime(committed)||publisher!=='wechat';
+    const workshopButton=document.getElementById('workshop-block-button');
+    if(workshopButton)workshopButton.hidden=!isWorkshop(committed)||publisher!=='wechat';
     $<HTMLSelectElement>('publisher').value=publisher;$('preview-target').textContent=publisher==='zhihu'?'知乎样式':peekThemeId?'主题试看 · 点击卡片应用':'公众号样式';paintCopyButton();
     themeSidebar?.updateCurrent();
     $<HTMLButtonElement>('theme-button').disabled=publisher==='zhihu';$<HTMLButtonElement>('style-button').disabled=publisher==='zhihu';if(publisher==='zhihu')$('style-panel').hidden=true;
@@ -368,6 +373,7 @@ function themeThumbnail(id:string){
   if(t.variant==='journal')node.innerHTML=renderMarkdown('## 从一个好问题开始\n:::subtitle SCIENCE & IDEAS\n\n:::theorem 核心定律 · 理解世界\n用清晰的概念，建立**可检验的联系**。\n:::\n\n> 从一次认真观察出发。',new Map()).html;
   if(isFolio(t))node.innerHTML=renderMarkdown('## 江南雨声里的旧宣纸\n:::subtitle PROSE · 散文随笔卷\n\n:::folio-preface 卷首题记\n古人把一扇窗，借给了一座山。\n:::',new Map()).html;
   if(isAnime(t))node.innerHTML=renderMarkdown('# 把天空写进手记\n\n## 收集一点小美好\n\n:::anime-quote\n让每个值得记住的瞬间，拥有自己的光。\n:::',new Map()).html;
+  if(isWorkshop(t))node.innerHTML=renderMarkdown(workshopThumbnail,new Map()).html;
   const edition=t.baseId||t.id;
   if(examSamples[edition])node.innerHTML=renderMarkdown(examSamples[edition],new Map()).html;
   if(editionSamples[edition])node.innerHTML=renderMarkdown(editionSamples[edition].split(':::'+edition+(edition==='digest'?'-note':edition==='press'?'-byline':'-preface'))[0],new Map()).html;
@@ -380,15 +386,22 @@ function themeHost(){return {open:openModal,close:closeModal,notify:toast,curren
 function showThemes(filter='全部'){
   previewEditor?.finish();render();
   let selectedDetail='';
-  openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时保留手工细调；排版设置中可恢复主题默认。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用','试卷'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g==='已置顶'?'收藏':g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 收藏不限数量 · 在侧栏「收藏」中拖动排序</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
+  openModal('为文字，挑一件合适的衣裳',`<div class="theme-gallery-intro"><p class="modal-subtitle">点缩略图查看完整排版，点「使用」应用。应用时保留手工细调；排版设置中可恢复主题默认。</p><input id="theme-search" class="field" placeholder="搜索名称、颜色、装饰…" aria-label="搜索主题"></div><div class="theme-tabs">${['全部','已置顶','自定义','装饰精选','科普','文学','通用','试卷','主题工坊'].map(g=>`<button data-group="${g}" class="${g===filter?'active':''}">${g==='已置顶'?'收藏':g}${g==='全部'?' · '+visibleThemes().length:''}</button>`).join('')}</div><div class="theme-pin-summary"><span id="theme-pin-count"></span><span id="theme-result-count"></span></div><div class="theme-browser"><div id="theme-results" class="theme-grid"></div><aside id="theme-detail" hidden aria-label="完整主题预览"></aside></div><div class="theme-gallery-footer"><p class="theme-gallery-foot">☆ 收藏不限数量 · 在侧栏「收藏」中拖动排序</p><div><button id="theme-import-button" class="button outline">导入主题</button><button id="theme-manage-button" class="button outline">完整主题库 / 管理</button></div></div>`,'THE THEME COLLECTION / '+themes.length);
   const applyTheme=applyArticleTheme;
   bind('theme-import-button',()=>chooseThemeFile(themeHost()));bind('theme-manage-button',()=>showThemeManager(themeHost()));
   const showDetail=(id:string,keyboard=false)=>{
     selectedDetail=id;
     const t=themeById(id),sample=document.createElement('article');sample.className='theme-detail-article';
     const sampleText=t.group==='文学'?'# 在平凡里，收集微光\n\n## 写在日常的页边\n\n风从窗边经过，留下一页值得珍藏的文字。\n\n### 片刻的停留\n\n> 让文字留下温柔的回声。\n\n:::poem center\n光落在纸上\n也落在**未说完的故事**里\n\n愿你记得\n每一次出发\n:::\n\n## 留住那些瞬间\n\n- 一段散步的时光\n- 一封写给自己的信': '# 一束光，读懂宇宙\n\n## 从一个好问题开始\n\n科学始于好奇，也来自一次次**认真观察**。好的排版让推理更清晰。\n\n### 观察与证据\n\n> 我们用可重复的观察，检验关于世界的猜想。\n\n## 把现象写成规律\n\n$$E=mc^2$$\n\n| 观测对象 | 特征 |\n| --- | --- |\n| 光 | 传播与能量 |\n| 物质 | 质量与运动 |\n\n- 提出可检验的问题\n- 记录证据，比较结果\n\n---\n\n继续探索，让知识成为自己的理解。';
-    sample.innerHTML=renderMarkdown(examSamples[t.baseId||t.id]||editionSamples[t.baseId||t.id]||(isAnime(t)?animeSample:isFolio(t)?folioSample:t.variant==='journal'?journalPreviewSample:sampleText),new Map((isAnime(t)?animeAssets():editionSamples[t.baseId||t.id]?editionAssets():isFolio(t)?folioAssets():[]).map(a=>[a.id,a]))).html;decorateTheme(sample,t);
-    const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div id="theme-detail-scroll" class="theme-detail-scroll" tabindex="0" aria-label="主题完整排版示例"><style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}</div><footer><span>${isExam(t)?'试卷排版 · 可选 A4 宽度':'完整排版效果'}</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
+    const workshop=isWorkshop(t);
+    if(!workshop){
+      sample.innerHTML=renderMarkdown(examSamples[t.baseId||t.id]||editionSamples[t.baseId||t.id]||(isAnime(t)?animeSample:isFolio(t)?folioSample:t.variant==='journal'?journalPreviewSample:sampleText),new Map((isAnime(t)?animeAssets():editionSamples[t.baseId||t.id]?editionAssets():isFolio(t)?folioAssets():[]).map(a=>[a.id,a]))).html;
+      decorateTheme(sample,t);
+    }
+    const example=workshop?'<iframe class="workshop-example-frame" title="主题工坊原版排版示例" sandbox=""></iframe>':`<style>${themeCSS(t).replaceAll('.article','.theme-detail-article')}</style>${sample.outerHTML}`;
+    const detail=$('theme-detail');detail.hidden=false;detail.innerHTML=`<header><div><strong>${esc(t.name)}</strong><small>${esc(t.description)}</small></div><button id="theme-detail-close" aria-label="关闭完整预览">×</button></header><div id="theme-detail-scroll" class="theme-detail-scroll" tabindex="0" aria-label="主题完整排版示例">${example}</div><footer><span>${isExam(t)?'试卷排版 · 可选 A4 宽度':workshop?'工坊原版示例':'完整排版效果'}</span><button id="theme-detail-apply" class="button primary">使用此主题</button></footer>`;
+    const workshopFrame=detail.querySelector<HTMLIFrameElement>('.workshop-example-frame');
+    if(workshopFrame)workshopFrame.srcdoc=workshopOriginal(t);
     document.querySelector('.theme-browser')!.classList.add('has-detail');
     $('theme-results').querySelectorAll<HTMLElement>('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed',String(b.dataset.themePreview===id)));
     bind('theme-detail-close',()=>{selectedDetail='';detail.hidden=true;detail.replaceChildren();document.querySelector('.theme-browser')!.classList.remove('has-detail');$('theme-results').querySelectorAll('[data-theme-preview]').forEach(b=>b.setAttribute('aria-pressed','false'));($('theme-results').querySelector<HTMLElement>(`[data-theme-preview="${id}"]`)||$('theme-search')).focus();});
@@ -400,7 +413,7 @@ function showThemes(filter='全部'){
     const query=$<HTMLInputElement>('theme-search').value.trim().toLowerCase();
     const pinRank=(id:string)=>pinnedThemes.includes(id)?pinnedThemes.indexOf(id):Infinity;
     $('theme-pin-count').textContent=`已收藏 ${pinnedThemes.length} 套 · 按自定顺序优先显示`;
-    const visible=visibleThemes().filter(t=>(filter==='全部'||(filter==='已置顶'?pinnedThemes.includes(t.id):filter==='自定义'?!!t.definition:filter==='装饰精选'?!['plain','minimal','academic','wild'].includes(t.id):t.group===filter))&&themeMatches(t,query,themeDesign(t).tags)).sort((a,b)=>pinRank(a.id)-pinRank(b.id));
+    const visible=visibleThemes().filter(t=>(filter==='全部'||(filter==='已置顶'?pinnedThemes.includes(t.id):filter==='自定义'?!!t.definition:filter==='主题工坊'?isWorkshop(t):filter==='装饰精选'?!['plain','minimal','academic','wild'].includes(t.id):t.group===filter))&&themeMatches(t,query,themeDesign(t).tags)).sort((a,b)=>pinRank(a.id)-pinRank(b.id));
     if(selectedDetail&&!visible.some(t=>t.id===selectedDetail)){selectedDetail='';$('theme-detail').hidden=true;$('theme-detail').replaceChildren();document.querySelector('.theme-browser')!.classList.remove('has-detail');}
     $('theme-result-count').textContent=`${visible.length} 个主题`;
     $('theme-results').innerHTML=visible.map(t=>`<div class="theme-card ${current.theme===t.id?'selected':''} ${pinnedThemes.includes(t.id)?'pinned':''}"><button class="theme-preview-button" data-theme-preview="${t.id}" aria-label="查看${esc(t.name)}完整预览" aria-pressed="${String(selectedDetail===t.id)}"><div class="theme-card-topline"><span>${t.group}</span><span>${current.theme===t.id?'使用中':'点击放大'}</span></div><div class="gallery-thumbnail" data-gallery-theme="${t.id}" style="height:220px"><div class="theme-thumbnail-placeholder"></div></div></button><div class="theme-card-info"><strong title="${esc(t.description)}">${esc(t.name)}</strong><button class="theme-apply" data-theme="${t.id}" aria-label="使用${esc(t.name)}主题">使用</button><small>${esc(themeDesign(t).tags.join(' · '))}</small></div><button class="theme-pin ${pinnedThemes.includes(t.id)?'active':''}" data-pin="${t.id}" aria-label="${pinnedThemes.includes(t.id)?'取消收藏':'收藏'}${esc(t.name)}" aria-pressed="${pinnedThemes.includes(t.id)}" title="${pinnedThemes.includes(t.id)?'取消收藏':'收藏主题'}">${pinnedThemes.includes(t.id)?'★':'☆'}</button></div>`).join('')||'<div class="empty-state">没有匹配的主题。<p><button data-clear-theme-search>清空搜索</button> <button data-all-theme-groups>搜索全部分类</button></p></div>';
@@ -587,8 +600,11 @@ function showSamples(){
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend',Object.entries(editionSamples).map(([id])=>`<button class="option-card" data-sample="${id}"><strong>${editionTitles[id as Edition]}</strong><small>完整组件示例 · 可改文字、数据、插图与来源</small></button>`).join(''));
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<h3>试卷 · 湖南高考版式</h3>'+examSubjects.map(s=>`<button class="option-card" data-sample="${s.id}"><strong>${s.name}试卷 · 原创题型示例</strong><small>${s.topics} · 无插图</small></button>`).join(''));
   $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<h3>动漫手记 · 两种主题色</h3>'+animeThemes.map(t=>`<button class="option-card" data-sample="${t.id}"><strong>${t.name} · 黄昏里的小小魔法</strong><small>完整组件示例 · 胶带引文、角色气泡、拍立得、公式与档案卡</small></button>`).join(''));
+  $('modal-body').querySelector('.option-list')!.insertAdjacentHTML('beforeend','<h3>主题工坊</h3>'+workshopThemes.map(t=>`<button class="option-card" data-sample="${t.id}"><strong>${esc(t.name)}</strong><small>可编辑示例 · 验看组件和 Markdown 标题</small></button>`).join(''));
   $('modal-body').querySelectorAll<HTMLButtonElement>('[data-sample]').forEach(el=>el.onclick=async()=>{
     try{
+      const workshop=workshopThemes.find(t=>t.id===el.dataset.sample);
+      if(workshop){closeModal();addArticle(workshopSampleTitle,workshopSample,workshop.id);return;}
       if(el.dataset.sample&&animeThemes.some(t=>t.id===el.dataset.sample)){const id=el.dataset.sample;el.disabled=true;const incoming=animeAssets().filter(a=>!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle('黄昏里的小小魔法',animeSample,id);return;}
       if(el.dataset.sample&&examSamples[el.dataset.sample]){const id=el.dataset.sample;closeModal();addArticle(examSubjects.find(s=>s.id===id)!.name,examSamples[id],id);setPreviewWidth('794');return;}
       if(el.dataset.sample&&editionSamples[el.dataset.sample]){const id=el.dataset.sample;el.disabled=true;const incoming=editionAssets().filter(a=>editionSamples[id].includes('asset:'+a.id)&&!assetStore.has(a.id));for(const a of incoming){assetStore.set(a.id,a);trackAsset(a.id);}if(incoming.length)await stageAssets(incoming);if(!el.isConnected)return;closeModal();addArticle(editionTitles[id as Edition],editionSamples[id],id);return;}
@@ -641,6 +657,24 @@ function enhanceComponentPreviews(panel:HTMLElement,attribute:string,source:stri
   preview.onclick=()=>{openModal('组件效果预览',`<p class="modal-subtitle">跟随当前文章的主题色与排版设置。这里展示示例内容，插入后可继续修改。</p><div class="component-full-scroll" tabindex="0"><style>${style.textContent}</style><article class="component-preview-article component-full-article">${node.outerHTML}</article></div><div class="component-preview-actions"><button id="component-back" class="button outline">返回选择</button><button id="component-insert" class="button primary">插入当前文章</button></div>`);bind('component-back',()=>{closeModal();back();document.querySelector<HTMLElement>('[data-component-preview="'+cls+'"]')?.focus();});bind('component-insert',()=>{closeModal();button.click();});};
  }
  if(['journal-block','folio-block','edition-block'].includes(attribute))enhanceComponentDiscovery(panel,attribute);
+}
+function showWorkshopElements(anchor:HTMLElement){
+  const choices=Object.entries(workshopExampleGroups).map(([group,kinds])=>
+    `<h3>${group}</h3><div class="journal-insert-choices">${kinds.map(kind=>
+      `<button data-workshop-block="workshop-${kind}"><strong>${workshopBlocks[kind]}</strong><small>插入组件</small></button>`
+    ).join('')}</div>`
+  ).join('');
+  const panel=openPopover(anchor,'工坊组件',choices,{width:740});
+  panel.querySelectorAll<HTMLButtonElement>('[data-workshop-block]').forEach(button=>{
+    button.onclick=()=>{
+      const kind=button.dataset.workshopBlock!.slice('workshop-'.length) as keyof typeof workshopExamples;
+      const {from,to}=editor.view.state.selection.main;
+      const selected=editor.view.state.sliceDoc(from,to);
+      closePopover();
+      editor.insert('\n\n'+(selected?workshopComponent(kind,selected):workshopExamples[kind])+'\n\n');
+    };
+  });
+  enhanceComponentPreviews(panel,'workshop-block',workshopSample,()=>showWorkshopElements(anchor));
 }
 function showAnimeElements(anchor:HTMLElement){
  const panel=openPopover(anchor,'动漫手记元素',`<p class="help">樱粉魔法 / 抹茶猫猫共用标签，先预览再插入。彩蛋始终展开，分镜顺序阅读，适合公众号。</p><div class="journal-insert-choices">${Object.entries(animeComponentExamples).map(([kind,[name,description]])=>`<button data-anime-block="anime-${kind}"><strong>${name}</strong><small>${description}</small></button>`).join('')}</div>`);
@@ -1028,6 +1062,13 @@ async function init(){
   const editionButton=document.createElement('button');editionButton.id='edition-block-button';editionButton.textContent='模板组件 ▾';editionButton.title='预览与插入杂志、新闻和文学科普组件';$('folio-block-button').after(editionButton);editionButton.onclick=()=>showEditionElements(editionButton);
   const examButton=document.createElement('button');examButton.id='exam-block-button';examButton.textContent='试卷元素 ▾';examButton.hidden=true;examButton.title='预览与插入卷头、题目、选项、答题区和参考答案';$('edition-block-button').after(examButton);examButton.onclick=()=>showExamElements(examButton);
   const animeButton=document.createElement('button');animeButton.id='anime-block-button';animeButton.textContent='动漫元素 ▾';animeButton.hidden=true;animeButton.title='预览与插入胶带引文、角色气泡、拍立得、公式与设定档案';examButton.after(animeButton);animeButton.onclick=()=>showAnimeElements(animeButton);
+  const workshopButton=document.createElement('button');
+  workshopButton.id='workshop-block-button';
+  workshopButton.textContent='工坊组件 ▾';
+  workshopButton.title='预览与插入导语、提示、图文、数据卡、时间轴与参考资料';
+  workshopButton.hidden=true;
+  animeButton.after(workshopButton);
+  workshopButton.onclick=()=>showWorkshopElements(workshopButton);
   bind('publisher',()=>{clearThemePreview(false);publisher=$<HTMLSelectElement>('publisher').value;preference('publisher',publisher);render();},'change');
   bind('copy-button',copyArticle);bind('export-toggle',showExport);bind('backup-library',()=>exportBackup(true));bind('import-button',()=>pickImport());bind('import-input',async()=>{const input=$<HTMLInputElement>('import-input');const files=[...(input.files||[])];input.value='';await importFiles(files);},'change');
   document.querySelectorAll<HTMLElement>('[data-format]').forEach(el=>el.onclick=()=>{

@@ -8,6 +8,7 @@ import {inlineFonts} from './inline-style';
 import {flattenJournalBlocks} from './journal-blocks';
 import {flattenFolioBlocks} from './folio-blocks';
 import {flattenEditionBlocks} from './edition-blocks';
+import {flattenWorkshopBlocks} from './workshop-blocks';
 import {flattenExamBlocks} from './exam-blocks';
 import {flattenAnimeBlocks} from './anime-blocks';
 import {themeById} from './themes';
@@ -34,6 +35,7 @@ export function standardBody(article:Article,assets:Map<string,Asset>,rendered?:
   flattenJournalBlocks(node);
   flattenFolioBlocks(node);
   flattenEditionBlocks(node);
+  flattenWorkshopBlocks(node);
   flattenExamBlocks(node);
   flattenAnimeBlocks(node);
   node.querySelectorAll('.decorative-divider').forEach(el=>el.replaceWith(document.createElement('hr')));

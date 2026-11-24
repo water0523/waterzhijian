@@ -3,11 +3,13 @@ import {visibleThemes} from './themes';
 import {themeMatches} from './theme-search';
 import {themeDesign} from './theme-design';
 import type {Theme} from './theme-types';
+import {isWorkshop} from './workshop-design';
 
 type Host={current:()=>string;enabled:()=>boolean;pins:()=>string[];thumbnail:(id:string)=>string;preview:(id:string)=>void;cancel:()=>void;apply:(id:string)=>void;pin:(id:string)=>void;order:(ids:string[])=>void;details:()=>void;close:()=>void;};
-const filters=['全部','收藏','简约','书卷','杂志','科普','文学','通用','试卷'];
+const filters=['全部','收藏','简约','书卷','杂志','科普','文学','通用','试卷','主题工坊'];
 function inGroup(t:Theme,group:string,pins:string[]){
   const base=t.baseId||t.id;
+  if(group==='主题工坊')return isWorkshop(t);
   return group==='全部'||(group==='收藏'?pins.includes(t.id):group==='简约'?['plain','minimal','academic','wild','swiss'].includes(base):group==='书卷'?t.group==='文学':group==='杂志'?['digest','press','gewu','magazine','editorial','weekend','gold','journal-indigo','journal-jade'].includes(base):t.group===group);
 }
 export function mountThemeSidebar(root:HTMLElement,host:Host){

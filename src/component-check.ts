@@ -3,7 +3,8 @@ import {folioNames} from './folio-blocks';
 import {editionCatalog} from './edition-blocks';
 import {examTags} from './exam-blocks';
 import {animeTags} from './anime-blocks';
-const names=new Set([...animeTags,...examTags,...journalKinds,...Object.keys(folioNames).map(k=>'folio-'+k),...Object.entries(editionCatalog).flatMap(([group,parts])=>Object.keys(parts).map(k=>group+'-'+k))]);
+import {workshopTags} from './workshop-blocks';
+const names=new Set([...workshopTags,...animeTags,...examTags,...journalKinds,...Object.keys(folioNames).map(k=>'folio-'+k),...Object.entries(editionCatalog).flatMap(([group,parts])=>Object.keys(parts).map(k=>group+'-'+k))]);
 export function inspectComponentStructure(source:string){
   if(!/^\s*(?:>\s*)*:::/m.test(source))return [];
   const stack:{name:string;line:number}[]=[],lines=source.split('\n');let opaque=false,math=false,fence='',fenceLength=0;

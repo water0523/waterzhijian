@@ -9,7 +9,7 @@ for(const f of ['dist/非水·成章-离线公众号排版器.html','dist/非水
 await add(evidence,'本轮验收结果.md');
 const currentHTMLHash=createHash('sha256').update(await readFile('dist/非水·成章-离线公众号排版器.html')).digest('hex');
 const resultsRoot='test-results/runs';
-const releaseScreenshots=/^(?:mermaid-flowchart-(?:chrome|msedge)|quadrant-chart-(?:chrome|msedge)|chrome-(?:water|witch-immersive)-(?:day|night)|layout-(?:1280|1440|1920)-chrome)\.png$/;
+const releaseScreenshots=/^(?:workshop-(?:celadon|swiss)-(?:chrome|msedge)-masthead|mermaid-flowchart-(?:chrome|msedge)|quadrant-chart-(?:chrome|msedge)|chrome-(?:water|witch-immersive)-(?:day|night)|layout-(?:1280|1440|1920)-chrome)\.png$/;
 for(const entry of await readdir(resultsRoot,{withFileTypes:true})){
  if(!entry.isDirectory())continue;
  const run=resultsRoot+'/'+entry.name;

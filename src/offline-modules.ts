@@ -7,13 +7,13 @@ const registry=()=>{
 
 // These payloads are generated from the project's dependencies at build time.
 // They stay inside the HTML and never load code from a URL or article content.
-export function offlineCode(name:'math'|'word'|'highlight'|'mermaid'){
+export function offlineCode(name:'math'|'word'|'highlight'|'mermaid'|'workshop'){
   const payload=document.getElementById('offline-module-'+name);
   if(!payload?.textContent)throw new Error('离线功能缺失，请重新下载完整编辑器');
   payload.dataset.loaded='true';
   return payload.dataset.encoding==='gzip-base64'?strFromU8(gunzipSync(Uint8Array.from(atob(payload.textContent),c=>c.charCodeAt(0)))):payload.textContent;
 }
-export function offlineModule<T>(name:'math'|'word'|'highlight'):T{
+export function offlineModule<T>(name:'math'|'word'|'highlight'|'workshop'):T{
   const modules=registry();if(Object.hasOwn(modules,name))return modules[name] as T;
   const script=document.createElement('script');
   script.textContent=offlineCode(name);

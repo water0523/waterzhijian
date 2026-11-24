@@ -6,7 +6,7 @@ export function compactToolbar(){
  const high=new Set(['heading','bold','italic','underline','strike','quote','table','poem','code','footnote','link']);const insertFormats=new Set<string>();
  for(const b of [...toolbar.querySelectorAll<HTMLButtonElement>(':scope > button')]){const format=b.dataset.format;if(format&&!high.has(format))(insertFormats.has(format)?insert:more).append(b);else if(!format&&!['format-painter-button','inline-style-button','image-button','math-button','undo-button','redo-button','search-button'].includes(b.id))more.append(b);}
  for(const b of [...toolbar.querySelectorAll<HTMLButtonElement>('.advanced-tools button')])insert.append(b);toolbar.querySelector('.advanced-tools')?.remove();document.getElementById('advanced-tools-toggle')?.remove();
- for(const id of ['journal-block-button','folio-block-button','edition-block-button','exam-block-button','anime-block-button','folio-font-button','image-layout-button','divider-button']){const n=document.getElementById(id);if(n)insert.append(n);}
+ for(const id of ['journal-block-button','folio-block-button','edition-block-button','exam-block-button','anime-block-button','workshop-block-button','folio-font-button','image-layout-button','divider-button']){const n=document.getElementById(id);if(n)insert.append(n);}
  const link=toolbar.querySelector<HTMLButtonElement>('[data-format="link"]')!;for(const format of ['quote','table','poem','code','footnote']){const n=toolbar.querySelector<HTMLButtonElement>(`[data-format="${format}"]`);if(n)link.before(n);}
  for(const id of ['assets-button','table-style-button','style-button']){const n=document.getElementById(id);if(n)more.append(n);}
  document.getElementById('sync-button')!.before(document.getElementById('format-rewrite-button')!);
